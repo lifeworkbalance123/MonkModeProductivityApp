@@ -6,54 +6,108 @@ import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { 
-  Sun, 
-  Moon, 
-  ChevronLeft, 
+import {
+  Sun,
+  Moon,
+  ChevronLeft,
   ChevronRight,
   Flame,
   Target,
   Clock,
   CheckCircle2,
-  Plus
+  Plus,
 } from "lucide-react"
 
-const timeSlots = [
-  { time: "8:30 AM", category: "Personal", activity: "Morning Routine", color: "bg-[oklch(0.75_0.12_145)]" },
-  { time: "9:00 AM", category: "Work", activity: "Deep Work Session", color: "bg-[oklch(0.65_0.12_185)]" },
-  { time: "9:30 AM", category: "Work", activity: "Deep Work Session", color: "bg-[oklch(0.65_0.12_185)]" },
-  { time: "10:00 AM", category: "Work", activity: "Team Standup", color: "bg-[oklch(0.65_0.12_185)]" },
-  { time: "10:30 AM", category: "Work", activity: "Project Planning", color: "bg-[oklch(0.65_0.12_185)]" },
-  { time: "11:00 AM", category: "Meal", activity: "Snack Break", color: "bg-[oklch(0.80_0.06_310)]" },
-  { time: "11:30 AM", category: "Work", activity: "Code Review", color: "bg-[oklch(0.65_0.12_185)]" },
-  { time: "12:00 PM", category: "Meal", activity: "Lunch", color: "bg-[oklch(0.80_0.06_310)]" },
-]
+type TimeSlot = {
+  id: string
+  time: string
+  category: string
+  activity: string
+}
 
-const habits = [
-  { name: "Make bed", completed: true, progress: 100 },
-  { name: "Brush teeth", completed: true, progress: 100 },
-  { name: "Gratitude journal", completed: true, progress: 100 },
-  { name: "Gym", completed: false, progress: 43 },
-  { name: "Meditate", completed: false, progress: 57 },
-  { name: "Read 30 mins", completed: false, progress: 14 },
-]
+type Goal = {
+  id: string
+  text: string
+  completed: boolean
+}
 
-const goals = [
-  { text: "Finish Governance Course", completed: true },
-  { text: "Complete Python Module 5", completed: false },
-  { text: "Apply for 3-5 Jobs", completed: false },
-  { text: "Charisma Training Video", completed: false },
-  { text: "Build Productivity App MVP", completed: false },
-]
+type Habit = {
+  id: string
+  name: string
+  completed: boolean
+  progress: number
+}
 
 const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 export function DashboardPreview() {
   const [currentDay, setCurrentDay] = useState(0)
+
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([
+    { id: "1", time: "8:30 AM", category: "Personal", activity: "Morning Routine" },
+    { id: "2", time: "9:00 AM", category: "Work", activity: "Deep Work Session" },
+    { id: "3", time: "9:30 AM", category: "Work", activity: "Deep Work Session" },
+    { id: "4", time: "10:00 AM", category: "Work", activity: "Team Standup" },
+    { id: "5", time: "10:30 AM", category: "Work", activity: "Project Planning" },
+    { id: "6", time: "11:00 AM", category: "Meal", activity: "Snack Break" },
+    { id: "7", time: "11:30 AM", category: "Work", activity: "Code Review" },
+    { id: "8", time: "12:00 PM", category: "Meal", activity: "Lunch" },
+  ])
+
+  const CATEGORIES = [
+    { label: "Personal", color: "bg-[oklch(0.75_0.12_145)]" },
+    { label: "Work", color: "bg-[oklch(0.65_0.12_185)]" },
+    { label: "Gym", color: "bg-[oklch(0.70_0.10_195)]" },
+    { label: "Kids", color: "bg-[oklch(0.65_0.12_220)]" },
+    { label: "Meal", color: "bg-[oklch(0.80_0.06_310)]" },
+    { label: "Household", color: "bg-[oklch(0.85_0.18_95)]" },
+    { label: "Pets", color: "bg-[oklch(0.80_0.15_85)]" },
+    { label: "Study", color: "bg-[oklch(0.70_0.18_55)]" },
+    { label: "Transport", color: "bg-[oklch(0.70_0.12_15)]" },
+    { label: "Family", color: "bg-[oklch(0.70_0.15_250)]" },
+  ]
+
+  const getCategoryColor = (categoryLabel: string): string => {
+    return (
+      CATEGORIES.find((c) => c.label === categoryLabel)?.color ?? "bg-muted"
+    )
+  }
+
+  const [showAddSlot, setShowAddSlot] = useState(false)
+  const [newActivity, setNewActivity] = useState("")
+  const [newCategory, setNewCategory] = useState("Personal")
+  const [newTime, setNewTime] = useState("")
+
+  const [editingSlotId, setEditingSlotId] = useState<string | null>(null)
+
+  const [goals, setGoals] = useState<Goal[]>([
+    { id: "1", text: "Finish Governance Course", completed: true },
+    { id: "2", text: "Complete Python Module 5", completed: false },
+    { id: "3", text: "Apply for 3-5 Jobs", completed: false },
+    { id: "4", text: "Charisma Training Video", completed: false },
+    { id: "5", text: "Build Productivity App MVP", completed: false },
+  ])
+
+  const [habits, setHabits] = useState<Habit[]>([
+    { id: "1", name: "Make bed", completed: true, progress: 100 },
+    { id: "2", name: "Brush teeth", completed: true, progress: 100 },
+    { id: "3", name: "Gratitude journal", completed: true, progress: 100 },
+    { id: "4", name: "Gym", completed: false, progress: 43 },
+    { id: "5", name: "Meditate", completed: false, progress: 57 },
+    { id: "6", name: "Read 30 mins", completed: false, progress: 14 },
+  ])
+
   const dayCount = daysOfWeek.length
 
   const shiftDay = (delta: number) => {
     setCurrentDay((idx) => (idx + delta + dayCount) % dayCount)
+  }
+
+  const resetAddSlotForm = () => {
+    setShowAddSlot(false)
+    setNewActivity("")
+    setNewTime("")
+    setNewCategory("Personal")
   }
 
   return (
@@ -145,30 +199,159 @@ export function DashboardPreview() {
                     <Clock className="w-4 h-4 text-accent" />
                     <span className="font-medium">Time Schedule</span>
                   </div>
-                  <Link
-                    href="/planner"
+                  <button
+                    type="button"
+                    onClick={() => setShowAddSlot(true)}
                     className="flex items-center gap-1 text-xs text-accent hover:underline"
                   >
                     <Plus className="w-3 h-3" />
                     Add Activity
-                  </Link>
+                  </button>
                 </div>
                 <div className="space-y-1">
-                  {timeSlots.map((slot) => (
-                    <div
-                      key={slot.time}
-                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 transition-colors"
-                    >
-                      <span className="text-xs text-muted-foreground w-16 shrink-0">
-                        {slot.time}
-                      </span>
-                      <div className={`w-1 h-6 rounded-full ${slot.color}`} />
-                      <Badge variant="secondary" className="text-xs">
-                        {slot.category}
-                      </Badge>
-                      <span className="text-sm truncate">{slot.activity}</span>
+                  {timeSlots.map((slot) =>
+                    editingSlotId === slot.id ? (
+                      <div
+                        key={slot.id}
+                        className="flex items-center gap-3 p-2 rounded-lg bg-secondary/70 border border-accent/30"
+                      >
+                        <span className="text-xs text-muted-foreground w-16 shrink-0">
+                          {slot.time}
+                        </span>
+                        <div
+                          className={`w-1 h-6 rounded-full ${getCategoryColor(slot.category)}`}
+                        />
+                        <select
+                          value={slot.category}
+                          onChange={(e) =>
+                            setTimeSlots((prev) =>
+                              prev.map((s) =>
+                                s.id === slot.id
+                                  ? { ...s, category: e.target.value }
+                                  : s,
+                              ),
+                            )
+                          }
+                          className="text-xs bg-background border border-border rounded px-1.5 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                        >
+                          {CATEGORIES.map((cat) => (
+                            <option key={cat.label} value={cat.label}>
+                              {cat.label}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="text"
+                          value={slot.activity}
+                          autoFocus
+                          onChange={(e) =>
+                            setTimeSlots((prev) =>
+                              prev.map((s) =>
+                                s.id === slot.id
+                                  ? { ...s, activity: e.target.value }
+                                  : s,
+                              ),
+                            )
+                          }
+                          onBlur={() => setEditingSlotId(null)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === "Escape") {
+                              setEditingSlotId(null)
+                            }
+                          }}
+                          className="flex-1 text-sm bg-background border border-border rounded px-2 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        key={slot.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setEditingSlotId(slot.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault()
+                            setEditingSlotId(slot.id)
+                          }
+                        }}
+                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer"
+                        title="Click to edit"
+                      >
+                        <span className="text-xs text-muted-foreground w-16 shrink-0">
+                          {slot.time}
+                        </span>
+                        <div
+                          className={`w-1 h-6 rounded-full ${getCategoryColor(slot.category)}`}
+                        />
+                        <Badge variant="secondary" className="text-xs">
+                          {slot.category}
+                        </Badge>
+                        <span className="text-sm truncate">{slot.activity}</span>
+                      </div>
+                    ),
+                  )}
+
+                  {showAddSlot && (
+                    <div className="mt-3 p-3 rounded-lg bg-secondary/70 border border-border flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newTime}
+                          onChange={(e) => setNewTime(e.target.value)}
+                          placeholder="Time e.g. 2:00 PM"
+                          className="flex-1 text-xs bg-background border border-border rounded-md px-2 py-1.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                        />
+                        <select
+                          value={newCategory}
+                          onChange={(e) => setNewCategory(e.target.value)}
+                          className="text-xs bg-background border border-border rounded-md px-2 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                        >
+                          {CATEGORIES.map((cat) => (
+                            <option key={cat.label} value={cat.label}>
+                              {cat.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <input
+                        type="text"
+                        value={newActivity}
+                        onChange={(e) => setNewActivity(e.target.value)}
+                        placeholder="Task or activity name"
+                        className="text-xs bg-background border border-border rounded-md px-2 py-1.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                      />
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          type="button"
+                          onClick={resetAddSlotForm}
+                          className="text-xs text-muted-foreground hover:text-foreground px-3 py-1"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!newActivity.trim() || !newTime.trim()}
+                          onClick={() => {
+                            if (!newActivity.trim() || !newTime.trim()) return
+                            setTimeSlots((prev) => [
+                              ...prev,
+                              {
+                                id: Date.now().toString(),
+                                time: newTime.trim(),
+                                category: newCategory,
+                                activity: newActivity.trim(),
+                              },
+                            ])
+                            resetAddSlotForm()
+                          }}
+                          className="text-xs bg-accent text-accent-foreground rounded-md px-3 py-1 hover:bg-accent/90 disabled:opacity-50"
+                        >
+                          Add
+                        </button>
+                      </div>
                     </div>
-                  ))}
+                  )}
+
                   <div className="pt-2 text-center">
                     <span className="text-xs text-muted-foreground">+ 16 more time slots</span>
                   </div>
@@ -200,14 +383,72 @@ export function DashboardPreview() {
                   <span className="font-medium">Top 5 Goals for the Day</span>
                 </div>
                 <div className="space-y-3">
-                  {goals.map((goal, idx) => (
-                    <div key={idx} className="flex items-start gap-3">
-                      <Checkbox checked={goal.completed} className="mt-0.5" />
-                      <span className={`text-sm ${goal.completed ? "line-through text-muted-foreground" : ""}`}>
-                        {goal.text}
-                      </span>
+                  {goals.map((goal) => (
+                    <div key={goal.id} className="flex items-center gap-3 group">
+                      <Checkbox
+                        checked={goal.completed}
+                        onCheckedChange={(checked) =>
+                          setGoals((prev) =>
+                            prev.map((g) =>
+                              g.id === goal.id
+                                ? { ...g, completed: checked === true }
+                                : g,
+                            ),
+                          )
+                        }
+                        className="mt-0.5"
+                      />
+                      <input
+                        type="text"
+                        value={goal.text}
+                        onChange={(e) =>
+                          setGoals((prev) =>
+                            prev.map((g) =>
+                              g.id === goal.id
+                                ? { ...g, text: e.target.value }
+                                : g,
+                            ),
+                          )
+                        }
+                        placeholder="Type your goal here..."
+                        className={`text-sm flex-1 bg-transparent border-none outline-none focus:ring-0 placeholder:text-muted-foreground/50 ${goal.completed ? "line-through text-muted-foreground" : "text-foreground"}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setGoals((prev) => prev.filter((g) => g.id !== goal.id))
+                        }
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive ml-1 text-xs leading-none"
+                        aria-label="Remove goal"
+                      >
+                        ×
+                      </button>
                     </div>
                   ))}
+                  {goals.length < 5 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setGoals((prev) => [
+                          ...prev,
+                          {
+                            id: Date.now().toString(),
+                            text: "",
+                            completed: false,
+                          },
+                        ])
+                      }
+                      className="flex items-center gap-1 text-xs text-accent hover:underline mt-1 pl-6"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Add goal
+                    </button>
+                  )}
+                  {goals.length >= 5 && (
+                    <p className="text-xs text-muted-foreground pl-6 mt-1 italic">
+                      Monk Mode: Focus on 5 or fewer goals
+                    </p>
+                  )}
                 </div>
               </Card>
 
@@ -218,23 +459,73 @@ export function DashboardPreview() {
                     <CheckCircle2 className="w-4 h-4 text-accent" />
                     <span className="font-medium">Daily Habits</span>
                   </div>
-                  <span className="text-xs text-accent">3/6 done</span>
+                  <span className="text-xs text-accent">
+                    {habits.filter((h) => h.completed).length}/{habits.length} done
+                  </span>
                 </div>
                 <div className="space-y-4">
                   {habits.map((habit) => (
-                    <div key={habit.name} className="space-y-1">
+                    <div key={habit.id} className="space-y-1">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Checkbox checked={habit.completed} />
-                          <span className={`text-sm ${habit.completed ? "text-muted-foreground" : ""}`}>
-                            {habit.name}
-                          </span>
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <Checkbox
+                            checked={habit.completed}
+                            onCheckedChange={(checked) => {
+                              const done = checked === true
+                              setHabits((prev) =>
+                                prev.map((h) =>
+                                  h.id === habit.id
+                                    ? {
+                                        ...h,
+                                        completed: done,
+                                        progress: done ? 100 : 0,
+                                      }
+                                    : h,
+                                ),
+                              )
+                            }}
+                          />
+                          <input
+                            type="text"
+                            value={habit.name}
+                            onChange={(e) =>
+                              setHabits((prev) =>
+                                prev.map((h) =>
+                                  h.id === habit.id
+                                    ? { ...h, name: e.target.value }
+                                    : h,
+                                ),
+                              )
+                            }
+                            placeholder="Habit name..."
+                            className={`text-sm bg-transparent border-none outline-none focus:ring-0 placeholder:text-muted-foreground/50 min-w-0 flex-1 ${habit.completed ? "text-muted-foreground" : "text-foreground"}`}
+                          />
                         </div>
-                        <span className="text-xs text-muted-foreground">{habit.progress}%</span>
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {habit.progress}%
+                        </span>
                       </div>
                       <Progress value={habit.progress} className="h-1.5" />
                     </div>
                   ))}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setHabits((prev) => [
+                        ...prev,
+                        {
+                          id: Date.now().toString(),
+                          name: "",
+                          completed: false,
+                          progress: 0,
+                        },
+                      ])
+                    }
+                    className="flex items-center gap-1 text-xs text-accent hover:underline mt-2"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Add habit
+                  </button>
                 </div>
               </Card>
 
