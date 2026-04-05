@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Sun,
   Moon,
@@ -16,10 +17,12 @@ import {
   Target,
   Clock,
   CheckCircle2,
+  Video,
 } from 'lucide-react'
 import { addDays, addWeeks, format, getWeek, startOfWeek } from 'date-fns'
 import type { MonkData } from '@/lib/monk-types'
 import { computeStreak, habitWeekProgress } from '@/lib/monk-streak'
+import { youtubeEmbedFromUrl } from '@/lib/morning-video'
 
 const daysShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -32,6 +35,17 @@ type Props = {
 }
 
 export function DashboardApp({ data, onChange }: Props) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [localVideoPreviewUrl, setLocalVideoPreviewUrl] = useState<string | null>(
+    null,
+  )
+
+  useEffect(() => {
+    return () => {
+      if (localVideoPreviewUrl) URL.revokeObjectURL(localVideoPreviewUrl)
+    }
+  }, [localVideoPreviewUrl])
+
   const [weekOffset, setWeekOffset] = useState(0)
   const [dayIndex, setDayIndex] = useState(() => {
     const today = new Date()
@@ -67,6 +81,24 @@ export function DashboardApp({ data, onChange }: Props) {
     const a = [...data.achievements]
     a[i] = value
     onChange({ ...data, achievements: a })
+  }
+
+  const setMorningVideoUrl = (value: string) => {
+    onChange({ ...data, morningVideoUrl: value })
+  }
+
+  const setMorningVideoNote = (value: string) => {
+    onChange({ ...data, morningVideoNote: value })
+  }
+
+  const onMorningVideoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setLocalVideoPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return URL.createObjectURL(file)
+    })
+    e.target.value = ''
   }
 
   const toggleHabit = (habitId: string) => {
@@ -202,6 +234,77 @@ export function DashboardApp({ data, onChange }: Props) {
                     />
                   </div>
                 ))}
+              </div>
+              <div className="mt-4 pt-3 border-t border-border/60 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Video className="w-4 h-4 text-accent shrink-0" />
+                  <span className="text-sm font-medium">
+                    Morning video & motivation text
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Upload plays in your browser for this session only. Paste a YouTube
+                  or direct video URL to keep it with your saved data.
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={onMorningVideoFile}
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium rounded-md border border-border bg-background px-2 py-1.5 hover:bg-secondary"
+                  >
+                    <Video className="w-3.5 h-3.5" />
+                    Upload video
+                  </button>
+                  <span className="text-xs text-muted-foreground">
+                    or paste a URL below
+                  </span>
+                </div>
+                <Input
+                  value={data.morningVideoUrl}
+                  onChange={(e) => setMorningVideoUrl(e.target.value)}
+                  className="h-9 text-sm bg-background/60 border-border"
+                  placeholder="Video URL (YouTube, or direct .mp4 / .webm link)"
+                />
+                <Textarea
+                  value={data.morningVideoNote}
+                  onChange={(e) => setMorningVideoNote(e.target.value)}
+                  className="min-h-[72px] text-sm bg-background/60 border-border resize-y"
+                  placeholder="Motivation text, intention, or notes for this morning…"
+                />
+                {localVideoPreviewUrl ? (
+                  <video
+                    src={localVideoPreviewUrl}
+                    controls
+                    className="w-full max-w-md rounded-md border border-border"
+                  />
+                ) : null}
+                {!localVideoPreviewUrl &&
+                data.morningVideoUrl.trim() &&
+                youtubeEmbedFromUrl(data.morningVideoUrl) ? (
+                  <iframe
+                    title="Morning video"
+                    src={youtubeEmbedFromUrl(data.morningVideoUrl)!}
+                    className="aspect-video w-full max-w-md rounded-md border border-border"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : null}
+                {!localVideoPreviewUrl &&
+                data.morningVideoUrl.trim() &&
+                !youtubeEmbedFromUrl(data.morningVideoUrl) ? (
+                  <video
+                    src={data.morningVideoUrl.trim()}
+                    controls
+                    className="w-full max-w-md rounded-md border border-border"
+                  />
+                ) : null}
               </div>
             </Card>
 

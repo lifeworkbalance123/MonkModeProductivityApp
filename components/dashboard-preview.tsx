@@ -1,8 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState, type ChangeEvent } from "react"
 import Link from "next/link"
 import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
@@ -16,7 +18,9 @@ import {
   Clock,
   CheckCircle2,
   Plus,
+  Video,
 } from "lucide-react"
+import { youtubeEmbedFromUrl } from "@/lib/morning-video"
 
 type TimeSlot = {
   id: string
@@ -42,6 +46,34 @@ const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 export function DashboardPreview() {
   const [currentDay, setCurrentDay] = useState(0)
+
+  const [gratitude, setGratitude] = useState([
+    "My health and energy today",
+    "Supportive family",
+    "New opportunities ahead",
+  ])
+  const [morningVideoUrl, setMorningVideoUrl] = useState("")
+  const [morningVideoNote, setMorningVideoNote] = useState("")
+  const morningFileRef = useRef<HTMLInputElement>(null)
+  const [morningVideoBlobUrl, setMorningVideoBlobUrl] = useState<string | null>(
+    null,
+  )
+
+  useEffect(() => {
+    return () => {
+      if (morningVideoBlobUrl) URL.revokeObjectURL(morningVideoBlobUrl)
+    }
+  }, [morningVideoBlobUrl])
+
+  const onMorningFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setMorningVideoBlobUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return URL.createObjectURL(file)
+    })
+    e.target.value = ""
+  }
 
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([
     { id: "1", time: "8:30 AM", category: "Personal", activity: "Morning Routine" },
@@ -184,11 +216,95 @@ export function DashboardPreview() {
                   <span className="text-sm font-medium">Morning: 3 things I&apos;m grateful for</span>
                 </div>
                 <div className="space-y-2">
-                  {["My health and energy today", "Supportive family", "New opportunities ahead"].map((item, idx) => (
-                    <div key={idx} className="text-sm text-muted-foreground pl-6">
-                      {idx + 1}. {item}
+                  {[0, 1, 2].map((idx) => (
+                    <div key={idx} className="pl-2">
+                      <span className="text-xs text-muted-foreground mr-2">
+                        {idx + 1}.
+                      </span>
+                      <Input
+                        value={gratitude[idx] ?? ""}
+                        onChange={(e) => {
+                          const next = [...gratitude]
+                          next[idx] = e.target.value
+                          setGratitude(next)
+                        }}
+                        className="inline-flex max-w-md h-8 text-sm bg-background/60 border-border"
+                        placeholder="…"
+                      />
                     </div>
                   ))}
+                </div>
+                <div className="mt-4 pt-3 border-t border-border/60 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Video className="w-4 h-4 text-accent shrink-0" />
+                    <span className="text-sm font-medium">
+                      Morning video & motivation text
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Upload plays in your browser for this preview session. Paste a
+                    YouTube or direct video URL to simulate saved data on the live
+                    dashboard.
+                  </p>
+                  <input
+                    ref={morningFileRef}
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={onMorningFileChange}
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => morningFileRef.current?.click()}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium rounded-md border border-border bg-background px-2 py-1.5 hover:bg-secondary"
+                    >
+                      <Video className="w-3.5 h-3.5" />
+                      Upload video
+                    </button>
+                    <span className="text-xs text-muted-foreground">
+                      or paste a URL below
+                    </span>
+                  </div>
+                  <Input
+                    value={morningVideoUrl}
+                    onChange={(e) => setMorningVideoUrl(e.target.value)}
+                    className="h-9 text-sm bg-background/60 border-border"
+                    placeholder="Video URL (YouTube, or direct .mp4 / .webm link)"
+                  />
+                  <Textarea
+                    value={morningVideoNote}
+                    onChange={(e) => setMorningVideoNote(e.target.value)}
+                    className="min-h-[72px] text-sm bg-background/60 border-border resize-y"
+                    placeholder="Motivation text, intention, or notes for this morning…"
+                  />
+                  {morningVideoBlobUrl ? (
+                    <video
+                      src={morningVideoBlobUrl}
+                      controls
+                      className="w-full max-w-md rounded-md border border-border"
+                    />
+                  ) : null}
+                  {!morningVideoBlobUrl &&
+                  morningVideoUrl.trim() &&
+                  youtubeEmbedFromUrl(morningVideoUrl) ? (
+                    <iframe
+                      title="Morning video preview"
+                      src={youtubeEmbedFromUrl(morningVideoUrl)!}
+                      className="aspect-video w-full max-w-md rounded-md border border-border"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : null}
+                  {!morningVideoBlobUrl &&
+                  morningVideoUrl.trim() &&
+                  !youtubeEmbedFromUrl(morningVideoUrl) ? (
+                    <video
+                      src={morningVideoUrl.trim()}
+                      controls
+                      className="w-full max-w-md rounded-md border border-border"
+                    />
+                  ) : null}
                 </div>
               </Card>
 

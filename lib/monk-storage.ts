@@ -28,6 +28,8 @@ export const defaultMonkData: MonkData = {
     'Made progress on app',
     'Exercised for 30 minutes',
   ],
+  morningVideoUrl: '',
+  morningVideoNote: '',
   timeSlots: [
     {
       id: 't1',
@@ -108,6 +110,14 @@ function mergeLoaded(raw: string): MonkData {
       Array.isArray(parsed.achievements) && parsed.achievements.length === 3
         ? parsed.achievements
         : [...defaultMonkData.achievements],
+    morningVideoUrl:
+      typeof parsed.morningVideoUrl === 'string'
+        ? parsed.morningVideoUrl
+        : defaultMonkData.morningVideoUrl,
+    morningVideoNote:
+      typeof parsed.morningVideoNote === 'string'
+        ? parsed.morningVideoNote
+        : defaultMonkData.morningVideoNote,
     timeSlots:
       Array.isArray(parsed.timeSlots) && parsed.timeSlots.length > 0
         ? parsed.timeSlots

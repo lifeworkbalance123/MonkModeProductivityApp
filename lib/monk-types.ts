@@ -18,6 +18,10 @@ export type MonkData = {
   goals: Goal[]
   gratitude: string[]
   achievements: string[]
+  /** Paste YouTube or direct .mp4/.webm link; persisted in localStorage */
+  morningVideoUrl: string
+  /** Short motivation or context for the morning video */
+  morningVideoNote: string
   timeSlots: TimeSlot[]
   habitLog: HabitLog
 }
