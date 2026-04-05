@@ -1,0 +1,241 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Monk Mode: gray-900 + Wasabi Chartreuse (Thermal Growth primary) */
+  --background: #111827;
+  --foreground: #f9fafb;
+  --card: #1f2937;
+  --card-foreground: #f9fafb;
+  --popover: #1f2937;
+  --popover-foreground: #f9fafb;
+  --primary: var(--color-wasabi);
+  --primary-foreground: var(--color-wasabi-fore);
+  --secondary: #374151;
+  --secondary-foreground: #f9fafb;
+  --muted: #374151;
+  --muted-foreground: #9ca3af;
+  --accent: var(--color-wasabi);
+  --accent-foreground: var(--color-wasabi-fore);
+  --destructive: oklch(0.55 0.22 27);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: #374151;
+  --input: #374151;
+  --ring: var(--color-wasabi);
+  --chart-1: var(--color-wasabi);
+  --chart-2: oklch(0.65 0.12 185);
+  --chart-3: oklch(0.70 0.18 85);
+  --chart-4: oklch(0.60 0.15 280);
+  --chart-5: oklch(0.70 0.20 30);
+  --radius: 0.5rem;
+  --sidebar: #0f172a;
+  --sidebar-foreground: #f9fafb;
+  --sidebar-primary: var(--color-wasabi);
+  --sidebar-primary-foreground: var(--color-wasabi-fore);
+  --sidebar-accent: #374151;
+  --sidebar-accent-foreground: #f9fafb;
+  --sidebar-border: #374151;
+  --sidebar-ring: var(--color-wasabi);
+  
+  /* Category colors from Google Sheet */
+  --category-personal: oklch(0.75 0.12 145);
+  --category-work: oklch(0.65 0.12 185);
+  --category-gym: oklch(0.70 0.10 195);
+  --category-health: oklch(0.72 0.08 285);
+  --category-meal: oklch(0.80 0.06 310);
+  --category-household: oklch(0.85 0.18 95);
+  --category-pets: oklch(0.80 0.15 85);
+  --category-study: oklch(0.70 0.18 55);
+  --category-transport: oklch(0.70 0.12 15);
+  --category-family: oklch(0.70 0.15 250);
+}
+
+@theme {
+  /* ── Thermal Growth Palette ─────────────────────────────── */
+  --color-wasabi:         #A8B400;
+  --color-wasabi-dark:    #7A8400;  /* hover state only */
+  --color-wasabi-fore:    #1A1A12;  /* text on wasabi bg — must pass AA contrast */
+
+  --color-ember:          #C8680A;
+  --color-ember-muted:    #8A4507;
+  --color-ember-fore:     #F5F0E8;
+
+  --color-deep-moss:      #3B4A2F;
+  --color-deep-moss-dark: #2A3520;
+  --color-deep-moss-fore: #F5F0E8;
+
+  --color-volcanic:       #4A4A4A;
+  --color-volcanic-light: #6A6A6A;
+  --color-volcanic-fore:  #F5F0E8;
+
+  --color-bone:           #F5F0E8;
+  --color-bone-dark:      #E8E2D6;
+  --color-bone-fore:      #1A1A12;
+
+  --color-thermal-black:  #1A1A12;
+  --color-growth:         #6B7A2A;
+  --color-growth-muted:   #4A5520;
+  --color-growth-fore:    #F5F0E8;
+
+  /* ── Thermal Growth Semantic Aliases ────────────────────── */
+  /* These map Thermal Growth onto the app's semantic layer    */
+  /* so existing components pick up the new palette           */
+  --color-thermal-primary:    var(--color-wasabi);
+  --color-thermal-primary-fg: var(--color-wasabi-fore);
+  --color-thermal-surface:    var(--color-deep-moss);
+  --color-thermal-surface-fg: var(--color-deep-moss-fore);
+  --color-thermal-muted:      var(--color-volcanic);
+  --color-thermal-muted-fg:   var(--color-volcanic-fore);
+  --color-thermal-success:    var(--color-growth);
+  --color-thermal-success-fg: var(--color-growth-fore);
+  --color-thermal-warning:    var(--color-ember);
+  --color-thermal-warning-fg: var(--color-ember-fore);
+  --color-thermal-base:       var(--color-thermal-black);
+  --color-thermal-base-fg:    var(--color-bone);
+
+  /* ── Thermal Growth Typography Scale ────────────────────── */
+  --font-thermal-display: 'DM Serif Display', Georgia, serif;
+  --font-thermal-body:    'DM Sans', system-ui, sans-serif;
+  --font-thermal-mono:    'JetBrains Mono', 'Courier New', monospace;
+
+  /* ── Thermal Growth Spacing & Radius ────────────────────── */
+  --radius-thermal-sm:  0.25rem;
+  --radius-thermal-md:  0.5rem;
+  --radius-thermal-lg:  1rem;
+  --radius-thermal-xl:  1.5rem;
+  --radius-thermal-pill: 9999px;
+
+  /* ── Thermal Growth Animation ────────────────────────────── */
+  --duration-thermal-fast:   150ms;
+  --duration-thermal-base:   250ms;
+  --duration-thermal-slow:   400ms;
+  --ease-thermal:            cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Thermal Growth Utility Classes ─────────────────────── */
+/* Wasabi is used ONLY via these classes — enforces the disruptor rule */
+.btn-thermal-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border: none;
+  border-radius: var(--radius-thermal-md);
+  cursor: pointer;
+  background-color: var(--color-wasabi);
+  color: var(--color-wasabi-fore);
+  font-family: var(--font-thermal-body);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  transition: background-color var(--duration-thermal-fast) var(--ease-thermal),
+              transform var(--duration-thermal-fast) var(--ease-thermal),
+              box-shadow var(--duration-thermal-base) var(--ease-thermal);
+}
+.btn-thermal-primary:hover {
+  background-color: var(--color-wasabi-dark);
+}
+.btn-thermal-primary:active {
+  transform: scale(0.98);
+}
+.btn-thermal-primary:focus-visible {
+  outline: 2px solid var(--color-wasabi);
+  outline-offset: 2px;
+}
+.btn-thermal-primary:disabled {
+  background-color: var(--color-volcanic);
+  color: var(--color-volcanic-fore);
+  cursor: not-allowed;
+  transform: none;
+}
+.btn-thermal-primary:disabled:hover {
+  background-color: var(--color-volcanic);
+}
+
+.dark {
+  --background: #111827;
+  --foreground: #f9fafb;
+  --card: #1f2937;
+  --card-foreground: #f9fafb;
+  --popover: #1f2937;
+  --popover-foreground: #f9fafb;
+  --primary: var(--color-wasabi);
+  --primary-foreground: var(--color-wasabi-fore);
+  --secondary: #374151;
+  --secondary-foreground: #f9fafb;
+  --muted: #374151;
+  --muted-foreground: #9ca3af;
+  --accent: var(--color-wasabi);
+  --accent-foreground: var(--color-wasabi-fore);
+  --destructive: oklch(0.55 0.22 27);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: #374151;
+  --input: #374151;
+  --ring: var(--color-wasabi);
+  --chart-1: var(--color-wasabi);
+  --chart-2: oklch(0.65 0.12 185);
+  --chart-3: oklch(0.70 0.18 85);
+  --chart-4: oklch(0.60 0.15 280);
+  --chart-5: oklch(0.70 0.20 30);
+  --sidebar: #0f172a;
+  --sidebar-foreground: #f9fafb;
+  --sidebar-primary: var(--color-wasabi);
+  --sidebar-primary-foreground: var(--color-wasabi-fore);
+  --sidebar-accent: #374151;
+  --sidebar-accent-foreground: #f9fafb;
+  --sidebar-border: #374151;
+  --sidebar-ring: var(--color-wasabi);
+}
+
+@theme inline {
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

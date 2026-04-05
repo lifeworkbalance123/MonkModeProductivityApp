@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "MonkMode Productivity",
+    "slug": "monkmode-productivity",
+    "version": "1.0.0",
+    "scheme": "monkmode",
+    "userInterfaceStyle": "automatic",
+    "orientation": "portrait",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.monkmode.productivity"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#111827"
+      },
+      "package": "com.monkmode.productivity"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Monk Mode to attach training images."
+        }
+      ]
+    ]
+  }
+}

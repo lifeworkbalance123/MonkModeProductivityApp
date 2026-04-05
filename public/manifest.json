@@ -1,0 +1,17 @@
+{
+  "name": "Monk Mode",
+  "short_name": "Monk Mode",
+  "description": "Deep focus productivity — habits, planner, and daily command center.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#A8B400",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

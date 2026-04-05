@@ -1,0 +1,360 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { Card } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import {
+  Sun,
+  Moon,
+  ChevronLeft,
+  ChevronRight,
+  Flame,
+  Target,
+  Clock,
+  CheckCircle2,
+} from 'lucide-react'
+import { addDays, addWeeks, format, getWeek, startOfWeek } from 'date-fns'
+import type { MonkData } from '@/lib/monk-types'
+import { computeStreak, habitWeekProgress } from '@/lib/monk-streak'
+
+const daysShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+const checkClass =
+  'border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent data-[state=checked]:text-accent-foreground'
+
+type Props = {
+  data: MonkData
+  onChange: (next: MonkData) => void
+}
+
+export function DashboardApp({ data, onChange }: Props) {
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [dayIndex, setDayIndex] = useState(() => {
+    const today = new Date()
+    const monday = startOfWeek(today, { weekStartsOn: 1 })
+    return Math.min(
+      6,
+      Math.max(
+        0,
+        Math.round((today.getTime() - monday.getTime()) / 86400000),
+      ),
+    )
+  })
+
+  const calendarMonday = startOfWeek(new Date(), { weekStartsOn: 1 })
+  const weekStart = addWeeks(calendarMonday, weekOffset)
+  const selectedDate = addDays(weekStart, dayIndex)
+  const dateKey = format(selectedDate, 'yyyy-MM-dd')
+  const heading = format(selectedDate, 'EEEE, MMMM d, yyyy')
+  const weekNum = getWeek(selectedDate, { weekStartsOn: 1 })
+
+  const streak = computeStreak(data.habitLog)
+  const doneToday = data.habits.filter(
+    (h) => data.habitLog[h.id]?.[dateKey],
+  ).length
+
+  const setGratitude = (i: number, value: string) => {
+    const g = [...data.gratitude]
+    g[i] = value
+    onChange({ ...data, gratitude: g })
+  }
+
+  const setAchievement = (i: number, value: string) => {
+    const a = [...data.achievements]
+    a[i] = value
+    onChange({ ...data, achievements: a })
+  }
+
+  const toggleHabit = (habitId: string) => {
+    const prev = data.habitLog[habitId]?.[dateKey] ?? false
+    const habitLog = {
+      ...data.habitLog,
+      [habitId]: { ...data.habitLog[habitId], [dateKey]: !prev },
+    }
+    onChange({ ...data, habitLog })
+  }
+
+  const toggleGoal = (goalId: string) => {
+    onChange({
+      ...data,
+      goals: data.goals.map((g) =>
+        g.id === goalId ? { ...g, completed: !g.completed } : g,
+      ),
+    })
+  }
+
+  const goPrevDay = () => {
+    if (dayIndex > 0) {
+      setDayIndex(dayIndex - 1)
+    } else {
+      setWeekOffset((w) => w - 1)
+      setDayIndex(6)
+    }
+  }
+
+  const goNextDay = () => {
+    if (dayIndex < 6) {
+      setDayIndex(dayIndex + 1)
+    } else {
+      setWeekOffset((w) => w + 1)
+      setDayIndex(0)
+    }
+  }
+
+  const jumpToToday = () => {
+    const today = new Date()
+    const anchorMonday = startOfWeek(new Date(), { weekStartsOn: 1 })
+    const todayMonday = startOfWeek(today, { weekStartsOn: 1 })
+    const msPerWeek = 7 * 86400000
+    setWeekOffset(
+      Math.round((todayMonday.getTime() - anchorMonday.getTime()) / msPerWeek),
+    )
+    setDayIndex(
+      Math.min(
+        6,
+        Math.max(
+          0,
+          Math.round((today.getTime() - todayMonday.getTime()) / 86400000),
+        ),
+      ),
+    )
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
+      <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-2xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-xl font-semibold">{heading}</h1>
+            <p className="text-sm text-muted-foreground">
+              Week {weekNum} of 52
+              {weekOffset !== 0 && (
+                <button
+                  type="button"
+                  onClick={jumpToToday}
+                  className="ml-2 text-accent underline-offset-2 hover:underline font-medium"
+                >
+                  Today
+                </button>
+              )}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="p-2 rounded-lg hover:bg-secondary"
+              onClick={goPrevDay}
+              aria-label="Previous day"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <div className="flex gap-1 flex-wrap">
+              {daysShort.map((day, idx) => (
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() => setDayIndex(idx)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                    idx === dayIndex
+                      ? 'bg-accent text-accent-foreground'
+                      : 'text-muted-foreground hover:bg-secondary'
+                  }`}
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="p-2 rounded-lg hover:bg-secondary"
+              onClick={goNextDay}
+              aria-label="Next day"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <Card className="p-4 bg-secondary/50">
+              <div className="flex items-center gap-2 mb-3">
+                <Sun className="w-4 h-4 text-accent" />
+                <span className="text-sm font-medium">
+                  Morning: 3 things I&apos;m grateful for
+                </span>
+              </div>
+              <div className="space-y-2">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="pl-2">
+                    <span className="text-xs text-muted-foreground mr-2">
+                      {i + 1}.
+                    </span>
+                    <Input
+                      value={data.gratitude[i] ?? ''}
+                      onChange={(e) => setGratitude(i, e.target.value)}
+                      className="inline-flex max-w-md h-8 text-sm bg-background/60 border-border"
+                      placeholder="…"
+                    />
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card className="p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-accent" />
+                  <span className="font-medium">Time Schedule</span>
+                </div>
+                <Link
+                  href="/planner"
+                  className="text-xs font-medium text-accent hover:underline shrink-0"
+                >
+                  Weekly habit grid →
+                </Link>
+              </div>
+              <div className="space-y-1">
+                {data.timeSlots.map((slot) => (
+                  <div
+                    key={slot.id}
+                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 transition-colors"
+                  >
+                    <span className="text-xs text-muted-foreground w-16 shrink-0">
+                      {slot.time}
+                    </span>
+                    <div
+                      className={`w-1 h-6 rounded-full shrink-0 ${slot.colorClass}`}
+                    />
+                    <Badge variant="secondary" className="text-xs">
+                      {slot.category}
+                    </Badge>
+                    <span className="text-sm truncate">{slot.activity}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card className="p-4 bg-secondary/50">
+              <div className="flex items-center gap-2 mb-3">
+                <Moon className="w-4 h-4 text-accent" />
+                <span className="text-sm font-medium">
+                  Evening: 3 things I achieved today
+                </span>
+              </div>
+              <div className="space-y-2">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="pl-2">
+                    <span className="text-xs text-muted-foreground mr-2">
+                      {i + 1}.
+                    </span>
+                    <Input
+                      value={data.achievements[i] ?? ''}
+                      onChange={(e) => setAchievement(i, e.target.value)}
+                      className="inline-flex max-w-md h-8 text-sm bg-background/60 border-border"
+                      placeholder="…"
+                    />
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+
+          <div className="space-y-6">
+            <Card className="p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Target className="w-4 h-4 text-accent" />
+                <span className="font-medium">Top 5 Goals for the Day</span>
+              </div>
+              <div className="space-y-3">
+                {data.goals.map((goal) => (
+                  <div key={goal.id} className="flex items-start gap-3">
+                    <Checkbox
+                      checked={goal.completed}
+                      onCheckedChange={() => toggleGoal(goal.id)}
+                      className={checkClass}
+                    />
+                    <span
+                      className={`text-sm ${goal.completed ? 'line-through text-muted-foreground' : ''}`}
+                    >
+                      {goal.text}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-accent" />
+                  <span className="font-medium">Daily Habits</span>
+                </div>
+                <span className="text-xs text-accent">
+                  {data.habits.length === 0
+                    ? '—'
+                    : `${doneToday}/${data.habits.length} done`}
+                </span>
+              </div>
+              {data.habits.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No habits yet.{' '}
+                  <Link href="/habits" className="text-accent hover:underline">
+                    Add habits
+                  </Link>{' '}
+                  to track them here.
+                </p>
+              ) : null}
+              <div className="space-y-4">
+                {data.habits.map((habit) => {
+                  const completed = !!data.habitLog[habit.id]?.[dateKey]
+                  const progress = habitWeekProgress(data.habitLog, habit.id)
+                  return (
+                    <div key={habit.id} className="space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Checkbox
+                            checked={completed}
+                            onCheckedChange={() => toggleHabit(habit.id)}
+                            className={checkClass}
+                          />
+                          <span
+                            className={`text-sm truncate ${completed ? 'text-muted-foreground' : ''}`}
+                          >
+                            {habit.name}
+                          </span>
+                        </div>
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {progress}%
+                        </span>
+                      </div>
+                      <Progress value={progress} className="h-1.5" />
+                    </div>
+                  )
+                })}
+              </div>
+            </Card>
+
+            <Card className="p-4 bg-accent/10 border-accent/30">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
+                  <Flame className="w-6 h-6 text-accent" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{streak} Days</div>
+                  <div className="text-sm text-muted-foreground">
+                    Current streak
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
