@@ -22,6 +22,9 @@ import { addDays, addWeeks, format, getWeek, startOfWeek } from 'date-fns'
 import type { MonkData } from '@/lib/monk-types'
 import { computeStreak, habitWeekProgress } from '@/lib/monk-streak'
 import { youtubeEmbedFromUrl } from '@/lib/morning-video'
+import { usePlan } from '@/hooks/usePlan'
+import type { DataServiceContext } from '@/lib/dataService'
+import { saveGoal, setHabitCompletion } from '@/lib/dataService'
 
 const daysShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -31,9 +34,13 @@ const checkClass =
 type Props = {
   data: MonkData
   onChange: (next: MonkData) => void
+  dataContext: DataServiceContext
 }
 
-export function DashboardApp({ data, onChange }: Props) {
+export function DashboardApp({ data, onChange, dataContext }: Props) {
+  const { isPro, isLoading: planLoading } = usePlan()
+  const journalEvening = !planLoading && isPro
+  const analyticsAccess = !planLoading && isPro
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [localVideoPreviewUrl, setLocalVideoPreviewUrl] = useState<string | null>(
     null,
@@ -102,20 +109,22 @@ export function DashboardApp({ data, onChange }: Props) {
 
   const toggleHabit = (habitId: string) => {
     const prev = data.habitLog[habitId]?.[dateKey] ?? false
+    const nextDone = !prev
     const habitLog = {
       ...data.habitLog,
-      [habitId]: { ...data.habitLog[habitId], [dateKey]: !prev },
+      [habitId]: { ...data.habitLog[habitId], [dateKey]: nextDone },
     }
     onChange({ ...data, habitLog })
+    void setHabitCompletion(dataContext, habitId, dateKey, nextDone, habitLog)
   }
 
   const toggleGoal = (goalId: string) => {
-    onChange({
-      ...data,
-      goals: data.goals.map((g) =>
-        g.id === goalId ? { ...g, completed: !g.completed } : g,
-      ),
-    })
+    const goals = data.goals.map((g) =>
+      g.id === goalId ? { ...g, completed: !g.completed } : g,
+    )
+    const updated = goals.find((g) => g.id === goalId)
+    onChange({ ...data, goals })
+    if (updated) void saveGoal(dataContext, updated)
   }
 
   const goPrevDay = () => {
@@ -314,14 +323,16 @@ export function DashboardApp({ data, onChange }: Props) {
               }
             />
 
-            <Card className="p-4 bg-secondary/50">
+            <Card className="p-4 bg-secondary/50 relative overflow-hidden">
               <div className="flex items-center gap-2 mb-3">
                 <Moon className="w-4 h-4 text-accent" />
                 <span className="text-sm font-medium">
                   Evening: 3 things I achieved today
                 </span>
               </div>
-              <div className="space-y-2">
+              <div
+                className={`space-y-2 ${!journalEvening ? 'pointer-events-none opacity-40' : ''}`}
+              >
                 {[0, 1, 2].map((i) => (
                   <div key={i} className="pl-2">
                     <span className="text-xs text-muted-foreground mr-2">
@@ -330,12 +341,26 @@ export function DashboardApp({ data, onChange }: Props) {
                     <Input
                       value={data.achievements[i] ?? ''}
                       onChange={(e) => setAchievement(i, e.target.value)}
+                      disabled={!journalEvening}
                       className="inline-flex max-w-md h-8 text-sm bg-background/60 border-border"
                       placeholder="…"
                     />
                   </div>
                 ))}
               </div>
+              {!journalEvening ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/75 backdrop-blur-[2px] px-4 text-center">
+                  <p className="text-xs text-muted-foreground max-w-xs">
+                    Evening reflection journal is a Pro feature.
+                  </p>
+                  <Link
+                    href="/pricing"
+                    className="text-xs font-medium text-accent hover:underline"
+                  >
+                    Upgrade
+                  </Link>
+                </div>
+              ) : null}
             </Card>
           </div>
 
@@ -414,18 +439,38 @@ export function DashboardApp({ data, onChange }: Props) {
               </div>
             </Card>
 
-            <Card className="p-4 bg-accent/10 border-accent/30">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
-                  <Flame className="w-6 h-6 text-accent" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{streak} Days</div>
-                  <div className="text-sm text-muted-foreground">
-                    Current streak
+            <Card className="p-4 bg-accent/10 border-accent/30 relative overflow-hidden min-h-[88px]">
+              <div
+                className={
+                  analyticsAccess ? '' : 'pointer-events-none opacity-40'
+                }
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
+                    <Flame className="w-6 h-6 text-accent" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{streak} Days</div>
+                    <div className="text-sm text-muted-foreground">
+                      Current streak
+                    </div>
                   </div>
                 </div>
               </div>
+              {!analyticsAccess ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/75 backdrop-blur-[2px] px-4 text-center">
+                  <p className="text-xs text-muted-foreground max-w-xs">
+                    Progress analytics are a Pro feature — see your streak and
+                    deeper insights here.
+                  </p>
+                  <Link
+                    href="/pricing"
+                    className="text-xs font-medium text-accent hover:underline"
+                  >
+                    Upgrade
+                  </Link>
+                </div>
+              ) : null}
             </Card>
           </div>
         </div>

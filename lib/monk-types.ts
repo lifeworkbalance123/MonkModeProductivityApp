@@ -1,4 +1,4 @@
-export type Habit = { id: string; name: string }
+export type Habit = { id: string; name: string; icon?: string }
 
 export type Goal = { id: string; text: string; completed: boolean }
 

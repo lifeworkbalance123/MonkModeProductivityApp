@@ -21,9 +21,9 @@ const footerLinks = {
     { label: "API", href: "/learn-more#api" },
   ],
   Legal: [
-    { label: "Privacy", href: "/learn-more#privacy" },
-    { label: "Terms", href: "/learn-more#terms" },
-    { label: "Cookies", href: "/learn-more#cookies" },
+    { label: "Privacy", href: "/privacy" },
+    { label: "Terms", href: "/terms" },
+    { label: "Cookies", href: "/privacy#cookies" },
   ],
 }
 

@@ -1,36 +1,35 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Navigation } from '@/components/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
-import { Plus, Trash2 } from 'lucide-react'
+import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { useMonkData } from '@/hooks/use-monk-data'
-
-function newId(prefix: string) {
-  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
-}
+import { usePlan } from '@/hooks/usePlan'
+import { FREE_HABIT_LIMIT } from '@/lib/plan-limits'
+import { deleteHabit, newHabitClientId, saveHabit } from '@/lib/dataService'
 
 export default function HabitsPage() {
-  const { data, setData, ready } = useMonkData()
+  const { data, setData, ready, dataContext } = useMonkData()
+  const { isPro, isLoading: planLoading } = usePlan()
   const [draft, setDraft] = useState('')
 
-  if (!ready) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center pt-16">
-        <p className="text-muted-foreground text-sm">Loading…</p>
-      </div>
-    )
-  }
+  const atHabitLimit =
+    !planLoading && !isPro && data.habits.length >= FREE_HABIT_LIMIT
 
   function addHabit() {
     const name = draft.trim()
     if (!name) return
+    if (!planLoading && !isPro && data.habits.length >= FREE_HABIT_LIMIT) return
+    const habit = { id: newHabitClientId(dataContext), name, icon: '' }
     setData({
       ...data,
-      habits: [...data.habits, { id: newId('h'), name }],
+      habits: [...data.habits, habit],
     })
+    void saveHabit(dataContext, habit)
     setDraft('')
   }
 
@@ -42,6 +41,7 @@ export default function HabitsPage() {
       habits: data.habits.filter((h) => h.id !== id),
       habitLog,
     })
+    void deleteHabit(dataContext, id)
   }
 
   function renameHabit(id: string, name: string) {
@@ -54,12 +54,37 @@ export default function HabitsPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
+      {!ready ? (
+        <div className="flex items-center justify-center pt-32">
+          <Loader2
+            className="h-8 w-8 animate-spin text-muted-foreground"
+            aria-hidden
+          />
+          <span className="sr-only">Loading data</span>
+        </div>
+      ) : null}
+      {ready ? (
       <div className="max-w-xl mx-auto px-4 py-8 pt-24 space-y-6">
         <div>
           <h1 className="text-2xl font-semibold">Habits</h1>
           <p className="text-sm text-muted-foreground">
             Manage the habits shown on your dashboard and weekly planner.
           </p>
+          {atHabitLimit ? (
+            <div
+              role="status"
+              className="mt-3 rounded-lg border border-border bg-secondary/40 px-3 py-2 text-sm text-muted-foreground"
+            >
+              You&apos;ve reached the Free limit of {FREE_HABIT_LIMIT} habits.
+              Upgrade to Pro for unlimited habits.{' '}
+              <Link
+                href="/pricing"
+                className="font-medium text-accent hover:underline"
+              >
+                Upgrade
+              </Link>
+            </div>
+          ) : null}
         </div>
         <Card className="p-4 space-y-3">
           <div className="flex gap-2">
@@ -68,6 +93,7 @@ export default function HabitsPage() {
               onChange={(e) => setDraft(e.target.value)}
               placeholder="New habit name"
               className="flex-1"
+              disabled={atHabitLimit}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
@@ -79,6 +105,7 @@ export default function HabitsPage() {
               type="button"
               className="bg-accent text-accent-foreground hover:bg-accent/90 shrink-0"
               onClick={addHabit}
+              disabled={atHabitLimit}
             >
               <Plus className="w-4 h-4" />
             </Button>
@@ -109,6 +136,7 @@ export default function HabitsPage() {
           </ul>
         </Card>
       </div>
+      ) : null}
     </div>
   )
 }
