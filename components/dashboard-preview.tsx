@@ -329,11 +329,29 @@ export function DashboardPreview() {
                     editingSlotId === slot.id ? (
                       <div
                         key={slot.id}
+                        tabIndex={-1}
+                        onBlur={(e) => {
+                          const next = e.relatedTarget as Node | null
+                          if (next && e.currentTarget.contains(next)) return
+                          setEditingSlotId(null)
+                        }}
                         className="flex items-center gap-3 p-2 rounded-lg bg-secondary/70 border border-accent/30"
                       >
-                        <span className="text-xs text-muted-foreground w-16 shrink-0">
-                          {slot.time}
-                        </span>
+                        <input
+                          type="text"
+                          value={slot.time}
+                          onChange={(e) =>
+                            setTimeSlots((prev) =>
+                              prev.map((s) =>
+                                s.id === slot.id
+                                  ? { ...s, time: e.target.value }
+                                  : s,
+                              ),
+                            )
+                          }
+                          className="text-xs text-muted-foreground w-16 shrink-0 bg-background border border-border rounded px-1 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                          aria-label="Time"
+                        />
                         <div
                           className={`w-1 h-6 rounded-full ${getCategoryColor(slot.category)}`}
                         />
@@ -349,6 +367,7 @@ export function DashboardPreview() {
                             )
                           }
                           className="text-xs bg-background border border-border rounded px-1.5 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                          aria-label="Category"
                         >
                           {CATEGORIES.map((cat) => (
                             <option key={cat.label} value={cat.label}>
@@ -369,13 +388,13 @@ export function DashboardPreview() {
                               ),
                             )
                           }
-                          onBlur={() => setEditingSlotId(null)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter" || e.key === "Escape") {
                               setEditingSlotId(null)
                             }
                           }}
                           className="flex-1 text-sm bg-background border border-border rounded px-2 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                          aria-label="Activity"
                         />
                       </div>
                     ) : (
