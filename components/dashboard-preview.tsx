@@ -44,6 +44,17 @@ type Habit = {
 
 const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
+const PREVIEW_ACTIVITY_MIN_CH = 28
+const PREVIEW_ACTIVITY_MAX_CH = 120
+
+function previewActivityWidthCh(text: string): number {
+  const n = text.length + 4
+  return Math.min(
+    PREVIEW_ACTIVITY_MAX_CH,
+    Math.max(PREVIEW_ACTIVITY_MIN_CH, n),
+  )
+}
+
 export function DashboardPreview() {
   const [currentDay, setCurrentDay] = useState(0)
 
@@ -366,7 +377,7 @@ export function DashboardPreview() {
                               ),
                             )
                           }
-                          className="text-xs bg-background border border-border rounded px-1.5 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                          className="shrink-0 text-xs bg-background border border-border rounded px-1.5 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
                           aria-label="Category"
                         >
                           {CATEGORIES.map((cat) => (
@@ -375,27 +386,36 @@ export function DashboardPreview() {
                             </option>
                           ))}
                         </select>
-                        <input
-                          type="text"
-                          value={slot.activity}
-                          autoFocus
-                          onChange={(e) =>
-                            setTimeSlots((prev) =>
-                              prev.map((s) =>
-                                s.id === slot.id
-                                  ? { ...s, activity: e.target.value }
-                                  : s,
-                              ),
-                            )
-                          }
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === "Escape") {
-                              setEditingSlotId(null)
+                        <div
+                          className="min-w-[min(100%,28ch)] flex-1 overflow-x-scroll overflow-y-hidden rounded-md border border-border bg-background [scrollbar-width:thin]"
+                          title="Scroll sideways for longer activity text"
+                        >
+                          <input
+                            type="text"
+                            value={slot.activity}
+                            autoFocus
+                            onChange={(e) =>
+                              setTimeSlots((prev) =>
+                                prev.map((s) =>
+                                  s.id === slot.id
+                                    ? { ...s, activity: e.target.value }
+                                    : s,
+                                ),
+                              )
                             }
-                          }}
-                          className="flex-1 text-sm bg-background border border-border rounded px-2 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
-                          aria-label="Activity"
-                        />
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === "Escape") {
+                                setEditingSlotId(null)
+                              }
+                            }}
+                            style={{
+                              width: `${previewActivityWidthCh(slot.activity)}ch`,
+                              maxWidth: "none",
+                            }}
+                            className="box-border h-8 min-w-[28ch] w-auto shrink-0 border-0 bg-transparent px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 rounded-none"
+                            aria-label="Activity"
+                          />
+                        </div>
                       </div>
                     ) : (
                       <div
@@ -418,10 +438,17 @@ export function DashboardPreview() {
                         <div
                           className={`w-1 h-6 rounded-full ${getCategoryColor(slot.category)}`}
                         />
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge variant="secondary" className="shrink-0 text-xs">
                           {slot.category}
                         </Badge>
-                        <span className="text-sm truncate">{slot.activity}</span>
+                        <div
+                          className="min-w-0 flex-1 overflow-x-scroll rounded-md py-0.5 [scrollbar-width:thin]"
+                          title="Scroll sideways for full activity text"
+                        >
+                          <span className="inline-block min-w-[28ch] text-sm whitespace-nowrap">
+                            {slot.activity}
+                          </span>
+                        </div>
                       </div>
                     ),
                   )}
@@ -448,13 +475,22 @@ export function DashboardPreview() {
                           ))}
                         </select>
                       </div>
-                      <input
-                        type="text"
-                        value={newActivity}
-                        onChange={(e) => setNewActivity(e.target.value)}
-                        placeholder="Task or activity name"
-                        className="text-xs bg-background border border-border rounded-md px-2 py-1.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-accent"
-                      />
+                      <div
+                        className="w-full overflow-x-scroll overflow-y-hidden rounded-md border border-border bg-background [scrollbar-width:thin]"
+                        title="Scroll sideways for longer activity text"
+                      >
+                        <input
+                          type="text"
+                          value={newActivity}
+                          onChange={(e) => setNewActivity(e.target.value)}
+                          placeholder="Task or activity name"
+                          style={{
+                            width: `${previewActivityWidthCh(newActivity)}ch`,
+                            maxWidth: "none",
+                          }}
+                          className="box-border min-h-8 min-w-[28ch] w-auto border-0 bg-transparent px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 rounded-none"
+                        />
+                      </div>
                       <div className="flex gap-2 justify-end">
                         <button
                           type="button"

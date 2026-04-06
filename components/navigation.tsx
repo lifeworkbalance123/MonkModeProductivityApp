@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import {
   LayoutDashboard,
   Calendar,
+  Clock,
   CheckSquare,
   Target,
   PlayCircle,
@@ -17,6 +18,7 @@ import {
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/schedule", label: "Time Schedule", icon: Clock },
   { href: "/planner", label: "Weekly Planner", icon: Calendar },
   { href: "/habits", label: "Habits", icon: CheckSquare },
   { href: "/goals", label: "Goals", icon: Target },
