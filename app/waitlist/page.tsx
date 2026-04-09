@@ -2,6 +2,8 @@ import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { WaitlistPageClient } from './waitlist-client'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Join the MonkMode waitlist',
   description:

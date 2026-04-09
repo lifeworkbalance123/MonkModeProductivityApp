@@ -4,6 +4,8 @@ import {
   LegalSection,
 } from "@/components/legal-document-layout"
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: "Privacy Policy | MonkMode",
   description:
