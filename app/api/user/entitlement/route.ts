@@ -7,6 +7,8 @@ type UserEntitlementRow = {
   is_pro: boolean
   plan: string
   subscription_end_date: string | null
+  created_at: string | null
+  cancellation_date: string | null
 }
 
 /**
@@ -41,7 +43,7 @@ export async function GET(request: Request) {
 
   const { data: row, error: rowError } = await admin
     .from('users')
-    .select('is_pro, plan, subscription_end_date')
+    .select('is_pro, plan, subscription_end_date, created_at, cancellation_date')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -65,11 +67,23 @@ export async function GET(request: Request) {
   const isPro =
     r.is_pro === true ||
     plan === 'monthly' ||
+    plan === 'annual' ||
     plan === 'lifetime'
+
+  const trialEndDate = r.created_at
+    ? new Date(Date.parse(r.created_at) + 14 * 24 * 60 * 60 * 1000).toISOString()
+    : null
+  const isTrial =
+    plan === 'free' &&
+    !!trialEndDate &&
+    Date.now() < Date.parse(trialEndDate)
 
   return NextResponse.json({
     isPro,
-    plan: ['free', 'monthly', 'lifetime'].includes(plan) ? plan : 'free',
+    plan: ['free', 'monthly', 'annual', 'lifetime'].includes(plan) ? plan : 'free',
     subscriptionEndDate: r.subscription_end_date,
+    trialEndDate,
+    isTrial,
+    cancellationDate: r.cancellation_date,
   })
 }

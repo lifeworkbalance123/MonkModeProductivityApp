@@ -1,31 +1,108 @@
+'use client'
+
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Navigation } from '@/components/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { captureEvent } from '@/lib/analytics'
 
 export default function PricingPage() {
+  const [annual, setAnnual] = useState(true)
+  useEffect(() => {
+    captureEvent('pricing_page_viewed')
+  }, [])
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      <div className="max-w-lg mx-auto px-4 py-8 pt-24 space-y-6 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Pricing</h1>
-        <Card className="p-6 border-border text-left space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Pro unlocks unlimited habits and goals, full weekly planner navigation,
-            the training library, evening journal, analytics, Kanban, Deep Work
-            mode, and cloud sync.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Billing is handled from your account settings while checkout is being
-            connected.
-          </p>
-          <Button
-            asChild
-            className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+      <div className="max-w-3xl mx-auto px-4 py-8 pt-24 space-y-6 text-center">
+        <h1 className="text-3xl font-semibold tracking-tight">Simple, honest pricing</h1>
+        <p className="text-sm text-muted-foreground">
+          Start free. Upgrade when you&apos;re ready. Cancel anytime.
+        </p>
+
+        <div className="mx-auto mt-2 flex max-w-sm items-center justify-between gap-3 rounded-full border border-[#F59E0B]/30 bg-black/25 p-1">
+          <button
+            type="button"
+            className={`flex-1 rounded-full py-2 text-sm font-medium transition ${
+              !annual ? 'bg-[#F59E0B] text-[#111827]' : 'text-gray-400 hover:text-white'
+            }`}
+            onClick={() => setAnnual(false)}
           >
-            <Link href="/settings">Continue in Settings</Link>
-          </Button>
-        </Card>
+            Monthly
+          </button>
+          <button
+            type="button"
+            className={`relative flex-1 rounded-full py-2 text-sm font-medium transition ${
+              annual ? 'bg-[#F59E0B] text-[#111827]' : 'text-gray-400 hover:text-white'
+            }`}
+            onClick={() => setAnnual(true)}
+          >
+            Annual
+            <span className="absolute -right-1 -top-2 rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+              SAVE 50%
+            </span>
+          </button>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card className="p-5 text-left">
+            <h2 className="text-xl font-semibold">Free</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Core habits & dashboard</p>
+            <p className="mt-4 text-2xl font-bold">$0</p>
+            <Button asChild variant="outline" className="mt-4 w-full">
+              <Link href="/auth">Start free</Link>
+            </Button>
+          </Card>
+
+          <Card className="border-[#F59E0B]/50 bg-[#F59E0B]/10 p-5 text-left">
+            <div className="inline-flex rounded bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
+              BEST VALUE
+            </div>
+            <h2 className="mt-2 text-xl font-semibold">Pro</h2>
+            <div className="relative mt-2 min-h-[58px] overflow-hidden">
+              <div
+                className={`absolute inset-0 transition-all duration-300 ${
+                  annual ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
+                }`}
+              >
+                <p className="text-3xl font-bold">$4.99/mo</p>
+                <p className="text-xs text-muted-foreground">billed as $59.99/year</p>
+              </div>
+              <div
+                className={`absolute inset-0 transition-all duration-300 ${
+                  annual ? '-translate-y-2 opacity-0' : 'translate-y-0 opacity-100'
+                }`}
+              >
+                <p className="text-3xl font-bold">$9.99/mo</p>
+                <p className="text-xs text-muted-foreground">&nbsp;</p>
+              </div>
+            </div>
+            <Button asChild className="mt-4 w-full bg-[#F59E0B] text-[#111827] hover:bg-[#F59E0B]/90">
+              <Link href="/auth">
+                {annual
+                  ? 'Start free trial — $59.99/yr'
+                  : 'Start free trial — $9.99/mo'}
+              </Link>
+            </Button>
+            {annual ? (
+              <p className="mt-2 text-xs text-emerald-300">
+                You save $59.89 per year vs monthly billing
+              </p>
+            ) : null}
+          </Card>
+
+          <Card className="p-5 text-left">
+            <h2 className="text-xl font-semibold">Lifetime</h2>
+            <p className="mt-1 text-sm text-muted-foreground">One-time purchase</p>
+            <p className="mt-4 text-2xl font-bold">$149</p>
+            <Button asChild variant="outline" className="mt-4 w-full">
+              <Link href="/auth">Get lifetime</Link>
+            </Button>
+          </Card>
+        </div>
+
         <Link href="/" className="text-sm text-accent hover:underline">
           Back to home
         </Link>

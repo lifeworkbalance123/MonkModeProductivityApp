@@ -1,12 +1,15 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
+import { useRef, useState } from 'react'
 import { Navigation } from '@/components/navigation'
+import { useUpgradeOffer } from '@/context/UpgradeOfferContext'
+import { useToast } from '@/context/ToastContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
+import { EmptyState } from '@/components/EmptyState'
+import { ErrorBanner } from '@/components/ErrorBanner'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { useMonkData } from '@/hooks/use-monk-data'
 import { usePlan } from '@/hooks/usePlan'
@@ -17,19 +20,30 @@ import {
   saveGoal,
   toggleGoalComplete,
 } from '@/lib/dataService'
+import { captureEvent } from '@/lib/analytics'
 
 const checkClass =
   'border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent data-[state=checked]:text-accent-foreground'
 
 export default function GoalsPage() {
-  const { data, setData, ready, dataContext } = useMonkData()
+  const { openUpgrade } = useUpgradeOffer()
+  const { showToast } = useToast()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const {
+    data,
+    setData,
+    ready,
+    dataContext,
+    loadError,
+    reload,
+  } = useMonkData()
   const { isPro, isLoading: planLoading } = usePlan()
   const [draft, setDraft] = useState('')
 
   const atGoalLimit =
     !planLoading && !isPro && data.goals.length >= FREE_GOAL_LIMIT
 
-  function addGoal() {
+  async function addGoal() {
     const text = draft.trim()
     if (!text) return
     if (!planLoading && !isPro && data.goals.length >= FREE_GOAL_LIMIT) return
@@ -38,7 +52,12 @@ export default function GoalsPage() {
       ...data,
       goals: [...data.goals, goal],
     })
-    void saveGoal(dataContext, goal)
+    const { error } = await saveGoal(dataContext, goal)
+    if (error) {
+      showToast("Couldn't save changes. Please try again.", 'error')
+    } else {
+      captureEvent('goal_added', { goal_type: 'daily' })
+    }
     setDraft('')
   }
 
@@ -66,12 +85,29 @@ export default function GoalsPage() {
       ...data,
       goals,
     })
-    if (updated) void toggleGoalComplete(dataContext, updated)
+    if (updated) {
+      void (async () => {
+        const r = await toggleGoalComplete(dataContext, updated)
+        if (r.error) {
+          showToast("Couldn't save changes. Please try again.", 'error')
+        } else if (updated.completed) {
+          captureEvent('goal_completed')
+        }
+      })()
+    }
   }
 
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
+      {loadError ? (
+        <div className="max-w-xl mx-auto px-4 pt-20 pb-2">
+          <ErrorBanner
+            message={loadError}
+            onRetry={() => void reload()}
+          />
+        </div>
+      ) : null}
       {!ready ? (
         <div className="flex items-center justify-center pt-32">
           <Loader2
@@ -95,18 +131,35 @@ export default function GoalsPage() {
             >
               You&apos;ve reached the Free limit of {FREE_GOAL_LIMIT} goals.
               Upgrade to Pro for unlimited goals.{' '}
-              <Link
-                href="/pricing"
+              <button
+                type="button"
                 className="font-medium text-accent hover:underline"
+                onClick={() =>
+                  openUpgrade({
+                    featureContext:
+                      'Free plan includes up to 3 daily goals. Upgrade for unlimited goals and analytics.',
+                  })
+                }
               >
                 Upgrade
-              </Link>
+              </button>
             </div>
           ) : null}
         </div>
         <Card className="p-4 space-y-3">
+          {data.goals.length === 0 ? (
+            <EmptyState
+              icon="🎯"
+              heading="No goals for today"
+              subtext="What&apos;s the one thing that would make today a win? Start there."
+              ctaLabel="Set today&apos;s first goal"
+              ctaAction={() => inputRef.current?.focus()}
+              className="min-h-[240px]"
+            />
+          ) : null}
           <div className="flex gap-2">
             <Input
+              ref={inputRef}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="New goal"
@@ -115,19 +168,20 @@ export default function GoalsPage() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
-                  addGoal()
+                  void addGoal()
                 }
               }}
             />
             <Button
               type="button"
               className="bg-accent text-accent-foreground hover:bg-accent/90 shrink-0"
-              onClick={addGoal}
+              onClick={() => void addGoal()}
               disabled={atGoalLimit}
             >
               <Plus className="w-4 h-4" />
             </Button>
           </div>
+          {data.goals.length > 0 ? (
           <ul className="space-y-2">
             {data.goals.map((g) => (
               <li
@@ -157,6 +211,7 @@ export default function GoalsPage() {
               </li>
             ))}
           </ul>
+          ) : null}
         </Card>
       </div>
       ) : null}

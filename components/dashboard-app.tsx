@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Flame,
+  Share2,
   Target,
   CheckCircle2,
   Video,
@@ -23,8 +24,11 @@ import type { MonkData } from '@/lib/monk-types'
 import { computeStreak, habitWeekProgress } from '@/lib/monk-streak'
 import { youtubeEmbedFromUrl } from '@/lib/morning-video'
 import { usePlan } from '@/hooks/usePlan'
+import { useToast } from '@/context/ToastContext'
+import { GettingStartedChecklist } from '@/components/GettingStartedChecklist'
 import type { DataServiceContext } from '@/lib/dataService'
 import { saveGoal, setHabitCompletion } from '@/lib/dataService'
+import { captureEvent } from '@/lib/analytics'
 
 const daysShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -35,9 +39,11 @@ type Props = {
   data: MonkData
   onChange: (next: MonkData) => void
   dataContext: DataServiceContext
+  userId?: string
 }
 
-export function DashboardApp({ data, onChange, dataContext }: Props) {
+export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
+  const { showToast } = useToast()
   const { isPro, isLoading: planLoading } = usePlan()
   const journalEvening = !planLoading && isPro
   const analyticsAccess = !planLoading && isPro
@@ -45,6 +51,8 @@ export function DashboardApp({ data, onChange, dataContext }: Props) {
   const [localVideoPreviewUrl, setLocalVideoPreviewUrl] = useState<string | null>(
     null,
   )
+  const [trackedMorningJournal, setTrackedMorningJournal] = useState(false)
+  const [trackedEveningJournal, setTrackedEveningJournal] = useState(false)
 
   useEffect(() => {
     return () => {
@@ -81,12 +89,20 @@ export function DashboardApp({ data, onChange, dataContext }: Props) {
     const g = [...data.gratitude]
     g[i] = value
     onChange({ ...data, gratitude: g })
+    if (!trackedMorningJournal && value.trim().length > 0) {
+      setTrackedMorningJournal(true)
+      captureEvent('journal_entry_saved', { type: 'morning' })
+    }
   }
 
   const setAchievement = (i: number, value: string) => {
     const a = [...data.achievements]
     a[i] = value
     onChange({ ...data, achievements: a })
+    if (!trackedEveningJournal && value.trim().length > 0) {
+      setTrackedEveningJournal(true)
+      captureEvent('journal_entry_saved', { type: 'evening' })
+    }
   }
 
   const setMorningVideoUrl = (value: string) => {
@@ -115,6 +131,13 @@ export function DashboardApp({ data, onChange, dataContext }: Props) {
       [habitId]: { ...data.habitLog[habitId], [dateKey]: nextDone },
     }
     onChange({ ...data, habitLog })
+    const habitName = data.habits.find((h) => h.id === habitId)?.name ?? 'unknown'
+    if (nextDone) {
+      captureEvent('habit_completed', {
+        habit_name: habitName,
+        streak_day: computeStreak(habitLog),
+      })
+    }
     void setHabitCompletion(dataContext, habitId, dateKey, nextDone, habitLog)
   }
 
@@ -124,7 +147,16 @@ export function DashboardApp({ data, onChange, dataContext }: Props) {
     )
     const updated = goals.find((g) => g.id === goalId)
     onChange({ ...data, goals })
-    if (updated) void saveGoal(dataContext, updated)
+    if (updated) {
+      void (async () => {
+        const r = await saveGoal(dataContext, updated)
+        if (r.error) {
+          showToast("Couldn't save changes. Please try again.", 'error')
+        } else if (updated.completed) {
+          captureEvent('goal_completed')
+        }
+      })()
+    }
   }
 
   const goPrevDay = () => {
@@ -166,6 +198,7 @@ export function DashboardApp({ data, onChange, dataContext }: Props) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
+      <GettingStartedChecklist data={data} />
       <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-2xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
@@ -221,7 +254,10 @@ export function DashboardApp({ data, onChange, dataContext }: Props) {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <Card className="p-4 bg-secondary/50">
+            <Card
+              id="dashboard-morning-gratitude"
+              className="p-4 bg-secondary/50 scroll-mt-28"
+            >
               <div className="flex items-center gap-2 mb-3">
                 <Sun className="w-4 h-4 text-accent" />
                 <span className="text-sm font-medium">
@@ -445,7 +481,8 @@ export function DashboardApp({ data, onChange, dataContext }: Props) {
                   analyticsAccess ? '' : 'pointer-events-none opacity-40'
                 }
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
                     <Flame className="w-6 h-6 text-accent" />
                   </div>
@@ -455,6 +492,16 @@ export function DashboardApp({ data, onChange, dataContext }: Props) {
                       Current streak
                     </div>
                   </div>
+                  </div>
+                  {userId ? (
+                    <Link
+                      href={`/share/${userId}`}
+                      className="inline-flex items-center gap-1 rounded-md border border-[#F59E0B]/60 px-2.5 py-1.5 text-xs font-medium text-[#F59E0B] hover:bg-[#F59E0B]/10"
+                    >
+                      <Share2 className="h-3.5 w-3.5" />
+                      Share your streak
+                    </Link>
+                  ) : null}
                 </div>
               </div>
               {!analyticsAccess ? (

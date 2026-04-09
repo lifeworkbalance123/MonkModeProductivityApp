@@ -15,9 +15,9 @@ const footerLinks = {
     { label: "Contact", href: "/learn-more#contact" },
   ],
   Resources: [
-    { label: "Documentation", href: "/learn-more#documentation" },
-    { label: "Community", href: "/learn-more#community" },
-    { label: "Support", href: "/learn-more#support" },
+    { label: "Documentation", href: "/support" },
+    { label: "Community", href: "YOUR_COMMUNITY_URL" },
+    { label: "Support", href: "/support" },
     { label: "API", href: "/learn-more#api" },
   ],
   Legal: [
@@ -52,12 +52,23 @@ export function Footer() {
               <ul className="space-y-2">
                 {links.map((link) => (
                   <li key={link.label}>
-                    <Link
-                      href={link.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {link.label}
-                    </Link>
+                    {link.href.startsWith('http') || link.href === 'YOUR_COMMUNITY_URL' ? (
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {link.label}
+                      </a>
+                    ) : (
+                      <Link
+                        href={link.href}
+                        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {link.label}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>

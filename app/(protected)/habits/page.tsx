@@ -1,26 +1,41 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
+import { useRef, useState } from 'react'
 import { Navigation } from '@/components/navigation'
+import { useUpgradeOffer } from '@/context/UpgradeOfferContext'
+import { useToast } from '@/context/ToastContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
+import { EmptyState } from '@/components/EmptyState'
+import { ErrorBanner } from '@/components/ErrorBanner'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { useMonkData } from '@/hooks/use-monk-data'
 import { usePlan } from '@/hooks/usePlan'
 import { FREE_HABIT_LIMIT } from '@/lib/plan-limits'
+import { DEFAULT_STARTER_HABIT_NAMES } from '@/lib/default-habits'
 import { deleteHabit, newHabitClientId, saveHabit } from '@/lib/dataService'
+import { captureEvent } from '@/lib/analytics'
 
 export default function HabitsPage() {
-  const { data, setData, ready, dataContext } = useMonkData()
+  const { openUpgrade } = useUpgradeOffer()
+  const { showToast } = useToast()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const {
+    data,
+    setData,
+    ready,
+    dataContext,
+    loadError,
+    reload,
+  } = useMonkData()
   const { isPro, isLoading: planLoading } = usePlan()
   const [draft, setDraft] = useState('')
 
   const atHabitLimit =
     !planLoading && !isPro && data.habits.length >= FREE_HABIT_LIMIT
 
-  function addHabit() {
+  async function addHabit() {
     const name = draft.trim()
     if (!name) return
     if (!planLoading && !isPro && data.habits.length >= FREE_HABIT_LIMIT) return
@@ -29,8 +44,36 @@ export default function HabitsPage() {
       ...data,
       habits: [...data.habits, habit],
     })
-    void saveHabit(dataContext, habit)
+    const { error } = await saveHabit(dataContext, habit)
+    if (error) {
+      showToast("Couldn't save changes. Please try again.", 'error')
+    } else {
+      captureEvent('habit_added')
+    }
     setDraft('')
+  }
+
+  function addDefaultHabits() {
+    const next = DEFAULT_STARTER_HABIT_NAMES.map((name) => ({
+      id: newHabitClientId(dataContext),
+      name,
+      icon: '',
+    }))
+    setData({
+      ...data,
+      habits: [...data.habits, ...next],
+    })
+    void Promise.all(
+      next.map((h) =>
+        saveHabit(dataContext, h).then((r) => {
+          if (r.error) {
+            showToast("Couldn't save changes. Please try again.", 'error')
+          } else {
+            captureEvent('habit_added')
+          }
+        }),
+      ),
+    )
   }
 
   function removeHabit(id: string) {
@@ -54,6 +97,14 @@ export default function HabitsPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
+      {loadError ? (
+        <div className="max-w-xl mx-auto px-4 pt-20 pb-2">
+          <ErrorBanner
+            message={loadError}
+            onRetry={() => void reload()}
+          />
+        </div>
+      ) : null}
       {!ready ? (
         <div className="flex items-center justify-center pt-32">
           <Loader2
@@ -77,18 +128,37 @@ export default function HabitsPage() {
             >
               You&apos;ve reached the Free limit of {FREE_HABIT_LIMIT} habits.
               Upgrade to Pro for unlimited habits.{' '}
-              <Link
-                href="/pricing"
+              <button
+                type="button"
                 className="font-medium text-accent hover:underline"
+                onClick={() =>
+                  openUpgrade({
+                    featureContext:
+                      'Free plan includes up to 3 habits. Upgrade for unlimited habits and full planner access.',
+                  })
+                }
               >
                 Upgrade
-              </Link>
+              </button>
             </div>
           ) : null}
         </div>
         <Card className="p-4 space-y-3">
+          {data.habits.length === 0 ? (
+            <EmptyState
+              icon="✅"
+              heading="No habits yet"
+              subtext="Start small. Even one habit done daily builds unstoppable momentum."
+              ctaLabel="Add your first habit"
+              ctaAction={() => inputRef.current?.focus()}
+              secondaryLabel="Use default habits"
+              secondaryAction={addDefaultHabits}
+              className="min-h-[240px]"
+            />
+          ) : null}
           <div className="flex gap-2">
             <Input
+              ref={inputRef}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="New habit name"
@@ -97,43 +167,45 @@ export default function HabitsPage() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
-                  addHabit()
+                  void addHabit()
                 }
               }}
             />
             <Button
               type="button"
               className="bg-accent text-accent-foreground hover:bg-accent/90 shrink-0"
-              onClick={addHabit}
+              onClick={() => void addHabit()}
               disabled={atHabitLimit}
             >
               <Plus className="w-4 h-4" />
             </Button>
           </div>
-          <ul className="space-y-2">
-            {data.habits.map((h) => (
-              <li
-                key={h.id}
-                className="flex items-center gap-2 border border-border rounded-lg p-2"
-              >
-                <Input
-                  value={h.name}
-                  onChange={(e) => renameHabit(h.id, e.target.value)}
-                  className="flex-1 border-0 shadow-none focus-visible:ring-0 px-2"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="text-muted-foreground hover:text-destructive shrink-0"
-                  onClick={() => removeHabit(h.id)}
-                  aria-label={`Remove ${h.name}`}
+          {data.habits.length > 0 ? (
+            <ul className="space-y-2">
+              {data.habits.map((h) => (
+                <li
+                  key={h.id}
+                  className="flex items-center gap-2 border border-border rounded-lg p-2"
                 >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </li>
-            ))}
-          </ul>
+                  <Input
+                    value={h.name}
+                    onChange={(e) => renameHabit(h.id, e.target.value)}
+                    className="flex-1 border-0 shadow-none focus-visible:ring-0 px-2"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-destructive shrink-0"
+                    onClick={() => removeHabit(h.id)}
+                    aria-label={`Remove ${h.name}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </Card>
       </div>
       ) : null}

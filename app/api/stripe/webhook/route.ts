@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createServiceRoleClient } from '@/lib/supabase-service'
+import { sendPaymentConfirmationEmail } from '@/lib/email'
+import { applyReferralRewardForUpgradedUser } from '@/lib/referral'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -89,8 +91,49 @@ export async function POST(request: Request) {
               stripe_customer_id: customerId,
               stripe_subscription_id: null,
               subscription_end_date: null,
+              cancellation_date: null,
+              winback_email_sent: false,
             })
             .eq('id', userId)
+          if (!error) {
+            try {
+              await applyReferralRewardForUpgradedUser(userId)
+            } catch {
+              // ignore referral reward failures
+            }
+            const email =
+              session.customer_details?.email ??
+              session.customer_email ??
+              null
+            if (email) {
+              try {
+                const { data: u } = await admin
+                  .from('users')
+                  .select('first_name')
+                  .eq('id', userId)
+                  .maybeSingle()
+                const amountCents =
+                  typeof session.amount_total === 'number'
+                    ? session.amount_total
+                    : typeof session.amount_subtotal === 'number'
+                      ? session.amount_subtotal
+                      : null
+                const amount = amountCents
+                  ? `$${(amountCents / 100).toFixed(2)}`
+                  : '$149.00'
+                await sendPaymentConfirmationEmail(
+                  email,
+                  (u as { first_name?: string | null } | null)?.first_name ??
+                    null,
+                  'Lifetime',
+                  amount,
+                  null,
+                )
+              } catch {
+                // ignore email failures
+              }
+            }
+          }
           await logWebhook(admin, eventType, eventId, userId, !error)
           break
         }
@@ -108,16 +151,70 @@ export async function POST(request: Request) {
           }
         }
 
+        const planForDb = metaPlan === 'annual' ? 'annual' : 'monthly'
         const { error } = await admin
           .from('users')
           .update({
             is_pro: true,
-            plan: 'monthly',
+            plan: planForDb,
             stripe_customer_id: customerId,
             stripe_subscription_id: subscriptionId,
             subscription_end_date: periodEnd,
+              cancellation_date: null,
+              winback_email_sent: false,
           })
           .eq('id', userId)
+
+        if (!error) {
+          try {
+            await applyReferralRewardForUpgradedUser(userId)
+          } catch {
+            // ignore referral reward failures
+          }
+          const email =
+            session.customer_details?.email ??
+            session.customer_email ??
+            null
+          if (email) {
+            try {
+              const { data: u } = await admin
+                .from('users')
+                .select('first_name')
+                .eq('id', userId)
+                .maybeSingle()
+
+              let invoiceUrl: string | null = null
+              const invoiceId =
+                typeof session.invoice === 'string' ? session.invoice : null
+              if (invoiceId) {
+                try {
+                  const inv = await stripe.invoices.retrieve(invoiceId)
+                  invoiceUrl = inv.hosted_invoice_url ?? null
+                } catch {
+                  invoiceUrl = null
+                }
+              }
+
+              const amountCents =
+                typeof session.amount_total === 'number'
+                  ? session.amount_total
+                  : typeof session.amount_subtotal === 'number'
+                    ? session.amount_subtotal
+                    : null
+              const amount = amountCents ? `$${(amountCents / 100).toFixed(2)}` : '$0.00'
+
+              await sendPaymentConfirmationEmail(
+                email,
+                (u as { first_name?: string | null } | null)?.first_name ?? null,
+                planForDb === 'annual' ? 'Pro Annual' : 'Pro Monthly',
+                amount,
+                invoiceUrl,
+              )
+            } catch {
+              // ignore email failures
+            }
+          }
+        }
 
         await logWebhook(admin, eventType, eventId, userId, !error)
         break
@@ -157,9 +254,14 @@ export async function POST(request: Request) {
             .from('users')
             .update({
               is_pro: true,
-              plan: 'monthly',
+              plan:
+                sub.items.data[0]?.price?.recurring?.interval === 'year'
+                  ? 'annual'
+                  : 'monthly',
               stripe_subscription_id: sub.id,
               subscription_end_date: periodEnd,
+              cancellation_date: null,
+              winback_email_sent: false,
             })
             .eq('id', userId)
           await logWebhook(admin, eventType, eventId, userId, !error)
@@ -171,6 +273,8 @@ export async function POST(request: Request) {
               plan: 'free',
               stripe_subscription_id: null,
               subscription_end_date: null,
+              cancellation_date: new Date().toISOString(),
+              winback_email_sent: false,
             })
             .eq('id', userId)
           await logWebhook(admin, eventType, eventId, userId, !error)
@@ -203,7 +307,9 @@ export async function POST(request: Request) {
             is_pro: false,
             plan: 'free',
             stripe_subscription_id: null,
-            subscription_end_date: null,
+            subscription_end_date: new Date().toISOString(),
+            cancellation_date: new Date().toISOString(),
+            winback_email_sent: false,
           })
           .eq('id', userId)
 

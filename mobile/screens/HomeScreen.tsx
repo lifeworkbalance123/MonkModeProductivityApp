@@ -8,6 +8,7 @@ import {
   toggleArchitectHabit,
   type ArchitectWLState,
 } from '@/lib/architect-wl'
+import { syncWidgetData } from '@/lib/widgetSync'
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useState } from 'react'
 import { ScrollView, Text, View } from 'react-native'
@@ -19,7 +20,10 @@ export default function HomeScreen() {
   const [wl, setWl] = useState<ArchitectWLState | null>(null)
 
   const refreshWl = useCallback(() => {
-    loadArchitectWL().then(setWl)
+    loadArchitectWL().then((next) => {
+      setWl(next)
+      void syncWidgetData('local-mobile-user')
+    })
   }, [])
 
   useFocusEffect(
@@ -39,6 +43,7 @@ export default function HomeScreen() {
   const onToggle = async (habitId: string) => {
     const next = await toggleArchitectHabit(habitId)
     setWl(next)
+    void syncWidgetData('local-mobile-user')
   }
 
   return (

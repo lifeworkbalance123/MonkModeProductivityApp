@@ -3,6 +3,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { Bar } from 'react-chartjs-2'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Tooltip,
+  Legend,
+} from 'chart.js'
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
 
 const MONTHLY_PRICE = 9
 const LIFETIME_PRICE = 149
@@ -14,6 +25,13 @@ type UserRow = {
   last_active_at: string | null
   plan: string
   is_pro: boolean
+}
+
+type WaitlistRow = {
+  email: string
+  created_at: string
+  source: string | null
+  notified: boolean
 }
 
 function planLabel(row: Pick<UserRow, 'plan' | 'is_pro'>): string {
@@ -50,6 +68,12 @@ export function AdminDashboard() {
   const [announcementLoaded, setAnnouncementLoaded] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [waitlistRows, setWaitlistRows] = useState<WaitlistRow[]>([])
+  const [waitlistLoading, setWaitlistLoading] = useState(false)
+  const [waitSort, setWaitSort] = useState<'created_at' | 'email' | 'source' | 'notified'>(
+    'created_at',
+  )
+  const [waitSortDir, setWaitSortDir] = useState<'asc' | 'desc'>('desc')
 
   const refresh = useCallback(() => setRefreshKey((k) => k + 1), [])
 
@@ -159,6 +183,31 @@ export function AdminDashboard() {
 
   useEffect(() => {
     let cancelled = false
+    setWaitlistLoading(true)
+    ;(async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        if (!cancelled) setWaitlistLoading(false)
+        return
+      }
+      const res = await fetch('/api/admin/waitlist', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      const json = await res.json().catch(() => ({}))
+      if (cancelled) return
+      setWaitlistLoading(false)
+      if (!res.ok) return
+      setWaitlistRows((json.rows ?? []) as WaitlistRow[])
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [refreshKey])
+
+  useEffect(() => {
+    let cancelled = false
 
     ;(async () => {
       const { data, error } = await supabase
@@ -243,6 +292,65 @@ export function AdminDashboard() {
     [mrrSubscribers],
   )
   const mrrEstimate = monthlyRevenue
+  const waitlistCount = waitlistRows.length
+
+  const waitlistChartData = useMemo(() => {
+    const labels: string[] = []
+    const map = new Map<string, number>()
+    for (let i = 13; i >= 0; i -= 1) {
+      const d = new Date()
+      d.setDate(d.getDate() - i)
+      const key = d.toISOString().slice(0, 10)
+      labels.push(key.slice(5))
+      map.set(key, 0)
+    }
+    for (const row of waitlistRows) {
+      const key = row.created_at.slice(0, 10)
+      if (map.has(key)) map.set(key, (map.get(key) ?? 0) + 1)
+    }
+    return {
+      labels,
+      datasets: [
+        {
+          label: 'Signups',
+          data: Array.from(map.values()),
+          backgroundColor: '#f59e0b',
+        },
+      ],
+    }
+  }, [waitlistRows])
+
+  const sortedWaitlistRows = useMemo(() => {
+    const next = [...waitlistRows]
+    next.sort((a, b) => {
+      const av = a[waitSort]
+      const bv = b[waitSort]
+      let result = 0
+      if (waitSort === 'notified') result = Number(av) - Number(bv)
+      else result = String(av ?? '').localeCompare(String(bv ?? ''))
+      return waitSortDir === 'asc' ? result : -result
+    })
+    return next
+  }, [waitlistRows, waitSort, waitSortDir])
+
+  async function exportWaitlistCsv() {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (!session?.access_token) return
+    const res = await fetch('/api/admin/waitlist-export', {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+    if (!res.ok) return
+    const csv = await res.text()
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'monkmode-waitlist.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-10 pb-16">
@@ -458,6 +566,77 @@ export function AdminDashboard() {
           >
             {announcementSaving ? 'Saving…' : 'Save announcement'}
           </button>
+        </div>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-3">
+          Waitlist
+        </h2>
+        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-slate-600">Total waitlist count</p>
+            <p className="text-3xl font-semibold text-slate-900 tabular-nums">
+              {waitlistLoading ? '—' : waitlistCount.toLocaleString()}
+            </p>
+          </div>
+          <div className="mt-6">
+            <Bar
+              data={waitlistChartData}
+              options={{
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: { y: { ticks: { precision: 0 } } },
+              }}
+            />
+          </div>
+          <div className="mt-6 flex justify-end">
+            <button
+              type="button"
+              onClick={exportWaitlistCsv}
+              className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+            >
+              Export CSV
+            </button>
+          </div>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-left">
+                  <th className="py-2 pr-4">
+                    <button type="button" onClick={() => { setWaitSort('email'); setWaitSortDir(waitSortDir === 'asc' ? 'desc' : 'asc') }} className="font-medium text-slate-700">
+                      Email
+                    </button>
+                  </th>
+                  <th className="py-2 pr-4">
+                    <button type="button" onClick={() => { setWaitSort('created_at'); setWaitSortDir(waitSortDir === 'asc' ? 'desc' : 'asc') }} className="font-medium text-slate-700">
+                      Signup date
+                    </button>
+                  </th>
+                  <th className="py-2 pr-4">
+                    <button type="button" onClick={() => { setWaitSort('source'); setWaitSortDir(waitSortDir === 'asc' ? 'desc' : 'asc') }} className="font-medium text-slate-700">
+                      Source
+                    </button>
+                  </th>
+                  <th className="py-2">
+                    <button type="button" onClick={() => { setWaitSort('notified'); setWaitSortDir(waitSortDir === 'asc' ? 'desc' : 'asc') }} className="font-medium text-slate-700">
+                      Notified
+                    </button>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedWaitlistRows.map((row) => (
+                  <tr key={`${row.email}-${row.created_at}`} className="border-b border-slate-100">
+                    <td className="py-2 pr-4 text-slate-800">{row.email}</td>
+                    <td className="py-2 pr-4 text-slate-600">{formatDate(row.created_at)}</td>
+                    <td className="py-2 pr-4 text-slate-600">{row.source || 'direct'}</td>
+                    <td className="py-2 text-slate-600">{row.notified ? 'Yes' : 'No'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
     </div>

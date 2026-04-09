@@ -17,11 +17,13 @@ function subscriptionPeriodEndUnix(sub: Stripe.Subscription): number | null {
   return legacy.current_period_end ?? null
 }
 
-async function findActiveMonthlySubscription(
+async function findActiveProSubscription(
   stripe: Stripe,
   customerId: string,
-  monthlyPriceId: string,
+  priceIds: string[],
 ): Promise<Stripe.Subscription | null> {
+  const idSet = new Set(priceIds.filter(Boolean))
+  if (idSet.size === 0) return null
   const subs = await stripe.subscriptions.list({
     customer: customerId,
     status: 'all',
@@ -31,7 +33,7 @@ async function findActiveMonthlySubscription(
   for (const sub of subs.data) {
     if (!activeStatuses.has(sub.status)) continue
     for (const item of sub.items.data) {
-      if (item.price.id === monthlyPriceId) return sub
+      if (item.price?.id && idSet.has(item.price.id)) return sub
     }
   }
   return null
@@ -64,8 +66,15 @@ async function hasPaidLifetimeForPrice(
  */
 export async function POST(request: Request) {
   const secret = process.env.STRIPE_SECRET_KEY?.trim()
-  const monthlyPriceId = process.env.STRIPE_PRICE_PRO_MONTHLY?.trim()
-  const lifetimePriceId = process.env.STRIPE_PRICE_LIFETIME?.trim()
+  const monthlyPriceId =
+    process.env.STRIPE_PRO_MONTHLY_PRICE_ID?.trim() ||
+    process.env.STRIPE_PRICE_PRO_MONTHLY?.trim()
+  const annualPriceId =
+    process.env.STRIPE_PRO_ANNUAL_PRICE_ID?.trim() ||
+    process.env.STRIPE_PRICE_PRO_ANNUAL?.trim()
+  const lifetimePriceId =
+    process.env.STRIPE_LIFETIME_PRICE_ID?.trim() ||
+    process.env.STRIPE_PRICE_LIFETIME?.trim()
 
   if (!secret || !monthlyPriceId || !lifetimePriceId) {
     return NextResponse.json(
@@ -119,7 +128,7 @@ export async function POST(request: Request) {
   }
 
   let winningCustomerId: string | null = null
-  let plan: 'lifetime' | 'monthly' | null = null
+  let plan: 'lifetime' | 'monthly' | 'annual' | null = null
   let subscriptionId: string | null = null
   let periodEndIso: string | null = null
 
@@ -138,16 +147,21 @@ export async function POST(request: Request) {
     }
   }
 
+  const subPriceIds = [monthlyPriceId, annualPriceId].filter(
+    (id): id is string => Boolean(id),
+  )
+
   if (!plan) {
     for (const cust of customers.data) {
-      const sub = await findActiveMonthlySubscription(
+      const sub = await findActiveProSubscription(
         stripe,
         cust.id,
-        monthlyPriceId,
+        subPriceIds,
       )
       if (sub) {
         winningCustomerId = cust.id
-        plan = 'monthly'
+        const priceId = sub.items.data[0]?.price?.id
+        plan = priceId === annualPriceId ? 'annual' : 'monthly'
         subscriptionId = sub.id
         const endUnix = subscriptionPeriodEndUnix(sub)
         periodEndIso = endUnix
@@ -173,7 +187,7 @@ export async function POST(request: Request) {
         }
       : {
           is_pro: true,
-          plan: 'monthly' as const,
+          plan: plan as 'monthly' | 'annual',
           stripe_customer_id: winningCustomerId,
           stripe_subscription_id: subscriptionId,
           subscription_end_date: periodEndIso,

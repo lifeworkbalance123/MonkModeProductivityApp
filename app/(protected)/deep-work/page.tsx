@@ -1,17 +1,16 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { Navigation } from '@/components/navigation'
 import { Card } from '@/components/ui/card'
 import { ProBadge } from '@/components/pro-badge'
-import { UpgradeModal } from '@/components/upgrade-modal'
+import { useUpgradeOffer } from '@/context/UpgradeOfferContext'
 import { usePlan } from '@/hooks/usePlan'
 import { Timer } from 'lucide-react'
 
 export default function DeepWorkPage() {
+  const { openUpgrade } = useUpgradeOffer()
   const { isPro, isLoading: planLoading } = usePlan()
-  const [upgradeOpen, setUpgradeOpen] = useState(false)
 
   return (
     <div className="min-h-screen bg-background">
@@ -39,7 +38,12 @@ export default function DeepWorkPage() {
             <button
               type="button"
               className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-xl bg-background/75 backdrop-blur-[2px]"
-              onClick={() => setUpgradeOpen(true)}
+              onClick={() =>
+                openUpgrade({
+                  featureContext:
+                    'Structured focus sessions with timers and guardrails to protect uninterrupted deep work.',
+                })
+              }
             >
               <ProBadge className="scale-110" />
               <p className="text-sm text-muted-foreground max-w-xs text-center">
@@ -61,11 +65,6 @@ export default function DeepWorkPage() {
         ) : null}
       </div>
 
-      <UpgradeModal
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        description="Structured focus sessions with timers and guardrails to protect uninterrupted deep work."
-      />
     </div>
   )
 }

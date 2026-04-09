@@ -9,17 +9,30 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/context/AuthContext'
-import { isSupabaseConfigured, supabase } from '@/lib/supabase'
+import { getSupabaseConfigProblem, isSupabaseConfigured, supabase } from '@/lib/supabase'
+import { captureEvent } from '@/lib/analytics'
 
-function friendlyAuthNetworkError(): string {
+function authCallbackRedirectHint(): string {
   const callback =
     typeof window !== 'undefined'
       ? `${window.location.origin}/auth/callback`
       : 'http://127.0.0.1:3000/auth/callback'
+  return `In Supabase → Authentication → URL Configuration, add redirect URL: ${callback}`
+}
+
+/** Wrong/missing env — not the same as a failed HTTP request. */
+function friendlySupabaseSetupError(): string {
+  const detail = getSupabaseConfigProblem() ?? 'Check .env.local.'
+  return `${detail} Restart the dev server after saving (stop npm run dev, then run it again). ${authCallbackRedirectHint()}`
+}
+
+/** Real fetch failure while env shape looked valid (VPN, firewall, wrong region URL, etc.). */
+function friendlyAuthNetworkError(): string {
   return (
-    'Could not reach Supabase (network error). Set NEXT_PUBLIC_SUPABASE_URL and ' +
-    'NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local, then restart the dev server (npm run dev). ' +
-    `In Supabase → Authentication → URL Configuration, add redirect URL: ${callback}`
+    'Could not reach Supabase from your browser (request failed). ' +
+    'If .env.local already has a real https://….supabase.co URL and anon key, check VPN/firewall/ad blockers, ' +
+    'that the project is not paused, and try another network. ' +
+    authCallbackRedirectHint()
   )
 }
 
@@ -53,6 +66,11 @@ export default function AuthPage() {
   const [googleBusy, setGoogleBusy] = useState(false)
   const [signupMessage, setSignupMessage] = useState<string | null>(null)
   const [magicMessage, setMagicMessage] = useState<string | null>(null)
+  const [showReferralBanner, setShowReferralBanner] = useState(false)
+
+  useEffect(() => {
+    setShowReferralBanner(new URL(window.location.href).searchParams.get('ref') === '1')
+  }, [])
 
   useEffect(() => {
     if (authBootstrapping) return
@@ -99,7 +117,7 @@ export default function AuthPage() {
 
     try {
       if (!isSupabaseConfigured()) {
-        setFormError(friendlyAuthNetworkError())
+        setFormError(friendlySupabaseSetupError())
         return
       }
       if (mode === 'signin') {
@@ -111,6 +129,9 @@ export default function AuthPage() {
           setFormError(error.message)
           return
         }
+        captureEvent('user_logged_in', {
+          plan: 'unknown',
+        })
         router.replace('/dashboard')
         return
       }
@@ -124,7 +145,38 @@ export default function AuthPage() {
         setFormError(error.message)
         return
       }
+      try {
+        const to = data.user?.email ?? email.trim()
+        if (to) {
+          await fetch('/api/email/welcome', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: to }),
+          })
+        }
+      } catch {
+        // best-effort; signup should not fail if email fails
+      }
+      captureEvent('user_signed_up', {
+        plan: 'trial',
+        source: 'web',
+      })
       if (data.session) {
+        const referralCode = localStorage.getItem('referral_code')
+        if (referralCode) {
+          try {
+            await fetch('/api/referral/claim', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${data.session.access_token}`,
+              },
+              body: JSON.stringify({ referralCode }),
+            })
+          } finally {
+            localStorage.removeItem('referral_code')
+          }
+        }
         router.replace('/dashboard')
         return
       }
@@ -153,7 +205,7 @@ export default function AuthPage() {
 
     try {
       if (!isSupabaseConfigured()) {
-        setFormError(friendlyAuthNetworkError())
+        setFormError(friendlySupabaseSetupError())
         return
       }
       const { error } = await supabase.auth.signInWithOtp({
@@ -187,7 +239,7 @@ export default function AuthPage() {
     setGoogleBusy(true)
     try {
       if (!isSupabaseConfigured()) {
-        setFormError(friendlyAuthNetworkError())
+        setFormError(friendlySupabaseSetupError())
         return
       }
       const { error } = await supabase.auth.signInWithOAuth({
@@ -234,6 +286,12 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-16">
       <Card className="w-full max-w-md p-6 space-y-6 border-border">
+        {showReferralBanner ? (
+          <div className="rounded-lg border border-[#F59E0B]/35 bg-[#F59E0B]/10 px-3 py-2 text-sm text-amber-100">
+            You were invited to MonkMode! Sign up free — your friend gets a reward
+            when you join.
+          </div>
+        ) : null}
         <div className="text-center space-y-1">
           <h1 className="text-xl font-semibold tracking-tight">Account</h1>
           <p className="text-sm text-muted-foreground">

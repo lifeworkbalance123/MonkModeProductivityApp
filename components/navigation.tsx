@@ -4,7 +4,9 @@ import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ProBadge } from "@/components/pro-badge"
-import { UpgradeModal } from "@/components/upgrade-modal"
+import { useUpgradeOffer } from "@/context/UpgradeOfferContext"
+import { useAuth } from "@/context/AuthContext"
+import { useTrialBanner } from "@/hooks/use-trial-banner"
 import { usePlan } from "@/hooks/usePlan"
 import {
   LayoutDashboard,
@@ -77,24 +79,33 @@ const navItems: NavItem[] = [
 
 export function Navigation() {
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [upgradeOpen, setUpgradeOpen] = useState(false)
-  const [upgradeDescription, setUpgradeDescription] = useState("")
+  const { openUpgrade } = useUpgradeOffer()
+  const { user } = useAuth()
+  const trial = useTrialBanner()
   const { isPro, isLoading: planLoading } = usePlan()
 
   const showProGate = (item: NavItem) =>
     item.proOnly === true && !planLoading && !isPro
 
-  function openUpgrade(description: string) {
-    setUpgradeDescription(description)
-    setUpgradeOpen(true)
+  const showTrialBanner =
+    !!user && trial.visible && !planLoading && !isPro
+
+  function openProUpgrade(description: string) {
+    openUpgrade({
+      featureContext: description,
+    })
   }
+
+  const upgradeHref = trial.expired
+    ? "/upgrade?trial=expired"
+    : "/upgrade"
 
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2 shrink-0">
               <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
                 <Flame className="w-5 h-5 text-accent-foreground" />
               </div>
@@ -111,7 +122,7 @@ export function Navigation() {
                       key={item.label}
                       type="button"
                       onClick={() =>
-                        openUpgrade(
+                        openProUpgrade(
                           item.proDescription ??
                             "Upgrade to Pro to unlock this feature.",
                         )
@@ -141,7 +152,7 @@ export function Navigation() {
               })}
             </div>
 
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden md:flex items-center gap-3 shrink-0">
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/dashboard">Open app</Link>
               </Button>
@@ -164,11 +175,46 @@ export function Navigation() {
               {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
+
+          {showTrialBanner ? (
+            <div className="hidden md:flex items-center justify-between gap-3 border-t border-[#F59E0B]/25 bg-[#F59E0B]/[0.07] px-1 py-1.5">
+              <p className="text-xs text-amber-100/90 sm:text-sm">
+                {trial.expired
+                  ? "Your Pro preview ended — upgrade to keep every Pro feature."
+                  : `Pro preview — ${trial.daysLeft} day${trial.daysLeft === 1 ? "" : "s"} left. Unlock the full system.`}
+              </p>
+              <Button
+                size="sm"
+                className="h-7 shrink-0 bg-[#F59E0B] text-xs font-semibold text-[#111827] hover:bg-[#F59E0B]/90"
+                asChild
+              >
+                <Link href={upgradeHref}>Upgrade now</Link>
+              </Button>
+            </div>
+          ) : null}
         </div>
 
         {mobileOpen && (
           <div className="md:hidden bg-background border-b border-border">
             <div className="px-4 py-4 space-y-2">
+              {showTrialBanner ? (
+                <div className="mb-3 rounded-lg border border-[#F59E0B]/25 bg-[#F59E0B]/10 px-3 py-2">
+                  <p className="text-xs text-amber-100/90">
+                    {trial.expired
+                      ? "Preview ended — upgrade to keep Pro features."
+                      : `${trial.daysLeft} day${trial.daysLeft === 1 ? "" : "s"} left in your preview.`}
+                  </p>
+                  <Button
+                    size="sm"
+                    className="mt-2 w-full bg-[#F59E0B] text-[#111827] hover:bg-[#F59E0B]/90"
+                    asChild
+                  >
+                    <Link href={upgradeHref} onClick={() => setMobileOpen(false)}>
+                      Upgrade now
+                    </Link>
+                  </Button>
+                </div>
+              ) : null}
               {navItems.map((item) => {
                 const Icon = item.icon
                 const locked = showProGate(item)
@@ -179,7 +225,7 @@ export function Navigation() {
                       type="button"
                       className="flex w-full items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md hover:bg-secondary text-left relative"
                       onClick={() => {
-                        openUpgrade(
+                        openProUpgrade(
                           item.proDescription ??
                             "Upgrade to Pro to unlock this feature.",
                         )
@@ -216,12 +262,6 @@ export function Navigation() {
           </div>
         )}
       </nav>
-
-      <UpgradeModal
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        description={upgradeDescription}
-      />
     </>
   )
 }

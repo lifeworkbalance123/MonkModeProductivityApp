@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { format, isValid, parseISO } from 'date-fns'
-import { toast } from 'sonner'
 import { Navigation } from '@/components/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { initiateCheckout } from '@/lib/checkout'
+import { useUpgradeOffer } from '@/context/UpgradeOfferContext'
 import { usePlan, notifyEntitlementRefresh } from '@/hooks/usePlan'
 import {
   AlertDialog,
@@ -21,9 +21,11 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { useAuth } from '@/context/AuthContext'
+import { useToast } from '@/context/ToastContext'
 import { useDataServiceContext } from '@/hooks/use-data-service-context'
 import { resetAllUserData } from '@/lib/dataService'
 import { supabase } from '@/lib/supabase'
+import { captureEvent } from '@/lib/analytics'
 
 function formatBillingDate(iso: string | null): string | null {
   if (!iso) return null
@@ -35,8 +37,18 @@ function formatBillingDate(iso: string | null): string | null {
   }
 }
 
+const bugReportHref =
+  'mailto:support@monkmodeapp.com?subject=' +
+  encodeURIComponent('Bug Report — MonkMode') +
+  '&body=' +
+  encodeURIComponent(
+    'Page/screen:\nWhat happened:\nWhat I expected:\nDevice & browser:',
+  )
+
 export default function SettingsPage() {
   const router = useRouter()
+  const { showToast } = useToast()
+  const { openUpgrade } = useUpgradeOffer()
   const { session } = useAuth()
   const dataCtx = useDataServiceContext()
   const {
@@ -44,28 +56,56 @@ export default function SettingsPage() {
     isLoading: planLoading,
     isPro,
     subscriptionEndDate,
+    isTrial,
+    trialEndDate,
   } = usePlan()
-  const [checkoutBusy, setCheckoutBusy] = useState<'pro' | 'lifetime' | null>(
-    null,
-  )
   const [restoreBusy, setRestoreBusy] = useState(false)
   const [portalBusy, setPortalBusy] = useState(false)
+  const [switchBusy, setSwitchBusy] = useState(false)
+  const [referralCode, setReferralCode] = useState('')
+  const [referralCount, setReferralCount] = useState(0)
+  const [rewardMonths, setRewardMonths] = useState(0)
   const planKey = currentPlan.toLowerCase()
   const nextBill = formatBillingDate(subscriptionEndDate)
+  const trialEnds = formatBillingDate(trialEndDate)
+  const trialDaysLeft = trialEndDate
+    ? Math.max(
+        0,
+        Math.ceil((Date.parse(trialEndDate) - Date.now()) / (24 * 60 * 60 * 1000)),
+      )
+    : 0
 
-  async function runCheckout(plan: 'pro' | 'lifetime') {
-    setCheckoutBusy(plan)
-    try {
-      await initiateCheckout(plan)
-    } finally {
-      setCheckoutBusy(null)
-    }
-  }
+  useEffect(() => {
+    captureEvent('settings_opened')
+  }, [])
+
+  useEffect(() => {
+    ;(async () => {
+      const {
+        data: { session: s },
+      } = await supabase.auth.getSession()
+      const token = s?.access_token
+      if (!token) return
+      const res = await fetch('/api/share/stats?userId=' + encodeURIComponent(session?.user?.id ?? ''), {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return
+      const data = (await res.json()) as {
+        referralCode?: string
+        referralCount?: number
+        referralRewardMonths?: number
+      }
+      setReferralCode(data.referralCode ?? '')
+      setReferralCount(data.referralCount ?? 0)
+      setRewardMonths(data.referralRewardMonths ?? 0)
+    })()
+  }, [session?.user?.id])
 
   async function restorePurchases() {
+    captureEvent('restore_purchase_attempted')
     const token = session?.access_token
     if (!token) {
-      toast.error('Please sign in first to restore purchases.')
+      showToast('Please sign in first to restore purchases.', 'error')
       router.push('/auth')
       return
     }
@@ -83,32 +123,37 @@ export default function SettingsPage() {
       }
 
       if (res.status === 401) {
-        toast.error('Please sign in to restore purchases.')
+        showToast('Please sign in to restore purchases.', 'error')
         router.push('/auth')
         return
       }
 
       if (res.status === 400 && data.error) {
-        toast.error(data.error)
+        showToast(data.error, 'error')
         return
       }
 
       if (res.status === 503 || (data.error && !data.restored)) {
-        toast.error(data.error ?? 'Billing is temporarily unavailable.')
+        showToast(
+          data.error ?? 'Billing is temporarily unavailable.',
+          'error',
+        )
         return
       }
 
       if (data.restored) {
-        toast.success('Pro access restored! Welcome back.')
+        showToast('Pro access restored! Welcome back.', 'success')
+        captureEvent('restore_purchase_success')
         notifyEntitlementRefresh()
         return
       }
 
-      toast.info(
+      showToast(
         'No purchase found for this account. If you believe this is an error, contact support@monkmodeapp.com',
+        'info',
       )
     } catch {
-      toast.error('Could not reach the server. Try again later.')
+      showToast('Could not reach the server. Try again later.', 'error')
     } finally {
       setRestoreBusy(false)
     }
@@ -120,7 +165,7 @@ export default function SettingsPage() {
     } = await supabase.auth.getSession()
     const token = s?.access_token
     if (!token) {
-      toast.error('Please sign in to manage your subscription.')
+      showToast('Please sign in to manage your subscription.', 'error')
       router.push('/auth')
       return
     }
@@ -133,18 +178,45 @@ export default function SettingsPage() {
       })
       const data = (await res.json()) as { url?: string; error?: string }
       if (!res.ok || !data.url) {
-        toast.error(data.error ?? 'Could not open the billing portal.')
+        showToast(data.error ?? 'Could not open the billing portal.', 'error')
         return
       }
       window.location.href = data.url
     } catch {
-      toast.error('Could not reach the server. Try again later.')
+      showToast('Could not reach the server. Try again later.', 'error')
     } finally {
       setPortalBusy(false)
     }
   }
 
+  async function switchToAnnual() {
+    const token = session?.access_token
+    if (!token) return
+    setSwitchBusy(true)
+    try {
+      const res = await fetch('/api/stripe/switch-to-annual', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = (await res.json()) as { ok?: boolean; error?: string }
+      if (!res.ok || !data.ok) {
+        showToast(data.error ?? 'Could not switch plans.', 'error')
+        return
+      }
+      showToast(
+        "Switched to annual billing. You've been charged the prorated difference.",
+        'success',
+      )
+      notifyEntitlementRefresh()
+    } catch {
+      showToast('Could not switch plans right now.', 'error')
+    } finally {
+      setSwitchBusy(false)
+    }
+  }
+
   async function reset() {
+    captureEvent('data_reset_triggered')
     await resetAllUserData(dataCtx)
     router.refresh()
     window.location.href = '/dashboard'
@@ -191,81 +263,308 @@ export default function SettingsPage() {
         </Card>
         <Card className="p-4 space-y-4">
           <div>
-            <h2 className="font-medium mb-1">Plan</h2>
-            {planLoading ? (
-              <p className="text-sm text-muted-foreground">…</p>
-            ) : planKey === 'lifetime' ? (
-              <>
-                <p className="text-sm text-muted-foreground mb-3">
-                  You have Lifetime Pro access. Thank you for your support.
+            <h2 className="font-medium mb-1">Subscription</h2>
+            {planLoading ? <p className="text-sm text-muted-foreground">…</p> : null}
+            {!planLoading && planKey === 'free' && !isTrial ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">Current plan: Free</p>
+                <div className="grid grid-cols-2 gap-2 rounded-md border border-border p-3 text-xs">
+                  <div className="font-medium">Free</div>
+                  <div className="font-medium">Pro</div>
+                  <div className="text-muted-foreground">3 habits / goals</div>
+                  <div className="text-muted-foreground">Unlimited</div>
+                  <div className="text-muted-foreground">No cloud sync</div>
+                  <div className="text-muted-foreground">Cloud sync</div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-[#F59E0B] font-semibold text-[#111827] hover:bg-[#F59E0B]/90"
+                    onClick={() => window.location.assign('/upgrade')}
+                  >
+                    Upgrade to Pro
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" asChild>
+                    <Link href="/pricing">View all plans</Link>
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            {!planLoading && isTrial ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Current plan: Pro Trial
                 </p>
-              </>
-            ) : planKey === 'monthly' || planKey === 'pro' ? (
-              <>
-                <p className="text-sm text-muted-foreground mb-3">
-                  You are on the Pro Monthly plan.
-                  {nextBill
-                    ? ` Next billing date: ${nextBill}.`
-                    : ' Next billing date will appear here after Stripe syncs.'}
+                <p className="text-sm text-muted-foreground">
+                  Your trial ends on {trialEnds ?? 'soon'} ({trialDaysLeft} days
+                  remaining)
                 </p>
+                <div className="h-2 rounded-full bg-secondary">
+                  <div
+                    className="h-2 rounded-full bg-[#F59E0B]"
+                    style={{ width: `${Math.max(5, Math.min(100, ((14 - trialDaysLeft) / 14) * 100))}%` }}
+                  />
+                </div>
                 <Button
                   type="button"
-                  variant="outline"
                   size="sm"
-                  disabled={portalBusy}
-                  onClick={() => void openBillingPortal()}
+                  className="bg-[#F59E0B] font-semibold text-[#111827] hover:bg-[#F59E0B]/90"
+                  onClick={() => window.location.assign('/upgrade')}
                 >
-                  {portalBusy ? 'Opening…' : 'Manage Subscription'}
+                  Upgrade now to keep Pro
                 </Button>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-muted-foreground mb-3">
-                  You are on the Free plan. Upgrade to unlock all features.
+                <details className="rounded-md border border-border p-3 text-xs text-muted-foreground">
+                  <summary className="cursor-pointer font-medium">
+                    What happens when trial ends
+                  </summary>
+                  <p className="mt-2">
+                    You&apos;ll move to Free and keep your data. Upgrade anytime to
+                    unlock full Pro features again.
+                  </p>
+                </details>
+              </div>
+            ) : null}
+
+            {!planLoading && planKey === 'monthly' ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Current plan: Pro Monthly ($9.99/month)
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <p className="text-sm text-muted-foreground">
+                  Next billing date: {nextBill ?? 'Pending sync'} · Amount: $9.99
+                </p>
+                <div className="rounded-md border border-[#F59E0B]/30 bg-[#F59E0B]/10 p-3 text-sm">
+                  <p className="text-amber-100">
+                    Switch to annual and save $59.89/year →
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="mt-2 bg-[#F59E0B] font-semibold text-[#111827] hover:bg-[#F59E0B]/90"
+                    onClick={() => void switchToAnnual()}
+                    disabled={switchBusy}
+                  >
+                    {switchBusy ? 'Switching…' : 'Switch to annual plan'}
+                  </Button>
+                </div>
+                <details className="rounded-md border border-destructive/40 p-3 text-xs text-muted-foreground">
+                  <summary className="cursor-pointer text-destructive">
+                    Cancel subscription
+                  </summary>
+                  <p className="mt-2">
+                    You&apos;ll keep Pro access until {nextBill ?? 'the end of your billing period'}, then move to Free.
+                  </p>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    disabled={
-                      checkoutBusy !== null ||
-                      planKey === 'monthly' ||
-                      planKey === 'pro' ||
-                      planKey === 'lifetime'
-                    }
-                    onClick={() => runCheckout('pro')}
+                    className="mt-2 border-destructive text-destructive"
+                    disabled={portalBusy}
+                    onClick={() => void openBillingPortal()}
                   >
-                    {checkoutBusy === 'pro' ? 'Processing…' : 'Upgrade to Pro'}
+                    {portalBusy ? 'Opening…' : 'Yes, cancel in Stripe portal'}
+                  </Button>
+                </details>
+              </div>
+            ) : null}
+
+            {!planLoading && planKey === 'annual' ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Current plan: Pro Annual ($59.99/year)
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Renewal date: {nextBill ?? 'Pending sync'}
+                </p>
+                <span className="inline-flex rounded bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                  Great choice — you&apos;re saving $59.89 vs monthly
+                </span>
+                <details className="rounded-md border border-destructive/40 p-3 text-xs text-muted-foreground">
+                  <summary className="cursor-pointer text-destructive">
+                    Cancel subscription
+                  </summary>
+                  <p className="mt-2">
+                    You&apos;ll keep Pro access until {nextBill ?? 'the end of your billing period'}, then move to Free.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="mt-2 border-destructive text-destructive"
+                    disabled={portalBusy}
+                    onClick={() => void openBillingPortal()}
+                  >
+                    {portalBusy ? 'Opening…' : 'Yes, cancel in Stripe portal'}
+                  </Button>
+                </details>
+              </div>
+            ) : null}
+
+            {!planLoading && planKey === 'lifetime' ? (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Current plan: Lifetime Pro ♾️
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  You have permanent access to all Pro features and every future
+                  update.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Thank you for your support.
+                </p>
+              </div>
+            ) : null}
+
+            <div className="pt-4 mt-4 border-t border-border">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={restoreBusy || planLoading}
+                  onClick={() => void restorePurchases()}
+                >
+                  {restoreBusy ? 'Restoring…' : 'Restore purchases'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={portalBusy || planLoading}
+                  onClick={() => void openBillingPortal()}
+                >
+                  {portalBusy ? 'Opening…' : 'Manage billing'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={portalBusy || planLoading}
+                  onClick={() => void openBillingPortal()}
+                >
+                  View invoices
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-4 space-y-4">
+          <div>
+            <h2 className="font-medium mb-1">Refer a friend, earn free Pro</h2>
+            <p className="text-sm text-muted-foreground">
+              Share your unique link. Every friend who upgrades earns you 1 free
+              month of Pro.
+            </p>
+
+            <div className="mt-4 space-y-3 text-sm">
+              <div className="rounded-md border border-border bg-secondary/30 p-3">
+                <div className="text-xs text-muted-foreground">Referral code</div>
+                <div className="mt-1 font-mono text-base">{referralCode || '—'}</div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="mt-2"
+                  onClick={async () => {
+                    if (!referralCode) return
+                    await navigator.clipboard.writeText(referralCode)
+                    showToast('Referral code copied.', 'success')
+                  }}
+                >
+                  Copy code
+                </Button>
+              </div>
+
+              <div className="rounded-md border border-border bg-secondary/30 p-3">
+                <div className="text-xs text-muted-foreground">Referral link</div>
+                <div className="mt-1 break-all font-mono text-xs">
+                  {`monkmodeapp.com/ref/${referralCode || 'YOURCODE'}`}
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      if (!referralCode) return
+                      await navigator.clipboard.writeText(
+                        `https://monkmodeapp.com/ref/${referralCode}`,
+                      )
+                      showToast('Referral link copied.', 'success')
+                    }}
+                  >
+                    Copy link
                   </Button>
                   <Button
                     type="button"
                     size="sm"
-                    className="bg-accent text-accent-foreground hover:bg-accent/90"
-                    disabled={checkoutBusy !== null || planKey === 'lifetime'}
-                    onClick={() => runCheckout('lifetime')}
+                    onClick={() => {
+                      if (!referralCode) return
+                      window.open(
+                        `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+                          `Join me on MonkMode: https://monkmodeapp.com/ref/${referralCode}`,
+                        )}`,
+                        '_blank',
+                        'noopener,noreferrer',
+                      )
+                    }}
                   >
-                    {checkoutBusy === 'lifetime' ? 'Processing…' : 'Lifetime'}
+                    Share
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-3">
-                  Checkout is simulated until Stripe is connected.
-                </p>
-              </>
-            )}
-            <div className="pt-4 mt-4 border-t border-border">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={restoreBusy || planLoading}
-                onClick={() => void restorePurchases()}
-              >
-                {restoreBusy ? 'Restoring…' : 'Restore purchases'}
-              </Button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                <div className="rounded-md border border-border p-2">
+                  {referralCount} friends referred
+                </div>
+                <div className="rounded-md border border-border p-2">
+                  {rewardMonths} free months earned
+                </div>
+              </div>
+
+              <div className="rounded-md border border-border p-3 text-xs text-muted-foreground">
+                Refer 3 friends → get 1 month free
+                <br />
+                Refer 5 friends → get 3 months free
+                <br />
+                Refer 10 friends → get 1 year free
+              </div>
             </div>
           </div>
         </Card>
+
+        <Card className="p-4 space-y-4">
+          <div>
+            <h2 className="font-medium mb-1">Support</h2>
+            <div className="mt-3 flex flex-col items-start gap-2 text-sm">
+              <Link href="/support" className="text-accent hover:underline">
+                Help & FAQ
+              </Link>
+              <a
+                href="mailto:support@monkmodeapp.com"
+                className="text-accent hover:underline"
+              >
+                Email support
+              </a>
+              <a href={bugReportHref} className="text-accent hover:underline">
+                Report a bug
+              </a>
+              <a
+                href="YOUR_APP_STORE_URL"
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent hover:underline"
+              >
+                Rate MonkMode
+              </a>
+            </div>
+          </div>
+        </Card>
+
         <Card className="p-4 space-y-4">
           <div>
             <h2 className="font-medium mb-1">Data</h2>

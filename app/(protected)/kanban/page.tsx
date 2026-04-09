@@ -3,14 +3,13 @@
 import { Navigation } from '@/components/navigation'
 import { Card } from '@/components/ui/card'
 import { ProBadge } from '@/components/pro-badge'
-import { UpgradeModal } from '@/components/upgrade-modal'
+import { useUpgradeOffer } from '@/context/UpgradeOfferContext'
 import { usePlan } from '@/hooks/usePlan'
-import { useState } from 'react'
 import Link from 'next/link'
 
 export default function KanbanPage() {
+  const { openUpgrade } = useUpgradeOffer()
   const { isPro, isLoading: planLoading } = usePlan()
-  const [upgradeOpen, setUpgradeOpen] = useState(false)
 
   return (
     <div className="min-h-screen bg-background">
@@ -39,7 +38,12 @@ export default function KanbanPage() {
             <button
               type="button"
               className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-xl bg-background/75 backdrop-blur-[2px]"
-              onClick={() => setUpgradeOpen(true)}
+              onClick={() =>
+                openUpgrade({
+                  featureContext:
+                    'Organize your tasks on a drag-and-drop board so you can see workflow at a glance.',
+                })
+              }
             >
               <ProBadge className="scale-110" />
               <p className="text-sm text-muted-foreground max-w-xs text-center">
@@ -60,11 +64,6 @@ export default function KanbanPage() {
         ) : null}
       </div>
 
-      <UpgradeModal
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        description="Organize your tasks on a drag-and-drop board so you can see workflow at a glance."
-      />
     </div>
   )
 }

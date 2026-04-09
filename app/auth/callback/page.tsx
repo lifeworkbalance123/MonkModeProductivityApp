@@ -21,6 +21,28 @@ export default function AuthCallbackPage() {
       router.replace(session ? '/dashboard' : '/auth')
     }
 
+    async function claimReferralIfPresent() {
+      const referralCode = localStorage.getItem('referral_code')
+      if (!referralCode) return
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+      try {
+        await fetch('/api/referral/claim', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ referralCode }),
+        })
+      } finally {
+        localStorage.removeItem('referral_code')
+      }
+    }
+
     ;(async () => {
       try {
         const url = new URL(window.location.href)
@@ -37,6 +59,7 @@ export default function AuthCallbackPage() {
         const { data: { session: immediate } } = await supabase.auth.getSession()
         if (!alive) return
         if (immediate) {
+          await claimReferralIfPresent()
           router.replace('/dashboard')
           return
         }
@@ -47,6 +70,7 @@ export default function AuthCallbackPage() {
           if (!alive) return
           const { data: { session } } = await supabase.auth.getSession()
           if (session) {
+            await claimReferralIfPresent()
             router.replace('/dashboard')
             return
           }

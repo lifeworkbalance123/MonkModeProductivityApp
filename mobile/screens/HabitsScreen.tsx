@@ -6,6 +6,7 @@ import {
   toggleArchitectHabit,
   type ArchitectWLState,
 } from '@/lib/architect-wl'
+import { syncWidgetData } from '@/lib/widgetSync'
 import { useFocusEffect } from 'expo-router'
 import { useCallback, useState } from 'react'
 import { ScrollView, Text, View } from 'react-native'
@@ -17,7 +18,10 @@ export default function HabitsScreen() {
   const [wl, setWl] = useState<ArchitectWLState | null>(null)
 
   const refresh = useCallback(() => {
-    loadArchitectWL().then(setWl)
+    loadArchitectWL().then((next) => {
+      setWl(next)
+      void syncWidgetData('local-mobile-user')
+    })
   }, [])
 
   useFocusEffect(
@@ -40,7 +44,12 @@ export default function HabitsScreen() {
           theme={t}
           title={h.title}
           completed={done.has(h.id)}
-          onToggle={() => toggleArchitectHabit(h.id).then(setWl)}
+          onToggle={() =>
+            toggleArchitectHabit(h.id).then((next) => {
+              setWl(next)
+              void syncWidgetData('local-mobile-user')
+            })
+          }
         />
       ))}
     </ScrollView>

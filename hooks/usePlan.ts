@@ -6,12 +6,15 @@ import { supabase } from '@/lib/supabase'
 
 const ENTITLEMENT_REFRESH = 'monkmode-entitlement-refresh'
 
-export type EntitlementPlan = 'free' | 'monthly' | 'lifetime'
+export type EntitlementPlan = 'free' | 'monthly' | 'annual' | 'lifetime'
 
 type EntitlementResponse = {
   isPro: boolean
   plan: string
   subscriptionEndDate?: string | null
+  trialEndDate?: string | null
+  isTrial?: boolean
+  cancellationDate?: string | null
 }
 
 /**
@@ -25,12 +28,18 @@ export function usePlan() {
     null,
   )
   const [planLoading, setPlanLoading] = useState(true)
+  const [trialEndDate, setTrialEndDate] = useState<string | null>(null)
+  const [isTrial, setIsTrial] = useState(false)
+  const [cancellationDate, setCancellationDate] = useState<string | null>(null)
 
   const fetchEntitlement = useCallback(async () => {
     if (!user?.id) {
       setIsPro(false)
       setPlan('free')
       setSubscriptionEndDate(null)
+      setTrialEndDate(null)
+      setIsTrial(false)
+      setCancellationDate(null)
       setPlanLoading(false)
       return
     }
@@ -44,6 +53,9 @@ export function usePlan() {
       setIsPro(false)
       setPlan('free')
       setSubscriptionEndDate(null)
+      setTrialEndDate(null)
+      setIsTrial(false)
+      setCancellationDate(null)
       setPlanLoading(false)
       return
     }
@@ -58,6 +70,9 @@ export function usePlan() {
       setIsPro(false)
       setPlan('free')
       setSubscriptionEndDate(null)
+      setTrialEndDate(null)
+      setIsTrial(false)
+      setCancellationDate(null)
       setPlanLoading(false)
       return
     }
@@ -65,7 +80,7 @@ export function usePlan() {
     const data = (await res.json()) as EntitlementResponse
     const p = (data.plan ?? 'free').toLowerCase()
     const normalized: EntitlementPlan =
-      p === 'monthly' || p === 'lifetime' || p === 'free' ? p : 'free'
+      p === 'monthly' || p === 'annual' || p === 'lifetime' || p === 'free' ? p : 'free'
 
     setIsPro(!!data.isPro)
     setPlan(normalized)
@@ -73,6 +88,11 @@ export function usePlan() {
       data.subscriptionEndDate != null
         ? String(data.subscriptionEndDate)
         : null,
+    )
+    setTrialEndDate(data.trialEndDate != null ? String(data.trialEndDate) : null)
+    setIsTrial(Boolean(data.isTrial))
+    setCancellationDate(
+      data.cancellationDate != null ? String(data.cancellationDate) : null,
     )
     setPlanLoading(false)
   }, [user?.id, user?.email])
@@ -84,6 +104,9 @@ export function usePlan() {
       setIsPro(false)
       setPlan('free')
       setSubscriptionEndDate(null)
+      setTrialEndDate(null)
+      setIsTrial(false)
+      setCancellationDate(null)
       setPlanLoading(false)
       return
     }
@@ -120,7 +143,15 @@ export function usePlan() {
 
   const isLoading = authLoading || planLoading
 
-  return { isPro, plan, subscriptionEndDate, isLoading }
+  return {
+    isPro,
+    plan,
+    subscriptionEndDate,
+    isLoading,
+    trialEndDate,
+    isTrial,
+    cancellationDate,
+  }
 }
 
 export function notifyEntitlementRefresh() {

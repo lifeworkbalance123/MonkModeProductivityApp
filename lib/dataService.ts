@@ -140,11 +140,17 @@ function mostRecentCompletionDate(log: HabitLog): string | null {
   return best
 }
 
+export type LoadMonkResult = { data: MonkData; error: string | null }
+
+export type PersistMonkResult =
+  | { ok: true; deferred?: boolean }
+  | { ok: false; error: string }
+
 export async function loadFullMonkData(
   ctx: DataServiceContext,
-): Promise<MonkData> {
+): Promise<LoadMonkResult> {
   if (!shouldSyncToCloud(ctx) || !ctx.userId) {
-    return loadMonk()
+    return { data: loadMonk(), error: null }
   }
 
   const uid = ctx.userId
@@ -182,7 +188,7 @@ export async function loadFullMonkData(
   ) {
     const normalized = normalizeMonkDataForPro(local)
     await persistFullMonkData(ctx, normalized)
-    return mergeVideoFields(normalized)
+    return { data: mergeVideoFields(normalized), error: null }
   }
 
   if (
@@ -199,7 +205,11 @@ export async function loadFullMonkData(
       slotsRes,
       journalRes,
     })
-    return mergeVideoFields(local)
+    return {
+      data: mergeVideoFields(local),
+      error:
+        "Couldn't load your data. Check your connection and try again.",
+    }
   }
 
   const habits: Habit[] = (habitsRes.data ?? []).map((r) => ({
@@ -246,21 +256,31 @@ export async function loadFullMonkData(
     habitLog,
   }
 
-  return base
+  return { data: base, error: null }
 }
 
 export async function persistFullMonkData(
   ctx: DataServiceContext,
   data: MonkData,
-): Promise<void> {
+): Promise<PersistMonkResult> {
   saveMonk(data)
 
   if (!shouldSyncToCloud(ctx) || !ctx.userId) {
-    return
+    return { ok: true }
+  }
+
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    try {
+      localStorage.setItem('monk_deferred_cloud_sync', '1')
+    } catch {
+      /* ignore */
+    }
+    return { ok: true, deferred: true }
   }
 
   const uid = ctx.userId
   const normalized = normalizeMonkDataForPro(data)
+  const failures: string[] = []
 
   const habitRows = normalized.habits.map((h) => ({
     id: h.id,
@@ -273,13 +293,21 @@ export async function persistFullMonkData(
   await supabase.from('habits').delete().eq('user_id', uid)
   if (habitRows.length) {
     const { error: hErr } = await supabase.from('habits').insert(habitRows)
-    if (hErr) console.error('habits insert', hErr)
+    if (hErr) {
+      console.error('habits insert', hErr)
+      failures.push(hErr.message)
+    }
   }
 
   const compRows = habitLogToCompletionRows(uid, normalized.habitLog)
   if (compRows.length) {
-    const { error: cErr } = await supabase.from('habit_completions').insert(compRows)
-    if (cErr) console.error('habit_completions insert', cErr)
+    const { error: cErr } = await supabase
+      .from('habit_completions')
+      .insert(compRows)
+    if (cErr) {
+      console.error('habit_completions insert', cErr)
+      failures.push(cErr.message)
+    }
   }
 
   const goalRows = normalized.goals.map((g) => ({
@@ -295,7 +323,10 @@ export async function persistFullMonkData(
   await supabase.from('goals').delete().eq('user_id', uid)
   if (goalRows.length) {
     const { error: gErr } = await supabase.from('goals').insert(goalRows)
-    if (gErr) console.error('goals insert', gErr)
+    if (gErr) {
+      console.error('goals insert', gErr)
+      failures.push(gErr.message)
+    }
   }
 
   await supabase
@@ -316,7 +347,10 @@ export async function persistFullMonkData(
 
   if (slotRows.length) {
     const { error: pErr } = await supabase.from('planner_slots').insert(slotRows)
-    if (pErr) console.error('planner_slots insert', pErr)
+    if (pErr) {
+      console.error('planner_slots insert', pErr)
+      failures.push(pErr.message)
+    }
   }
 
   const g0 = normalized.gratitude[0] ?? ''
@@ -348,7 +382,10 @@ export async function persistFullMonkData(
   const { error: jErr } = await supabase
     .from('journal_entries')
     .upsert(journalUpserts, { onConflict: 'user_id,date,type' })
-  if (jErr) console.error('journal_entries upsert', jErr)
+  if (jErr) {
+    console.error('journal_entries upsert', jErr)
+    failures.push(jErr.message)
+  }
 
   const current = computeStreak(normalized.habitLog)
   const { data: prevRow } = await supabase
@@ -369,7 +406,21 @@ export async function persistFullMonkData(
     },
     { onConflict: 'user_id' },
   )
-  if (stErr) console.error('streaks upsert', stErr)
+  if (stErr) {
+    console.error('streaks upsert', stErr)
+    failures.push(stErr.message)
+  }
+
+  if (failures.length > 0) {
+    return { ok: false, error: failures[0] }
+  }
+
+  try {
+    localStorage.removeItem('monk_deferred_cloud_sync')
+  } catch {
+    /* ignore */
+  }
+  return { ok: true }
 }
 
 /** Clears local storage and, for Pro, all synced tables for the user. */
@@ -408,9 +459,12 @@ export async function getHabits(ctx: DataServiceContext): Promise<Habit[]> {
   return loadMonk().habits
 }
 
-export async function saveHabit(ctx: DataServiceContext, habit: Habit): Promise<void> {
+export async function saveHabit(
+  ctx: DataServiceContext,
+  habit: Habit,
+): Promise<{ error: string | null }> {
   const h = { ...habit, icon: habit.icon ?? '' }
-  if (!shouldSyncToCloud(ctx) || !ctx.userId) return
+  if (!shouldSyncToCloud(ctx) || !ctx.userId) return { error: null }
   const { error } = await supabase.from('habits').upsert(
     {
       id: h.id,
@@ -420,7 +474,11 @@ export async function saveHabit(ctx: DataServiceContext, habit: Habit): Promise<
     },
     { onConflict: 'id' },
   )
-  if (error) console.error(error)
+  if (error) {
+    console.error(error)
+    return { error: error.message }
+  }
+  return { error: null }
 }
 
 export async function deleteHabit(ctx: DataServiceContext, id: string): Promise<void> {
@@ -451,12 +509,12 @@ export async function saveGoal(
   ctx: DataServiceContext,
   goal: Goal,
   meta?: { priority?: number; type?: 'daily' | 'weekly' | 'monthly'; date?: string },
-): Promise<void> {
+): Promise<{ error: string | null }> {
   const priority = meta?.priority ?? 0
   const type = meta?.type ?? 'daily'
   const date = meta?.date ?? GOAL_ANCHOR_DATE
 
-  if (!shouldSyncToCloud(ctx) || !ctx.userId) return
+  if (!shouldSyncToCloud(ctx) || !ctx.userId) return { error: null }
   const { error } = await supabase.from('goals').upsert(
     {
       id: goal.id,
@@ -469,15 +527,19 @@ export async function saveGoal(
     },
     { onConflict: 'id' },
   )
-  if (error) console.error(error)
+  if (error) {
+    console.error(error)
+    return { error: error.message }
+  }
+  return { error: null }
 }
 
 /** Persist goal with updated `completed` (caller applies toggle in UI state first). */
 export async function toggleGoalComplete(
   ctx: DataServiceContext,
   goal: Goal,
-): Promise<void> {
-  await saveGoal(ctx, goal)
+): Promise<{ error: string | null }> {
+  return saveGoal(ctx, goal)
 }
 
 export async function deleteGoal(ctx: DataServiceContext, id: string): Promise<void> {
@@ -510,8 +572,8 @@ export async function getPlannerSlots(ctx: DataServiceContext): Promise<TimeSlot
 export async function savePlannerSlot(
   ctx: DataServiceContext,
   slot: TimeSlot,
-): Promise<void> {
-  if (!shouldSyncToCloud(ctx) || !ctx.userId) return
+): Promise<{ error: string | null }> {
+  if (!shouldSyncToCloud(ctx) || !ctx.userId) return { error: null }
   const { error } = await supabase.from('planner_slots').upsert(
     {
       id: slot.id,
@@ -524,7 +586,11 @@ export async function savePlannerSlot(
     },
     { onConflict: 'id' },
   )
-  if (error) console.error(error)
+  if (error) {
+    console.error(error)
+    return { error: error.message }
+  }
+  return { error: null }
 }
 
 export async function deletePlannerSlot(

@@ -8,15 +8,23 @@ import {
   persistFullMonkData,
 } from '@/lib/dataService'
 import { useDataServiceContext } from '@/hooks/use-data-service-context'
+import { useToast } from '@/context/ToastContext'
+import { supabase } from '@/lib/supabase'
 
 const DEBOUNCE_MS = 450
+
+function looksLikeSessionError(msg: string) {
+  return /jwt|session|expired|invalid.*token|401/i.test(msg)
+}
 
 export function useMonkData() {
   const ctx = useDataServiceContext()
   const ctxKey = `${ctx.userId ?? 'anon'}:${ctx.isPro ? '1' : '0'}`
+  const { showToast } = useToast()
 
   const [data, setData] = useState<MonkData>(defaultMonkData)
   const [ready, setReady] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const skipSaveOnce = useRef(true)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dataRef = useRef(data)
@@ -24,16 +32,29 @@ export function useMonkData() {
   const ctxRef = useRef(ctx)
   ctxRef.current = ctx
 
+  const reload = useCallback(async () => {
+    setLoadError(null)
+    setReady(false)
+    skipSaveOnce.current = true
+    const c = ctxRef.current
+    const { data: loaded, error } = await loadFullMonkData(c)
+    setData(loaded)
+    setLoadError(error)
+    setReady(true)
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     skipSaveOnce.current = true
     setReady(false)
+    setLoadError(null)
     const c = ctxRef.current
 
     ;(async () => {
-      const loaded = await loadFullMonkData(c)
+      const { data: loaded, error } = await loadFullMonkData(c)
       if (cancelled) return
       setData(loaded)
+      setLoadError(error)
       setReady(true)
     })()
 
@@ -41,6 +62,19 @@ export function useMonkData() {
       cancelled = true
     }
   }, [ctxKey])
+
+  useEffect(() => {
+    function onOnline() {
+      void (async () => {
+        const r = await persistFullMonkData(ctxRef.current, dataRef.current)
+        if (!r.ok && r.error) {
+          showToast("Couldn't save changes. Please try again.", 'error')
+        }
+      })()
+    }
+    window.addEventListener('monk-online', onOnline)
+    return () => window.removeEventListener('monk-online', onOnline)
+  }, [showToast])
 
   useEffect(() => {
     if (!ready) return
@@ -51,21 +85,62 @@ export function useMonkData() {
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
-      void persistFullMonkData(ctxRef.current, dataRef.current)
+      void (async () => {
+        const result = await persistFullMonkData(
+          ctxRef.current,
+          dataRef.current,
+        )
+        if (result.ok) return
+        const err = result.error
+        if (looksLikeSessionError(err)) {
+          showToast(
+            'Your session expired. Signing you in again...',
+            'info',
+          )
+          const { data: ref } = await supabase.auth.refreshSession()
+          if (!ref.session) {
+            showToast('Your session expired. Please sign in again.', 'error')
+            window.location.href =
+              '/auth?message=' +
+              encodeURIComponent(
+                'Your session expired. Please sign in again.',
+              )
+            return
+          }
+          const retry = await persistFullMonkData(
+            ctxRef.current,
+            dataRef.current,
+          )
+          if (!retry.ok) {
+            showToast("Couldn't save changes. Please try again.", 'error')
+          }
+        } else {
+          showToast("Couldn't save changes. Please try again.", 'error')
+        }
+      })()
     }, DEBOUNCE_MS)
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [data, ready, ctxKey])
+  }, [data, ready, ctxKey, showToast])
 
   const update = useCallback((fn: (prev: MonkData) => MonkData) => {
     setData(fn)
   }, [])
 
   const flush = useCallback(async () => {
-    await persistFullMonkData(ctxRef.current, dataRef.current)
+    return persistFullMonkData(ctxRef.current, dataRef.current)
   }, [])
 
-  return { data, setData, update, ready, flush, dataContext: ctx }
+  return {
+    data,
+    setData,
+    update,
+    ready,
+    flush,
+    dataContext: ctx,
+    loadError,
+    reload,
+  }
 }

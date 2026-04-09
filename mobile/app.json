@@ -11,7 +11,12 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.monkmode.productivity"
+      "bundleIdentifier": "com.monkmode.productivity",
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.monkmode.shared"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -22,10 +27,27 @@
     "plugins": [
       "expo-router",
       "expo-sqlite",
+      "expo-apple-authentication",
       [
         "expo-image-picker",
         {
           "photosPermission": "Allow Monk Mode to attach training images."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static",
+            "deploymentTarget": "16.0"
+          }
+        }
+      ],
+      [
+        "react-native-widget-extension",
+        {
+          "targetName": "MonkModeWidget",
+          "src": "./ios/MonkModeWidget"
         }
       ]
     ]

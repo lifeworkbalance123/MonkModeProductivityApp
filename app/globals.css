@@ -239,3 +239,33 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* /upgrade — scoped motion (amber #F59E0B) */
+@keyframes upgrade-flame-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+@keyframes upgrade-pro-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(245, 158, 11, 0.45),
+      0 0 28px rgba(245, 158, 11, 0.12);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(245, 158, 11, 0.7),
+      0 0 40px rgba(245, 158, 11, 0.24);
+  }
+}
+.upgrade-offer-scope .upgrade-flame-pulse {
+  animation: upgrade-flame-pulse 2s ease-in-out infinite;
+}
+.upgrade-offer-scope .upgrade-pro-glow {
+  animation: upgrade-pro-glow 3s ease-in-out infinite;
+}

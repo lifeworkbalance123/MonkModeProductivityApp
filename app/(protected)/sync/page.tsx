@@ -1,17 +1,16 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { Navigation } from '@/components/navigation'
 import { Card } from '@/components/ui/card'
 import { ProBadge } from '@/components/pro-badge'
-import { UpgradeModal } from '@/components/upgrade-modal'
+import { useUpgradeOffer } from '@/context/UpgradeOfferContext'
 import { usePlan } from '@/hooks/usePlan'
 import { Cloud } from 'lucide-react'
 
 export default function CloudSyncPage() {
+  const { openUpgrade } = useUpgradeOffer()
   const { isPro, isLoading: planLoading } = usePlan()
-  const [upgradeOpen, setUpgradeOpen] = useState(false)
 
   return (
     <div className="min-h-screen bg-background">
@@ -36,7 +35,12 @@ export default function CloudSyncPage() {
             <button
               type="button"
               className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-xl bg-background/75 backdrop-blur-[2px]"
-              onClick={() => setUpgradeOpen(true)}
+              onClick={() =>
+                openUpgrade({
+                  featureContext:
+                    'Keep your MonkMode data backed up and in sync across devices with cloud storage.',
+                })
+              }
             >
               <ProBadge className="scale-110" />
               <p className="text-sm text-muted-foreground max-w-xs text-center">
@@ -57,11 +61,6 @@ export default function CloudSyncPage() {
         ) : null}
       </div>
 
-      <UpgradeModal
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        description="Keep your MonkMode data backed up and in sync across devices with cloud storage."
-      />
     </div>
   )
 }
