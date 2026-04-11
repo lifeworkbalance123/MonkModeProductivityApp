@@ -10,8 +10,86 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/context/AuthContext'
 import { getAuthCallbackBaseUrl, getAuthCallbackUrl } from '@/lib/app-origin'
+import type { AuthError } from '@supabase/supabase-js'
 import { getSupabaseConfigProblem, isSupabaseConfigured, supabase } from '@/lib/supabase'
 import { captureEvent } from '@/lib/analytics'
+
+/** Set after email/password sign-up when Supabase requires email confirmation before a session exists. */
+const PENDING_EMAIL_CONFIRM_KEY = 'monk_auth_pending_confirm_email'
+
+function readPendingConfirmEmail(): string | null {
+  if (typeof sessionStorage === 'undefined') return null
+  try {
+    const raw = sessionStorage.getItem(PENDING_EMAIL_CONFIRM_KEY)
+    if (!raw) return null
+    const row = JSON.parse(raw) as { email?: string }
+    return typeof row.email === 'string' ? row.email : null
+  } catch {
+    return null
+  }
+}
+
+function setPendingConfirmEmail(email: string) {
+  if (typeof sessionStorage === 'undefined') return
+  try {
+    sessionStorage.setItem(
+      PENDING_EMAIL_CONFIRM_KEY,
+      JSON.stringify({ email: email.trim().toLowerCase() }),
+    )
+  } catch {
+    /* private mode / quota */
+  }
+}
+
+function clearPendingConfirmEmail() {
+  if (typeof sessionStorage === 'undefined') return
+  try {
+    sessionStorage.removeItem(PENDING_EMAIL_CONFIRM_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
+function formatSignInError(error: AuthError, email: string): string {
+  const raw = error.message
+  const lower = raw.toLowerCase()
+  const code =
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof (error as { code?: string }).code === 'string'
+      ? (error as { code: string }).code
+      : ''
+
+  if (
+    lower.includes('email not confirmed') ||
+    code === 'email_not_confirmed'
+  ) {
+    return 'Confirm your email using the link we sent, then sign in again. Check spam or promotions folders.'
+  }
+
+  const pending = readPendingConfirmEmail()
+  const sameEmail = pending === email.trim().toLowerCase()
+  const looksInvalidLogin =
+    lower.includes('invalid login credentials') ||
+    lower.includes('invalid credentials')
+
+  if (looksInvalidLogin && sameEmail) {
+    return (
+      'Your account is not active until you confirm your email. Open the confirmation link from your inbox, then sign in with this password. ' +
+      'If you never received it, check spam or use “Email me a magic link” below.'
+    )
+  }
+
+  if (looksInvalidLogin) {
+    return (
+      `${raw} If you recently registered, confirm your email from the signup message before signing in. ` +
+      'Otherwise check your password or use “Email me a magic link”.'
+    )
+  }
+
+  return raw
+}
 
 function authCallbackRedirectUrl(): string {
   const site = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '')
@@ -159,9 +237,10 @@ export default function AuthPage() {
           password,
         })
         if (error) {
-          setFormError(error.message)
+          setFormError(formatSignInError(error, email.trim()))
           return
         }
+        clearPendingConfirmEmail()
         captureEvent('user_logged_in', {
           plan: 'unknown',
         })
@@ -177,12 +256,14 @@ export default function AuthPage() {
         },
       })
       if (error) {
+        clearPendingConfirmEmail()
         setFormError(error.message)
         return
       }
 
       const identities = data.user?.identities ?? []
       if (data.user && identities.length === 0) {
+        clearPendingConfirmEmail()
         setFormError(
           'This email is already registered. Sign in with your password below, or use “Email me a magic link”.',
         )
@@ -214,6 +295,7 @@ export default function AuthPage() {
       }
 
       if (session) {
+        clearPendingConfirmEmail()
         const referralCode = localStorage.getItem('referral_code')
         if (referralCode) {
           try {
@@ -232,8 +314,9 @@ export default function AuthPage() {
         router.replace('/dashboard')
         return
       }
+      setPendingConfirmEmail(email.trim())
       setSignupMessage(
-        'Check your email for a confirmation link to finish signing up. After you confirm, you can sign in here.',
+        'We sent a confirmation email. Open the link in that message before you sign in with email and password—login stays disabled until your address is confirmed.',
       )
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
