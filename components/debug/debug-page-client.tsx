@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { Navigation } from '@/components/navigation'
 import { supabase } from '@/lib/supabase'
 import { usePlan } from '@/hooks/usePlan'
-import { setUserAsProTrial } from '@/lib/devUtils'
 
 type Json = Record<string, unknown> | null
 
@@ -15,8 +14,8 @@ export function DebugPageClient() {
   const [usersError, setUsersError] = useState<string | null>(null)
   const [entitlementJson, setEntitlementJson] = useState<Json>(null)
   const [entitlementError, setEntitlementError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
+  const [proMessage, setProMessage] = useState('')
+  const [proLoading, setProLoading] = useState(false)
 
   const load = useCallback(async () => {
     setUsersError(null)
@@ -81,13 +80,26 @@ export function DebugPageClient() {
     void load()
   }, [load])
 
-  async function onEnsureTrial() {
-    setBusy(true)
-    setToast(null)
-    const r = await setUserAsProTrial()
-    setToast(r.message)
-    setBusy(false)
-    await load()
+  async function handleSetPro() {
+    setProLoading(true)
+    setProMessage('')
+    try {
+      const { setUserAsPro } = await import('@/lib/devUtils')
+      const result = await setUserAsPro()
+      setProMessage(result.message)
+      if (result.success) {
+        window.setTimeout(() => {
+          window.location.reload()
+        }, 2000)
+      } else {
+        await load()
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setProMessage('Error: ' + msg)
+    } finally {
+      setProLoading(false)
+    }
   }
 
   const canAccessPro =
@@ -105,9 +117,13 @@ export function DebugPageClient() {
           billing state.
         </p>
         <p className="text-xs text-amber-200/80">
-          For &quot;Set … Pro trial&quot; on production, set env{' '}
-          <code className="text-gray-200">ALLOW_TRIAL_DEBUG_UPSERT=1</code> on
-          the server (e.g. Vercel). Local dev works with NODE_ENV=development.
+          &quot;Set … Pro trial&quot; uses the browser Supabase client (upsert). If
+          it fails with RLS, run the migration{' '}
+          <code className="text-gray-200">
+            20260412120000_users_restore_self_update_rls.sql
+          </code>{' '}
+          (or add <code className="text-gray-200">SUPABASE_SERVICE_ROLE_KEY</code>{' '}
+          on Vercel for server routes).
         </p>
 
         <section className="space-y-2">
@@ -172,14 +188,24 @@ export function DebugPageClient() {
         <section className="space-y-3 border-t border-gray-700 pt-6">
           <button
             type="button"
-            disabled={busy}
-            onClick={() => void onEnsureTrial()}
-            className="rounded border border-amber-600/80 bg-amber-950/40 px-4 py-3 text-sm text-amber-100 hover:bg-amber-900/40 disabled:opacity-50"
+            disabled={proLoading}
+            onClick={() => void handleSetPro()}
+            className="rounded border border-amber-600/80 bg-amber-950/40 px-4 py-3 text-sm text-amber-100 hover:bg-amber-900/40 disabled:opacity-50 disabled:cursor-wait"
           >
-            {busy ? 'Working…' : 'Set current user as Pro trial (testing only)'}
+            {proLoading
+              ? 'Setting Pro trial…'
+              : 'Set current user as Pro trial (testing only)'}
           </button>
-          {toast ? (
-            <p className="text-xs text-gray-300 whitespace-pre-wrap">{toast}</p>
+          {proMessage ? (
+            <p
+              className={
+                proMessage.includes('✅')
+                  ? 'text-xs whitespace-pre-wrap text-emerald-400'
+                  : 'text-xs whitespace-pre-wrap text-red-400'
+              }
+            >
+              {proMessage}
+            </p>
           ) : null}
           <button
             type="button"

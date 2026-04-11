@@ -1,127 +1,186 @@
-import { NextResponse } from 'next/server'
-import { createServiceRoleClient } from '@/lib/supabase-service'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { NextRequest, NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * Vercel / hosting: set `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Settings → API →
+ * service_role secret) for Production, Preview, and Development. Without it, this
+ * route falls back to the anon key with the caller’s JWT so `auth.getUser` + RLS
+ * still work when policies allow the signed-in user to read their own row.
+ */
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
-type UserEntitlementRow = {
-  is_pro: boolean
-  plan: string
-  subscription_end_date: string | null
-  created_at: string | null
-  cancellation_date: string | null
-  trial_end_date: string | null
+type UsersEntitlementRow = {
+  id: string
+  email: string | null
+  is_pro: boolean | null
+  plan: string | null
   trial_start_date: string | null
+  trial_end_date: string | null
   is_trial_active: boolean | null
+  subscription_end_date: string | null
+  cancellation_date?: string | null
 }
 
-function trialEndMs(row: UserEntitlementRow | null, authCreatedAt?: string | null): number | null {
-  if (row?.trial_end_date) {
-    const t = Date.parse(row.trial_end_date)
-    return Number.isFinite(t) ? t : null
-  }
-  const base = row?.created_at ?? authCreatedAt
-  if (!base) return null
-  const start = Date.parse(base)
-  if (!Number.isFinite(start)) return null
-  return start + 14 * MS_PER_DAY
+function json(
+  body: Record<string, unknown>,
+  status: number,
+): NextResponse {
+  return NextResponse.json(body, { status })
 }
 
-function paidPlan(plan: string): boolean {
-  return plan === 'monthly' || plan === 'annual' || plan === 'lifetime'
-}
-
-/**
- * Returns verified billing state from the database (never from the client).
- * Active 14-day trial counts as Pro (plan `trial` or `free` within trial window).
- * Authorization: Bearer <Supabase access_token>
- */
-export async function GET(request: Request) {
-  let admin
+export async function GET(request: NextRequest) {
   try {
-    admin = createServiceRoleClient()
-  } catch {
-    return NextResponse.json(
-      { error: 'Server misconfigured' },
-      { status: 503 },
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
+
+    const keyToUse = serviceRoleKey || anonKey
+
+    if (!supabaseUrl || !keyToUse) {
+      return json(
+        {
+          error:
+            'Server misconfigured — missing Supabase credentials (NEXT_PUBLIC_SUPABASE_URL and a Supabase key)',
+        },
+        503,
+      )
+    }
+
+    const authHeader = request.headers.get('Authorization')
+    const token = authHeader?.replace(/^Bearer\s+/i, '').trim()
+
+    if (!token) {
+      return json({ error: 'No auth token provided' }, 401)
+    }
+
+    let supabase: SupabaseClient
+    if (serviceRoleKey) {
+      supabase = createClient(supabaseUrl, serviceRoleKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      })
+    } else if (anonKey) {
+      supabase = createClient(supabaseUrl, anonKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      })
+    } else {
+      return json(
+        {
+          error:
+            'Server misconfigured — missing Supabase credentials (NEXT_PUBLIC_SUPABASE_URL and a Supabase key)',
+        },
+        503,
+      )
+    }
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(token)
+
+    if (authError || !user) {
+      return json({ error: 'Invalid or expired token' }, 401)
+    }
+
+    const { data: userData, error: dbError } = await supabase
+      .from('users')
+      .select(
+        `
+          id,
+          email,
+          is_pro,
+          plan,
+          trial_start_date,
+          trial_end_date,
+          is_trial_active,
+          subscription_end_date,
+          cancellation_date
+        `,
+      )
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (dbError) {
+      console.error('Entitlement users select:', dbError)
+      return json(
+        { error: 'Failed to load entitlement', detail: dbError.message },
+        500,
+      )
+    }
+
+    if (!userData) {
+      const trialEnd = new Date(Date.now() + 14 * MS_PER_DAY).toISOString()
+      return json(
+        {
+          isPro: true,
+          plan: 'trial',
+          isTrial: true,
+          subscriptionEndDate: null,
+          trialEndDate: trialEnd,
+          cancellationDate: null,
+          trialExpired: false,
+          source: 'fallback — no user row found',
+        },
+        200,
+      )
+    }
+
+    const row = userData as UsersEntitlementRow
+    const now = new Date()
+    const trialEnd = row.trial_end_date ? new Date(row.trial_end_date) : null
+
+    const daysRemaining = trialEnd
+      ? Math.max(
+          0,
+          Math.ceil((trialEnd.getTime() - now.getTime()) / MS_PER_DAY),
+        )
+      : 0
+
+    const planRaw = (row.plan ?? 'free').toLowerCase()
+    const plan = ['free', 'trial', 'monthly', 'annual', 'lifetime'].includes(
+      planRaw,
     )
-  }
+      ? planRaw
+      : 'free'
 
-  const authHeader = request.headers.get('authorization')
-  const token = authHeader?.replace(/^Bearer\s+/i, '').trim()
-  if (!token) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+    const isTrialActive =
+      plan === 'trial' &&
+      trialEnd !== null &&
+      now < trialEnd &&
+      row.is_trial_active !== false
 
-  const {
-    data: { user },
-    error: authError,
-  } = await admin.auth.getUser(token)
+    const isPaidPro =
+      row.is_pro === true ||
+      plan === 'monthly' ||
+      plan === 'annual' ||
+      plan === 'lifetime'
 
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+    const isPro = isTrialActive || isPaidPro
 
-  const { data: row, error: rowError } = await admin
-    .from('users')
-    .select(
-      'is_pro, plan, subscription_end_date, created_at, cancellation_date, trial_end_date, trial_start_date, is_trial_active',
+    const trialExpired =
+      plan === 'trial' && trialEnd !== null && now >= trialEnd
+
+    return json(
+      {
+        isPro,
+        plan,
+        isTrial: isTrialActive,
+        daysRemaining,
+        trialExpired,
+        subscriptionEndDate: row.subscription_end_date,
+        trialEndDate: row.trial_end_date,
+        cancellationDate: row.cancellation_date ?? null,
+        source: 'database',
+      },
+      200,
     )
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (rowError) {
-    return NextResponse.json(
-      { error: 'Failed to load entitlement' },
-      { status: 500 },
-    )
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    console.error('Entitlement error:', err)
+    return json({ error: message }, 500)
   }
-
-  const r = row as UserEntitlementRow | null
-  const authCreated = user.created_at ?? null
-  const endMs = trialEndMs(r, authCreated)
-  const now = Date.now()
-  const inTrialWindow = endMs != null && now < endMs
-
-  if (!r) {
-    const isTrial = inTrialWindow
-    const trialEndIso = endMs != null ? new Date(endMs).toISOString() : null
-    return NextResponse.json({
-      isPro: isTrial,
-      plan: isTrial ? 'trial' : 'free',
-      subscriptionEndDate: null,
-      trialEndDate: trialEndIso,
-      isTrial,
-      cancellationDate: null,
-    })
-  }
-
-  const planRaw = (r.plan ?? 'free').toLowerCase()
-  const plan = ['free', 'trial', 'monthly', 'annual', 'lifetime'].includes(planRaw)
-    ? planRaw
-    : 'free'
-
-  const isPaidPro =
-    r.is_pro === true || paidPlan(plan)
-
-  const trialEligible =
-    (plan === 'free' || plan === 'trial') &&
-    (r.is_trial_active !== false)
-
-  const isTrial = !isPaidPro && trialEligible && inTrialWindow
-
-  const isPro = isPaidPro || isTrial
-
-  const trialEndDate =
-    endMs != null ? new Date(endMs).toISOString() : null
-
-  return NextResponse.json({
-    isPro,
-    plan,
-    subscriptionEndDate: r.subscription_end_date,
-    trialEndDate,
-    isTrial,
-    cancellationDate: r.cancellation_date,
-  })
 }
