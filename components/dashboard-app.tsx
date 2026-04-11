@@ -202,9 +202,9 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
+    <div className="mx-auto min-w-0 max-w-7xl px-4 py-8 pt-24 sm:px-6 lg:px-8">
       <GettingStartedChecklist data={data} />
-      <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-2xl">
+      <div className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-2xl sm:p-6">
         <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-xl font-semibold">{heading}</h1>
@@ -224,7 +224,7 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg hover:bg-secondary md:h-9 md:w-9"
+              className="inline-flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-lg hover:bg-secondary md:h-9 md:w-9"
               onClick={goPrevDay}
               aria-label="Previous day"
             >
@@ -236,7 +236,7 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
                   key={day}
                   type="button"
                   onClick={() => setDayIndex(idx)}
-                  className={`min-h-11 min-w-11 px-2 text-xs font-medium rounded-lg transition-colors md:min-h-0 md:min-w-0 md:px-3 md:py-1.5 ${
+                  className={`min-h-11 min-w-11 touch-manipulation px-2 text-xs font-medium rounded-lg transition-colors md:min-h-0 md:min-w-0 md:px-3 md:py-1.5 ${
                     idx === dayIndex
                       ? 'bg-accent text-accent-foreground'
                       : 'text-muted-foreground hover:bg-secondary'
@@ -248,7 +248,7 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
             </div>
             <button
               type="button"
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg hover:bg-secondary md:h-9 md:w-9"
+              className="inline-flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-lg hover:bg-secondary md:h-9 md:w-9"
               onClick={goNextDay}
               aria-label="Next day"
             >
@@ -257,11 +257,11 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <div className="w-full space-y-6 md:col-span-1 lg:col-span-2">
+        <div className="grid min-w-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="flex max-md:contents flex-col gap-6 md:col-span-1 lg:col-span-2">
             <Card
               id="dashboard-morning-gratitude"
-              className="p-4 bg-secondary/50 scroll-mt-28"
+              className="max-md:order-10 scroll-mt-28 bg-secondary/50 p-4"
             >
               <div className="flex items-center gap-2 mb-3">
                 <Sun className="w-4 h-4 text-accent" />
@@ -358,6 +358,7 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
             </Card>
 
             <TimeScheduleCard
+              className="max-md:order-30"
               timeSlots={data.timeSlots}
               onTimeSlotsChange={(timeSlots) =>
                 onChange({ ...data, timeSlots })
@@ -384,7 +385,7 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
               }}
             />
 
-            <Card className="p-4 bg-secondary/50 relative overflow-hidden">
+            <Card className="relative max-md:order-50 overflow-hidden bg-secondary/50 p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Moon className="w-4 h-4 text-accent" />
                 <span className="text-sm font-medium">
@@ -425,15 +426,18 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
             </Card>
           </div>
 
-          <div className="w-full space-y-6 md:col-span-1 lg:col-span-1">
-            <Card className="p-4">
+          <div className="flex max-md:contents flex-col gap-6 md:col-span-1 lg:col-span-1">
+            <Card className="max-md:order-20 p-4">
               <div className="flex items-center gap-2 mb-4">
                 <Target className="w-4 h-4 text-accent" />
                 <span className="font-medium">Top 5 Goals for the Day</span>
               </div>
               <div className="space-y-3">
                 {data.goals.map((goal) => (
-                  <div key={goal.id} className="flex items-start gap-3">
+                  <div
+                    key={goal.id}
+                    className="flex min-h-[44px] items-start gap-3 py-0.5 md:min-h-0 md:py-0"
+                  >
                     <Checkbox
                       checked={goal.completed}
                       onCheckedChange={() => toggleGoal(goal.id)}
@@ -449,8 +453,8 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
               </div>
             </Card>
 
-            <Card className="p-4">
-              <div className="flex items-center justify-between mb-4">
+            <Card className="max-md:order-40 p-4">
+              <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-accent" />
                   <span className="font-medium">Daily Habits</span>
@@ -476,8 +480,8 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
                   const progress = habitWeekProgress(data.habitLog, habit.id)
                   return (
                     <div key={habit.id} className="space-y-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex min-h-[44px] items-center justify-between gap-2 py-0.5 md:min-h-0 md:py-0">
+                        <div className="flex min-w-0 items-center gap-2">
                           <Checkbox
                             checked={completed}
                             onCheckedChange={() => toggleHabit(habit.id)}
@@ -500,7 +504,7 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
               </div>
             </Card>
 
-            <Card className="p-4 bg-accent/10 border-accent/30 relative overflow-hidden min-h-[88px]">
+            <Card className="relative max-md:order-60 min-h-[88px] overflow-hidden border-accent/30 bg-accent/10 p-4">
               <div
                 className={
                   analyticsAccess ? '' : 'pointer-events-none opacity-40'

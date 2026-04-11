@@ -270,13 +270,14 @@
   animation: upgrade-pro-glow 3s ease-in-out infinite;
 }
 
-/* Authenticated app: 44px minimum touch height for shadcn buttons (mobile only). */
+/* Authenticated app: 44px minimum touch targets for shadcn buttons (mobile only). */
 @media (max-width: 767px) {
   .protected-app-touch [data-slot='button'] {
     min-height: 44px;
   }
   .protected-app-touch [data-slot='button'].size-9,
-  .protected-app-touch [data-slot='button'].size-8 {
+  .protected-app-touch [data-slot='button'].size-8,
+  .protected-app-touch [data-slot='button'].size-10 {
     min-width: 44px;
     min-height: 44px;
   }

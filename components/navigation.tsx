@@ -159,7 +159,7 @@ export function Navigation() {
 
             <button
               type="button"
-              className="md:hidden inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md hover:bg-secondary"
+              className="md:hidden inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md hover:bg-secondary touch-manipulation"
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-expanded={mobileOpen}
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
@@ -198,7 +198,7 @@ export function Navigation() {
                   </p>
                   <Button
                     size="sm"
-                    className="mt-2 h-11 w-full bg-[#F59E0B] text-[#111827] hover:bg-[#F59E0B]/90 md:h-8"
+                    className="mt-2 min-h-11 w-full bg-[#F59E0B] text-[#111827] hover:bg-[#F59E0B]/90 md:h-8 md:min-h-8"
                     asChild
                   >
                     <Link href={upgradeHref} onClick={() => setMobileOpen(false)}>
@@ -243,10 +243,19 @@ export function Navigation() {
                 )
               })}
               <div className="pt-4 flex flex-col gap-2">
-                <Button variant="ghost" size="sm" className="h-11 w-full justify-center md:h-8" asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="min-h-11 w-full justify-center md:h-8 md:min-h-8"
+                  asChild
+                >
                   <Link href="/dashboard">Open app</Link>
                 </Button>
-                <Button size="sm" className="h-11 w-full bg-accent text-accent-foreground md:h-8" asChild>
+                <Button
+                  size="sm"
+                  className="min-h-11 w-full bg-accent text-accent-foreground md:h-8 md:min-h-8"
+                  asChild
+                >
                   <Link href="/dashboard">Get started</Link>
                 </Button>
               </div>

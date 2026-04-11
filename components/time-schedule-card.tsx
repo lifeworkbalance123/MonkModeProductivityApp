@@ -327,7 +327,7 @@ export function TimeScheduleCard({
         {showPlannerLink ? (
           <Link
             href="/planner"
-            className="text-xs font-medium text-accent hover:underline shrink-0"
+            className="inline-flex min-h-[44px] shrink-0 items-center text-xs font-medium text-accent hover:underline md:min-h-0"
           >
             Weekly habit grid →
           </Link>
@@ -345,7 +345,7 @@ export function TimeScheduleCard({
               type="button"
               size="sm"
               variant={increment === opt.value ? 'secondary' : 'outline'}
-              className="h-11 text-xs md:h-8"
+              className="text-xs"
               onClick={() => setIncrementAndStore(opt.value)}
             >
               {opt.label}
@@ -363,7 +363,7 @@ export function TimeScheduleCard({
               key={slot.id}
               className="rounded-lg border border-border/60 bg-secondary/20 p-2 space-y-2"
             >
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-3">
                 <select
                   value={coerced}
                   onChange={(e) =>
@@ -381,9 +381,13 @@ export function TimeScheduleCard({
                     </option>
                   ))}
                 </select>
-                <div className="flex w-full min-w-0 items-center gap-2 md:w-auto md:shrink-0">
+                <div className="flex w-full min-w-0 flex-col gap-2 md:w-auto md:shrink-0 md:flex-row md:items-center md:gap-2">
                   <div
-                    className={`h-6 w-1 shrink-0 rounded-full ${slot.colorClass}`}
+                    className={`h-6 w-1 shrink-0 rounded-full max-md:hidden md:block ${slot.colorClass}`}
+                    aria-hidden
+                  />
+                  <div
+                    className={`h-1 w-6 shrink-0 rounded-full md:hidden ${slot.colorClass}`}
                     aria-hidden
                   />
                   <select
@@ -392,7 +396,7 @@ export function TimeScheduleCard({
                       updateSlot(slot.id, { category: e.target.value })
                     }
                     aria-label="Category"
-                    className="h-11 min-w-0 flex-1 rounded-md border border-border bg-background/60 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring md:h-8 md:max-w-[9rem] md:flex-none md:shrink-0"
+                    className="h-11 w-full min-w-0 flex-1 rounded-md border border-border bg-background/60 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring md:h-8 md:max-w-[9rem] md:flex-none md:shrink-0"
                   >
                   {!TIME_SLOT_CATEGORY_OPTIONS.some(
                     (c) => c.label === slot.category,
@@ -407,8 +411,8 @@ export function TimeScheduleCard({
                   </select>
                 </div>
                 <div
-                  className="min-w-0 w-full overflow-x-auto overflow-y-hidden rounded-md border border-border bg-background/60 [scrollbar-width:thin] max-md:overflow-visible md:flex-1"
-                  title="Scroll sideways for longer activity text"
+                  className="min-w-0 w-full rounded-md border border-border bg-background/60 md:flex-1 md:overflow-x-auto md:overflow-y-hidden md:[scrollbar-width:thin]"
+                  title="Scroll sideways for longer activity text (desktop)"
                 >
                   <Input
                     ref={(el) => {
@@ -424,15 +428,15 @@ export function TimeScheduleCard({
                       width: `${timeSlotActivityWidthCh(slot.activity)}ch`,
                       maxWidth: 'none',
                     }}
-                    className="time-schedule-activity-input h-11 w-auto min-w-[28ch] max-w-none shrink-0 border-0 bg-transparent px-2 py-1 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0 rounded-none md:h-8"
+                    className="time-schedule-activity-input h-11 w-full min-w-0 border-0 bg-transparent px-2 py-1 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0 rounded-none md:h-8 md:w-auto md:min-w-[28ch] md:max-w-none md:shrink-0"
                   />
                 </div>
-                <div className="flex w-full shrink-0 items-center justify-end gap-1 self-end md:w-auto md:justify-start md:self-center">
+                <div className="flex w-full shrink-0 items-center justify-end gap-1 self-stretch pt-1 md:w-auto md:justify-start md:self-center md:pt-0">
                   <Button
                     type="button"
                     size="icon"
                     variant="ghost"
-                    className="h-11 w-11 md:h-8 md:w-8"
+                    className="md:h-8 md:w-8"
                     aria-label="Edit activity"
                     onClick={() => focusActivity(slot.id)}
                   >
@@ -442,7 +446,7 @@ export function TimeScheduleCard({
                     type="button"
                     size="icon"
                     variant="ghost"
-                    className="h-11 w-11 text-destructive hover:text-destructive md:h-8 md:w-8"
+                    className="text-destructive hover:text-destructive md:h-8 md:w-8"
                     aria-label="Remove time block"
                     onClick={() => deleteSlot(slot.id)}
                   >
@@ -488,7 +492,7 @@ export function TimeScheduleCard({
                         type="button"
                         size="sm"
                         variant="secondary"
-                        className="h-11 shrink-0 text-xs md:h-8"
+                        className="w-full shrink-0 text-xs md:h-8 md:w-auto"
                         disabled={repeat.days.length === 0}
                         onClick={() => void applyRepeat(slot)}
                       >
@@ -508,7 +512,7 @@ export function TimeScheduleCard({
           type="button"
           variant="outline"
           size="sm"
-          className="h-11 w-full gap-1.5 md:h-8 md:w-auto"
+          className="w-full gap-1.5 md:h-8 md:w-auto"
           onClick={addEmptyRow}
         >
           <Plus className="h-4 w-4" aria-hidden />
