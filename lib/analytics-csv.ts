@@ -1,6 +1,7 @@
 import { format } from 'date-fns'
 import type { MonkData } from '@/lib/monk-types'
 import type { DeepWorkSession } from '@/lib/deep-work-sessions'
+import { readGoalDailySnapshots } from '@/lib/goal-daily-snapshots'
 
 function escapeCsv(s: string) {
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`
@@ -36,6 +37,12 @@ export function buildAnalyticsCsvExport(
         g.completed ? 'completed' : 'open',
         escapeCsv(g.id),
       ].join(','),
+    )
+  }
+
+  for (const [date, s] of Object.entries(readGoalDailySnapshots())) {
+    lines.push(
+      ['goal_snapshot', date, String(s.completed), String(s.total)].join(','),
     )
   }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigation } from '@/components/navigation'
 import { useUpgradeOffer } from '@/context/UpgradeOfferContext'
 import { useToast } from '@/context/ToastContext'
@@ -25,6 +25,7 @@ import {
   KANBAN_GOAL_COMPLETED_EVENT,
   type KanbanGoalCompletedDetail,
 } from '@/lib/kanban-events'
+import { recordTodayGoalSnapshot } from '@/lib/goal-daily-snapshots'
 
 const checkClass =
   'border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent data-[state=checked]:text-accent-foreground'
@@ -46,6 +47,11 @@ export default function GoalsPage() {
 
   const atGoalLimit =
     !planLoading && !isPro && data.goals.length >= FREE_GOAL_LIMIT
+
+  useEffect(() => {
+    if (!ready) return
+    recordTodayGoalSnapshot(data.goals)
+  }, [ready, data.goals])
 
   async function addGoal() {
     const text = draft.trim()

@@ -25,6 +25,7 @@ import {
   shouldSyncToCloud,
   type DataServiceContext,
 } from '@/lib/dataService'
+import { readGoalDailySnapshots } from '@/lib/goal-daily-snapshots'
 
 export type HabitCompletionDay = {
   date: string
@@ -152,9 +153,57 @@ export function getGoalCompletionData(
   days: AnalyticsPeriod,
   monk: MonkData,
 ): GoalCompletionDay[] {
-  return getHabitCompletionData(userId, isPro, days, monk).map((row) => ({
-    ...row,
-  }))
+  void userId
+  void isPro
+  const { start, end } = windowBounds(days, monk.habitLog)
+  const todayKey = format(startOfDay(new Date()), 'yyyy-MM-dd')
+  const snaps = readGoalDailySnapshots()
+  const gt = monk.goals.length
+  const out: GoalCompletionDay[] = []
+
+  for (const d of eachDayOfInterval({ start, end })) {
+    const key = format(d, 'yyyy-MM-dd')
+    const snap = snaps[key]
+    if (snap && snap.total > 0) {
+      const pct = Math.min(100, Math.round((snap.completed / snap.total) * 100))
+      out.push({
+        date: key,
+        completed: snap.completed,
+        total: snap.total,
+        percentage: pct,
+      })
+      continue
+    }
+    if (key === todayKey && gt > 0) {
+      const completed = monk.goals.filter((g) => g.completed).length
+      out.push({
+        date: key,
+        completed,
+        total: gt,
+        percentage: Math.round((completed / gt) * 100),
+      })
+      continue
+    }
+    if (gt > 0) {
+      const h = habitDayStats(monk, key)
+      const completed = Math.min(gt, Math.round((h.percentage / 100) * gt))
+      out.push({
+        date: key,
+        completed,
+        total: gt,
+        percentage: Math.round((completed / gt) * 100),
+      })
+    } else {
+      const h = habitDayStats(monk, key)
+      out.push({
+        date: key,
+        completed: h.completed,
+        total: h.total,
+        percentage: h.percentage,
+      })
+    }
+  }
+  return out
 }
 
 export function getDeepWorkData(

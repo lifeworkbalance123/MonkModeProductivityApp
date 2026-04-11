@@ -60,6 +60,7 @@ import {
   buildSampleWeeklyBar,
 } from '@/lib/analytics-sample-data'
 import { generateInsights, type InsightItem } from '@/lib/generateInsights'
+import { recordTodayGoalSnapshot } from '@/lib/goal-daily-snapshots'
 import type { MonkData } from '@/lib/monk-types'
 import type { DeepWorkSession } from '@/lib/deep-work-sessions'
 import { cn } from '@/lib/utils'
@@ -213,6 +214,11 @@ export function AnalyticsPageClient() {
   useEffect(() => {
     setTargetHours(getDeepWorkWeeklyTargetHours())
   }, [])
+
+  useEffect(() => {
+    if (!ready) return
+    recordTodayGoalSnapshot(data.goals)
+  }, [ready, data.goals])
 
   const goalSeries = useMemo(
     () => getGoalCompletionData(uid, isProUser, period, data),
@@ -481,18 +487,32 @@ export function AnalyticsPageClient() {
                     <h2 className="text-base font-semibold">
                       Goal completion trend
                     </h2>
-                    <p
-                      className={cn(
-                        'text-sm font-medium',
-                        goalTrendDiff >= 0 ? 'text-emerald-500' : 'text-red-400',
-                      )}
-                    >
-                      {goalTrendDiff >= 0 ? '📈' : '📉'} Goal completion{' '}
-                      {goalTrendDiff >= 0 ? 'improving' : 'declining'} (
-                      {goalTrendDiff >= 0 ? '+' : '−'}
-                      {Math.abs(Math.round(goalTrendDiff))}% vs last week)
-                    </p>
+                    {goalSeries.length >= 14 ? (
+                      <p
+                        className={cn(
+                          'text-sm font-medium',
+                          goalTrendDiff >= 0
+                            ? 'text-emerald-500'
+                            : 'text-red-400',
+                        )}
+                      >
+                        {goalTrendDiff >= 0 ? '📈' : '📉'} Goal completion{' '}
+                        {goalTrendDiff >= 0 ? 'improving' : 'declining'} (
+                        {goalTrendDiff >= 0 ? '+' : '−'}
+                        {Math.abs(Math.round(goalTrendDiff))}% vs last week)
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Pick a range of at least 14 days for a week-over-week
+                        summary.
+                      </p>
+                    )}
                   </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Daily goal totals are saved on this device when you open
+                    Goals or Analytics. Days before tracking use habit
+                    completion as an estimate.
+                  </p>
                   <div className="mt-4 h-72 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={chartGoal}>
