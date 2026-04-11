@@ -20,26 +20,6 @@ export default function ProtectedLayoutClient({
     }
   }, [isLoading, session, router])
 
-  useEffect(() => {
-    if (isLoading || !session) return
-    const referralCode = localStorage.getItem('referral_code')
-    if (!referralCode) return
-    void (async () => {
-      try {
-        await fetch('/api/referral/claim', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ referralCode }),
-        })
-      } finally {
-        localStorage.removeItem('referral_code')
-      }
-    })()
-  }, [isLoading, session])
-
   if (isLoading || !session) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center pt-16">
