@@ -6,7 +6,12 @@ import { supabase } from '@/lib/supabase'
 
 const ENTITLEMENT_REFRESH = 'monkmode-entitlement-refresh'
 
-export type EntitlementPlan = 'free' | 'monthly' | 'annual' | 'lifetime'
+export type EntitlementPlan =
+  | 'free'
+  | 'trial'
+  | 'monthly'
+  | 'annual'
+  | 'lifetime'
 
 type EntitlementResponse = {
   isPro: boolean
@@ -17,8 +22,29 @@ type EntitlementResponse = {
   cancellationDate?: string | null
 }
 
+function trialDaysRemaining(trialEndIso: string | null): number {
+  if (!trialEndIso) return 0
+  const end = Date.parse(trialEndIso)
+  if (!Number.isFinite(end)) return 0
+  return Math.max(0, Math.ceil((end - Date.now()) / (24 * 60 * 60 * 1000)))
+}
+
+function computeTrialExpired(
+  isPro: boolean,
+  trialEndIso: string | null,
+  plan: EntitlementPlan,
+): boolean {
+  if (isPro) return false
+  if (!trialEndIso) return false
+  const end = Date.parse(trialEndIso)
+  if (!Number.isFinite(end)) return false
+  if (Date.now() < end) return false
+  return plan === 'trial' || plan === 'free'
+}
+
 /**
  * Server-verified plan from GET /api/user/entitlement (database source of truth).
+ * `isPro` is true for paid Pro and for users inside the active 14-day trial window.
  */
 export function usePlan() {
   const { user, isLoading: authLoading } = useAuth()
@@ -80,7 +106,13 @@ export function usePlan() {
     const data = (await res.json()) as EntitlementResponse
     const p = (data.plan ?? 'free').toLowerCase()
     const normalized: EntitlementPlan =
-      p === 'monthly' || p === 'annual' || p === 'lifetime' || p === 'free' ? p : 'free'
+      p === 'monthly' ||
+      p === 'annual' ||
+      p === 'lifetime' ||
+      p === 'trial' ||
+      p === 'free'
+        ? (p as EntitlementPlan)
+        : 'free'
 
     setIsPro(!!data.isPro)
     setPlan(normalized)
@@ -142,6 +174,8 @@ export function usePlan() {
   }, [fetchEntitlement])
 
   const isLoading = authLoading || planLoading
+  const daysRemaining = trialDaysRemaining(trialEndDate)
+  const trialExpired = computeTrialExpired(isPro, trialEndDate, plan)
 
   return {
     isPro,
@@ -151,6 +185,8 @@ export function usePlan() {
     trialEndDate,
     isTrial,
     cancellationDate,
+    daysRemaining,
+    trialExpired,
   }
 }
 

@@ -3,16 +3,38 @@ import { createServiceRoleClient } from '@/lib/supabase-service'
 
 export const dynamic = 'force-dynamic'
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+
 type UserEntitlementRow = {
   is_pro: boolean
   plan: string
   subscription_end_date: string | null
   created_at: string | null
   cancellation_date: string | null
+  trial_end_date: string | null
+  trial_start_date: string | null
+  is_trial_active: boolean | null
+}
+
+function trialEndMs(row: UserEntitlementRow | null, authCreatedAt?: string | null): number | null {
+  if (row?.trial_end_date) {
+    const t = Date.parse(row.trial_end_date)
+    return Number.isFinite(t) ? t : null
+  }
+  const base = row?.created_at ?? authCreatedAt
+  if (!base) return null
+  const start = Date.parse(base)
+  if (!Number.isFinite(start)) return null
+  return start + 14 * MS_PER_DAY
+}
+
+function paidPlan(plan: string): boolean {
+  return plan === 'monthly' || plan === 'annual' || plan === 'lifetime'
 }
 
 /**
  * Returns verified billing state from the database (never from the client).
+ * Active 14-day trial counts as Pro (plan `trial` or `free` within trial window).
  * Authorization: Bearer <Supabase access_token>
  */
 export async function GET(request: Request) {
@@ -43,7 +65,9 @@ export async function GET(request: Request) {
 
   const { data: row, error: rowError } = await admin
     .from('users')
-    .select('is_pro, plan, subscription_end_date, created_at, cancellation_date')
+    .select(
+      'is_pro, plan, subscription_end_date, created_at, cancellation_date, trial_end_date, trial_start_date, is_trial_active',
+    )
     .eq('id', user.id)
     .maybeSingle()
 
@@ -55,32 +79,46 @@ export async function GET(request: Request) {
   }
 
   const r = row as UserEntitlementRow | null
+  const authCreated = user.created_at ?? null
+  const endMs = trialEndMs(r, authCreated)
+  const now = Date.now()
+  const inTrialWindow = endMs != null && now < endMs
+
   if (!r) {
+    const isTrial = inTrialWindow
+    const trialEndIso = endMs != null ? new Date(endMs).toISOString() : null
     return NextResponse.json({
-      isPro: false,
-      plan: 'free',
+      isPro: isTrial,
+      plan: isTrial ? 'trial' : 'free',
       subscriptionEndDate: null,
+      trialEndDate: trialEndIso,
+      isTrial,
+      cancellationDate: null,
     })
   }
 
-  const plan = (r.plan ?? 'free').toLowerCase()
-  const isPro =
-    r.is_pro === true ||
-    plan === 'monthly' ||
-    plan === 'annual' ||
-    plan === 'lifetime'
+  const planRaw = (r.plan ?? 'free').toLowerCase()
+  const plan = ['free', 'trial', 'monthly', 'annual', 'lifetime'].includes(planRaw)
+    ? planRaw
+    : 'free'
 
-  const trialEndDate = r.created_at
-    ? new Date(Date.parse(r.created_at) + 14 * 24 * 60 * 60 * 1000).toISOString()
-    : null
-  const isTrial =
-    plan === 'free' &&
-    !!trialEndDate &&
-    Date.now() < Date.parse(trialEndDate)
+  const isPaidPro =
+    r.is_pro === true || paidPlan(plan)
+
+  const trialEligible =
+    (plan === 'free' || plan === 'trial') &&
+    (r.is_trial_active !== false)
+
+  const isTrial = !isPaidPro && trialEligible && inTrialWindow
+
+  const isPro = isPaidPro || isTrial
+
+  const trialEndDate =
+    endMs != null ? new Date(endMs).toISOString() : null
 
   return NextResponse.json({
     isPro,
-    plan: ['free', 'monthly', 'annual', 'lifetime'].includes(plan) ? plan : 'free',
+    plan,
     subscriptionEndDate: r.subscription_end_date,
     trialEndDate,
     isTrial,
