@@ -8,6 +8,11 @@ import { supabase } from '@/lib/supabase'
 import { computeStreak } from '@/lib/monk-streak'
 import type { Goal, Habit, HabitLog, MonkData, TimeSlot } from '@/lib/monk-types'
 import { defaultMonkData, loadMonk, saveMonk } from '@/lib/monk-storage'
+import type {
+  PersonalTrainingCategory,
+  PersonalTrainingResource,
+} from '@/lib/personal-training-resources'
+import type { DeepWorkSession } from '@/lib/deep-work-sessions'
 
 export type DataServiceContext = {
   userId: string | null
@@ -796,4 +801,130 @@ export async function setHabitCompletion(
   }
 
   await updateStreak(ctx, nextHabitLog)
+}
+
+function normalizePersonalTrainingCategory(
+  c: string | null | undefined,
+): PersonalTrainingCategory {
+  if (c === 'Video' || c === 'Article' || c === 'Podcast' || c === 'Other') return c
+  return 'Other'
+}
+
+export async function listPersonalTrainingResources(
+  ctx: DataServiceContext,
+): Promise<PersonalTrainingResource[]> {
+  if (!shouldSyncToCloud(ctx) || !ctx.userId) return []
+  const { data, error } = await supabase
+    .from('user_training_resources')
+    .select('id,title,resource_url,notes,category')
+    .eq('user_id', ctx.userId)
+    .order('created_at', { ascending: true })
+  if (error) {
+    console.error(error)
+    return []
+  }
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    title: r.title ?? '',
+    url: (r as { resource_url?: string }).resource_url ?? '',
+    notes: (r as { notes?: string }).notes ?? '',
+    category: normalizePersonalTrainingCategory(
+      (r as { category?: string }).category,
+    ),
+  }))
+}
+
+export async function upsertPersonalTrainingResource(
+  ctx: DataServiceContext,
+  resource: PersonalTrainingResource,
+): Promise<{ error: string | null }> {
+  if (!shouldSyncToCloud(ctx) || !ctx.userId) return { error: null }
+  const { error } = await supabase.from('user_training_resources').upsert(
+    {
+      id: resource.id,
+      user_id: ctx.userId,
+      title: resource.title,
+      resource_url: resource.url,
+      notes: resource.notes,
+      category: resource.category,
+    },
+    { onConflict: 'id' },
+  )
+  if (error) {
+    console.error(error)
+    return { error: error.message }
+  }
+  return { error: null }
+}
+
+export async function deletePersonalTrainingResource(
+  ctx: DataServiceContext,
+  id: string,
+): Promise<void> {
+  if (!shouldSyncToCloud(ctx) || !ctx.userId) return
+  await supabase
+    .from('user_training_resources')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', ctx.userId)
+}
+
+export async function listDeepWorkSessions(
+  ctx: DataServiceContext,
+): Promise<DeepWorkSession[]> {
+  if (!shouldSyncToCloud(ctx) || !ctx.userId) return []
+  const { data, error } = await supabase
+    .from('deep_work_sessions')
+    .select(
+      'id,user_id,session_date,task_name,duration_minutes,completed,result,sprint_number,created_at',
+    )
+    .eq('user_id', ctx.userId)
+    .order('created_at', { ascending: false })
+    .limit(500)
+  if (error) {
+    console.error(error)
+    return []
+  }
+  return (data ?? []).map((row) => {
+    const r = row as Record<string, unknown>
+    const result = r.result as string | null
+    const normalizedResult =
+      result === 'crushed' || result === 'progress' || result === 'distracted'
+        ? result
+        : null
+    return {
+      id: String(r.id),
+      user_id: String(r.user_id ?? ''),
+      date: String(r.session_date ?? ''),
+      task_name: String(r.task_name ?? ''),
+      duration_minutes: Number(r.duration_minutes ?? 0),
+      completed: Boolean(r.completed),
+      result: normalizedResult,
+      sprint_number: Number(r.sprint_number ?? 1),
+      created_at: String(r.created_at ?? new Date().toISOString()),
+    }
+  })
+}
+
+export async function insertDeepWorkSession(
+  ctx: DataServiceContext,
+  session: DeepWorkSession,
+): Promise<{ error: string | null }> {
+  if (!shouldSyncToCloud(ctx) || !ctx.userId) return { error: null }
+  const { error } = await supabase.from('deep_work_sessions').insert({
+    id: session.id,
+    user_id: ctx.userId,
+    session_date: session.date,
+    task_name: session.task_name,
+    duration_minutes: session.duration_minutes,
+    completed: session.completed,
+    result: session.result,
+    sprint_number: session.sprint_number,
+    created_at: session.created_at,
+  })
+  if (error) {
+    console.error(error)
+    return { error: error.message }
+  }
+  return { error: null }
 }

@@ -21,8 +21,8 @@ import {
   Flame,
   LayoutGrid,
   BarChart3,
-  Brain,
   Cloud,
+  Timer,
 } from "lucide-react"
 
 type IconType = typeof LayoutDashboard
@@ -58,14 +58,7 @@ const navItems: NavItem[] = [
       "Track streaks, completion rates, and trends to understand how your habits compound.",
   },
   { href: "/training", label: "Training", icon: PlayCircle },
-  {
-    href: "/deep-work",
-    label: "Deep Work",
-    icon: Brain,
-    proOnly: true,
-    proDescription:
-      "Structured focus sessions with timers and guardrails to protect uninterrupted deep work.",
-  },
+  { href: "/focus", label: "Focus", icon: Timer },
   {
     href: "/sync",
     label: "Cloud sync",
@@ -167,7 +160,7 @@ export function Navigation() {
 
             <button
               type="button"
-              className="md:hidden p-2 rounded-md hover:bg-secondary"
+              className="md:hidden inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md hover:bg-secondary"
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-expanded={mobileOpen}
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
@@ -206,7 +199,7 @@ export function Navigation() {
                   </p>
                   <Button
                     size="sm"
-                    className="mt-2 w-full bg-[#F59E0B] text-[#111827] hover:bg-[#F59E0B]/90"
+                    className="mt-2 h-11 w-full bg-[#F59E0B] text-[#111827] hover:bg-[#F59E0B]/90 md:h-8"
                     asChild
                   >
                     <Link href={upgradeHref} onClick={() => setMobileOpen(false)}>
@@ -223,7 +216,7 @@ export function Navigation() {
                     <button
                       key={item.label}
                       type="button"
-                      className="flex w-full items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md hover:bg-secondary text-left relative"
+                      className="flex min-h-11 w-full items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md hover:bg-secondary text-left relative"
                       onClick={() => {
                         openProUpgrade(
                           item.proDescription ??
@@ -242,7 +235,7 @@ export function Navigation() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md hover:bg-secondary"
+                    className="flex min-h-11 items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-md hover:bg-secondary"
                     onClick={() => setMobileOpen(false)}
                   >
                     <Icon className="w-4 h-4 shrink-0" />
@@ -251,10 +244,10 @@ export function Navigation() {
                 )
               })}
               <div className="pt-4 flex flex-col gap-2">
-                <Button variant="ghost" size="sm" className="w-full justify-center" asChild>
+                <Button variant="ghost" size="sm" className="h-11 w-full justify-center md:h-8" asChild>
                   <Link href="/dashboard">Open app</Link>
                 </Button>
-                <Button size="sm" className="w-full bg-accent text-accent-foreground" asChild>
+                <Button size="sm" className="h-11 w-full bg-accent text-accent-foreground md:h-8" asChild>
                   <Link href="/dashboard">Get started</Link>
                 </Button>
               </div>
