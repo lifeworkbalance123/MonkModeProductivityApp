@@ -48,12 +48,26 @@ export default function AuthCallbackPage() {
     void (async () => {
       try {
         const url = new URL(window.location.href)
+        const oauthErr = url.searchParams.get('error_description') ?? url.searchParams.get('error')
+        if (oauthErr) {
+          if (alive) {
+            router.replace(
+              `/auth?auth_error_description=${encodeURIComponent(oauthErr)}`,
+            )
+          }
+          return
+        }
+
         const code = url.searchParams.get('code')
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code)
           if (error) {
             console.error('exchangeCodeForSession', error)
-            if (alive) router.replace('/auth')
+            if (alive) {
+              router.replace(
+                `/auth?auth_error_description=${encodeURIComponent(error.message)}`,
+              )
+            }
             return
           }
         }
@@ -85,7 +99,12 @@ export default function AuthCallbackPage() {
         await finishSession()
       } catch (e) {
         console.error('auth callback', e)
-        if (alive) router.replace('/auth')
+        const msg = e instanceof Error ? e.message : 'Could not complete sign-in'
+        if (alive) {
+          router.replace(
+            `/auth?auth_error_description=${encodeURIComponent(msg)}`,
+          )
+        }
       }
     })()
 

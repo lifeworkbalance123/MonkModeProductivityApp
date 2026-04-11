@@ -71,6 +71,18 @@ export default function AuthPage() {
   }, [])
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const desc = params.get('auth_error_description')
+    if (!desc) return
+    setFormError(desc)
+    const clean = new URL(window.location.href)
+    clean.searchParams.delete('auth_error_description')
+    clean.searchParams.delete('auth_error')
+    window.history.replaceState({}, '', clean.pathname + clean.search)
+  }, [])
+
+  useEffect(() => {
     if (authBootstrapping) return
     if (session) {
       router.replace('/dashboard')
@@ -220,7 +232,7 @@ export default function AuthPage() {
         return
       }
       setMagicMessage(
-        'If an account exists for this email, you will receive a magic link shortly.',
+        'Check your email for a magic link. You can use it to sign in or create an account from this page.',
       )
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
@@ -467,6 +479,10 @@ export default function AuthPage() {
               {magicMessage}
             </p>
           ) : null}
+          <p className="text-xs text-muted-foreground">
+            Open the magic link in this same browser and device (the link is tied
+            to the security step started here).
+          </p>
           <Button
             type="submit"
             variant="secondary"
