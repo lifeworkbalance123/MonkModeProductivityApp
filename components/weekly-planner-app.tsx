@@ -83,7 +83,7 @@ export function WeeklyPlannerApp({
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
-      <div className="flex items-center justify-between gap-4 mb-6">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Weekly habit planner</h1>
           <p className="text-sm text-muted-foreground">
@@ -92,14 +92,14 @@ export function WeeklyPlannerApp({
               : `Today (${todayLabel}) — Free plan shows today only`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2 md:justify-end">
           {navDisabled ? (
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="inline-flex">
                   <button
                     type="button"
-                    className="p-2 rounded-lg border border-border opacity-50 cursor-not-allowed"
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border opacity-50 cursor-not-allowed md:h-9 md:w-9"
                     disabled
                     aria-label="Previous week"
                   >
@@ -112,7 +112,7 @@ export function WeeklyPlannerApp({
           ) : (
             <button
               type="button"
-              className="p-2 rounded-lg border border-border hover:bg-secondary"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border hover:bg-secondary md:h-9 md:w-9"
               onClick={() => setWeekOffset((w) => w - 1)}
               aria-label="Previous week"
             >
@@ -125,7 +125,7 @@ export function WeeklyPlannerApp({
                 <span className="inline-flex">
                   <button
                     type="button"
-                    className="px-3 py-1.5 text-sm rounded-lg border border-border opacity-50 cursor-not-allowed"
+                    className="min-h-11 rounded-lg border border-border px-3 text-sm opacity-50 cursor-not-allowed md:min-h-0 md:py-1.5"
                     disabled
                   >
                     This week
@@ -137,7 +137,7 @@ export function WeeklyPlannerApp({
           ) : (
             <button
               type="button"
-              className="px-3 py-1.5 text-sm rounded-lg border border-border hover:bg-secondary"
+              className="min-h-11 rounded-lg border border-border px-3 text-sm hover:bg-secondary md:min-h-0 md:py-1.5"
               onClick={() => setWeekOffset(0)}
             >
               This week
@@ -149,7 +149,7 @@ export function WeeklyPlannerApp({
                 <span className="inline-flex">
                   <button
                     type="button"
-                    className="p-2 rounded-lg border border-border opacity-50 cursor-not-allowed"
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border opacity-50 cursor-not-allowed md:h-9 md:w-9"
                     disabled
                     aria-label="Next week"
                   >
@@ -162,7 +162,7 @@ export function WeeklyPlannerApp({
           ) : (
             <button
               type="button"
-              className="p-2 rounded-lg border border-border hover:bg-secondary"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border hover:bg-secondary md:h-9 md:w-9"
               onClick={() => setWeekOffset((w) => w + 1)}
               aria-label="Next week"
             >

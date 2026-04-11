@@ -122,7 +122,7 @@ export function GettingStartedChecklist({ data }: { data: MonkData }) {
           </span>
           <button
             type="button"
-            className="text-left font-medium text-accent hover:underline"
+            className="min-h-11 w-full rounded-md py-2 text-left font-medium text-accent hover:underline md:min-h-0 md:w-auto md:py-0"
             onClick={() => {
               document
                 .getElementById('dashboard-morning-gratitude')

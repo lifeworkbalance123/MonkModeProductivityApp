@@ -19,7 +19,6 @@ import {
   Menu,
   X,
   Flame,
-  LayoutGrid,
   BarChart3,
   Cloud,
   Timer,
@@ -44,7 +43,7 @@ const navItems: NavItem[] = [
   {
     href: "/kanban",
     label: "Kanban",
-    icon: LayoutGrid,
+    icon: LayoutDashboard,
     proOnly: true,
     proDescription:
       "Organize your tasks on a drag-and-drop board so you can see workflow at a glance.",

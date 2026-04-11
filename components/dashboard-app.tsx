@@ -205,7 +205,7 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
       <GettingStartedChecklist data={data} />
       <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-2xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-xl font-semibold">{heading}</h1>
             <p className="text-sm text-muted-foreground">
@@ -214,7 +214,7 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
                 <button
                   type="button"
                   onClick={jumpToToday}
-                  className="ml-2 text-accent underline-offset-2 hover:underline font-medium"
+                  className="ml-2 inline-flex min-h-11 items-center text-accent underline-offset-2 hover:underline font-medium md:min-h-0"
                 >
                   Today
                 </button>
@@ -224,19 +224,19 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              className="p-2 rounded-lg hover:bg-secondary"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg hover:bg-secondary md:h-9 md:w-9"
               onClick={goPrevDay}
               aria-label="Previous day"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <div className="flex gap-1 flex-wrap">
+            <div className="flex min-w-0 flex-1 flex-wrap justify-center gap-1 md:flex-none md:justify-start">
               {daysShort.map((day, idx) => (
                 <button
                   key={day}
                   type="button"
                   onClick={() => setDayIndex(idx)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                  className={`min-h-11 min-w-11 px-2 text-xs font-medium rounded-lg transition-colors md:min-h-0 md:min-w-0 md:px-3 md:py-1.5 ${
                     idx === dayIndex
                       ? 'bg-accent text-accent-foreground'
                       : 'text-muted-foreground hover:bg-secondary'
@@ -248,7 +248,7 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
             </div>
             <button
               type="button"
-              className="p-2 rounded-lg hover:bg-secondary"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg hover:bg-secondary md:h-9 md:w-9"
               onClick={goNextDay}
               aria-label="Next day"
             >
@@ -257,8 +257,8 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="w-full space-y-6 md:col-span-1 lg:col-span-2">
             <Card
               id="dashboard-morning-gratitude"
               className="p-4 bg-secondary/50 scroll-mt-28"
@@ -306,7 +306,7 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-1.5 text-xs font-medium rounded-md border border-border bg-background px-2 py-1.5 hover:bg-secondary"
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-medium hover:bg-secondary md:min-h-0 md:px-2 md:py-1.5"
                   >
                     <Video className="w-3.5 h-3.5" />
                     Upload video
@@ -425,7 +425,7 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
             </Card>
           </div>
 
-          <div className="space-y-6">
+          <div className="w-full space-y-6 md:col-span-1 lg:col-span-1">
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-4">
                 <Target className="w-4 h-4 text-accent" />
@@ -521,7 +521,7 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
                   {userId ? (
                     <Link
                       href={`/share/${userId}`}
-                      className="inline-flex items-center gap-1 rounded-md border border-[#F59E0B]/60 px-2.5 py-1.5 text-xs font-medium text-[#F59E0B] hover:bg-[#F59E0B]/10"
+                      className="inline-flex min-h-11 items-center gap-1 rounded-md border border-[#F59E0B]/60 px-3 text-xs font-medium text-[#F59E0B] hover:bg-[#F59E0B]/10 md:min-h-0 md:px-2.5 md:py-1.5"
                     >
                       <Share2 className="h-3.5 w-3.5" />
                       Share your streak

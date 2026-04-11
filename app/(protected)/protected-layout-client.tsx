@@ -32,5 +32,5 @@ export default function ProtectedLayoutClient({
     )
   }
 
-  return <>{children}</>
+  return <div className="min-h-screen protected-app-touch">{children}</div>
 }

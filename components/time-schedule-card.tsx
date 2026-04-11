@@ -319,7 +319,7 @@ export function TimeScheduleCard({
         </span>
       ) : null}
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-3 pr-16">
+      <div className="mb-3 flex flex-col gap-2 pr-16 md:flex-row md:items-start md:justify-between">
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-accent shrink-0" />
           <span className="font-medium">Time Schedule</span>
@@ -334,7 +334,7 @@ export function TimeScheduleCard({
         ) : null}
       </div>
 
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <span className="text-xs text-muted-foreground shrink-0">
           Time increments:
         </span>
@@ -345,7 +345,7 @@ export function TimeScheduleCard({
               type="button"
               size="sm"
               variant={increment === opt.value ? 'secondary' : 'outline'}
-              className="h-8 text-xs"
+              className="h-11 text-xs md:h-8"
               onClick={() => setIncrementAndStore(opt.value)}
             >
               {opt.label}
@@ -363,14 +363,14 @@ export function TimeScheduleCard({
               key={slot.id}
               className="rounded-lg border border-border/60 bg-secondary/20 p-2 space-y-2"
             >
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
                 <select
                   value={coerced}
                   onChange={(e) =>
                     updateSlot(slot.id, { time: e.target.value })
                   }
                   aria-label="Time"
-                  className="h-8 w-[7.25rem] shrink-0 rounded-md border border-border bg-background/60 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="h-11 w-full shrink-0 rounded-md border border-border bg-background/60 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring md:h-8 md:w-[7.25rem]"
                 >
                   {!timeOptions.some((o) => o.value === slot.time) ? (
                     <option value={slot.time}>{slot.time}</option>
@@ -381,31 +381,33 @@ export function TimeScheduleCard({
                     </option>
                   ))}
                 </select>
-                <div
-                  className={`w-1 h-6 rounded-full shrink-0 ${slot.colorClass}`}
-                  aria-hidden
-                />
-                <select
-                  value={slot.category}
-                  onChange={(e) =>
-                    updateSlot(slot.id, { category: e.target.value })
-                  }
-                  aria-label="Category"
-                  className="h-8 max-w-[9rem] shrink-0 rounded-md border border-border bg-background/60 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                >
+                <div className="flex w-full min-w-0 items-center gap-2 md:w-auto md:shrink-0">
+                  <div
+                    className={`h-6 w-1 shrink-0 rounded-full ${slot.colorClass}`}
+                    aria-hidden
+                  />
+                  <select
+                    value={slot.category}
+                    onChange={(e) =>
+                      updateSlot(slot.id, { category: e.target.value })
+                    }
+                    aria-label="Category"
+                    className="h-11 min-w-0 flex-1 rounded-md border border-border bg-background/60 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring md:h-8 md:max-w-[9rem] md:flex-none md:shrink-0"
+                  >
                   {!TIME_SLOT_CATEGORY_OPTIONS.some(
                     (c) => c.label === slot.category,
                   ) ? (
                     <option value={slot.category}>{slot.category}</option>
                   ) : null}
-                  {TIME_SLOT_CATEGORY_OPTIONS.map((c) => (
-                    <option key={c.label} value={c.label}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
+                    {TIME_SLOT_CATEGORY_OPTIONS.map((c) => (
+                      <option key={c.label} value={c.label}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div
-                  className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden rounded-md border border-border bg-background/60 [scrollbar-width:thin]"
+                  className="min-w-0 w-full overflow-x-auto overflow-y-hidden rounded-md border border-border bg-background/60 [scrollbar-width:thin] max-md:overflow-visible md:flex-1"
                   title="Scroll sideways for longer activity text"
                 >
                   <Input
@@ -422,15 +424,15 @@ export function TimeScheduleCard({
                       width: `${timeSlotActivityWidthCh(slot.activity)}ch`,
                       maxWidth: 'none',
                     }}
-                    className="h-8 w-auto min-w-[28ch] max-w-none shrink-0 border-0 bg-transparent px-2 py-1 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0 rounded-none"
+                    className="time-schedule-activity-input h-11 w-auto min-w-[28ch] max-w-none shrink-0 border-0 bg-transparent px-2 py-1 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0 rounded-none md:h-8"
                   />
                 </div>
-                <div className="flex items-center gap-1 shrink-0 self-end sm:self-center">
+                <div className="flex w-full shrink-0 items-center justify-end gap-1 self-end md:w-auto md:justify-start md:self-center">
                   <Button
                     type="button"
                     size="icon"
                     variant="ghost"
-                    className="h-8 w-8"
+                    className="h-11 w-11 md:h-8 md:w-8"
                     aria-label="Edit activity"
                     onClick={() => focusActivity(slot.id)}
                   >
@@ -440,7 +442,7 @@ export function TimeScheduleCard({
                     type="button"
                     size="icon"
                     variant="ghost"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    className="h-11 w-11 text-destructive hover:text-destructive md:h-8 md:w-8"
                     aria-label="Remove time block"
                     onClick={() => deleteSlot(slot.id)}
                   >
@@ -450,7 +452,7 @@ export function TimeScheduleCard({
               </div>
 
               {onApplyTimeBlockToWeek ? (
-                <div className="flex flex-col gap-2 border-l-2 border-border/50 pl-2 sm:pl-3">
+                <div className="flex flex-col gap-2 border-l-2 border-border/50 pl-2 md:pl-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <Switch
                       id={`repeat-${slot.id}`}
@@ -466,7 +468,7 @@ export function TimeScheduleCard({
                     </Label>
                   </div>
                   {repeat.enabled ? (
-                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+                    <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center md:gap-2">
                       <div className="flex flex-wrap gap-2">
                         {DAY_SHORT.map((label, i) => (
                           <label
@@ -486,7 +488,7 @@ export function TimeScheduleCard({
                         type="button"
                         size="sm"
                         variant="secondary"
-                        className="h-8 text-xs shrink-0"
+                        className="h-11 shrink-0 text-xs md:h-8"
                         disabled={repeat.days.length === 0}
                         onClick={() => void applyRepeat(slot)}
                       >
@@ -506,7 +508,7 @@ export function TimeScheduleCard({
           type="button"
           variant="outline"
           size="sm"
-          className="w-full sm:w-auto gap-1.5"
+          className="h-11 w-full gap-1.5 md:h-8 md:w-auto"
           onClick={addEmptyRow}
         >
           <Plus className="h-4 w-4" aria-hidden />

@@ -21,6 +21,10 @@ import {
   toggleGoalComplete,
 } from '@/lib/dataService'
 import { captureEvent } from '@/lib/analytics'
+import {
+  KANBAN_GOAL_COMPLETED_EVENT,
+  type KanbanGoalCompletedDetail,
+} from '@/lib/kanban-events'
 
 const checkClass =
   'border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent data-[state=checked]:text-accent-foreground'
@@ -92,6 +96,12 @@ export default function GoalsPage() {
           showToast("Couldn't save changes. Please try again.", 'error')
         } else if (updated.completed) {
           captureEvent('goal_completed')
+          window.dispatchEvent(
+            new CustomEvent<KanbanGoalCompletedDetail>(
+              KANBAN_GOAL_COMPLETED_EVENT,
+              { detail: { goalId: id } },
+            ),
+          )
         }
       })()
     }

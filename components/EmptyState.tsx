@@ -65,7 +65,7 @@ export function EmptyState({
         <button
           type="button"
           onClick={secondaryAction}
-          className="mt-3 text-sm text-muted-foreground underline-offset-4 hover:text-[#9CA3AF] hover:underline"
+          className="mt-3 min-h-11 w-full max-w-[240px] text-sm text-muted-foreground underline-offset-4 hover:text-[#9CA3AF] hover:underline md:min-h-0 md:w-auto"
         >
           {secondaryLabel}
         </button>

@@ -269,3 +269,24 @@
 .upgrade-offer-scope .upgrade-pro-glow {
   animation: upgrade-pro-glow 3s ease-in-out infinite;
 }
+
+/* Authenticated app: 44px minimum touch height for shadcn buttons (mobile only). */
+@media (max-width: 767px) {
+  .protected-app-touch [data-slot='button'] {
+    min-height: 44px;
+  }
+  .protected-app-touch [data-slot='button'].size-9,
+  .protected-app-touch [data-slot='button'].size-8 {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Time schedule: full-width activity field on small screens (overrides ch-based inline width). */
+@media (max-width: 767px) {
+  .time-schedule-activity-input {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+}
