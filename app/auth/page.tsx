@@ -49,11 +49,10 @@ function passwordFlowFromSubmit(
     | HTMLButtonElement
     | null
     | undefined
-  const intent = submitter?.dataset.authIntent as
-    | 'signin'
-    | 'signup'
-    | undefined
-  if (intent === 'signin' || intent === 'signup') return intent
+  if (submitter?.name === 'passwordFlow') {
+    const v = submitter.value
+    if (v === 'signin' || v === 'signup') return v
+  }
   return mode
 }
 
@@ -181,6 +180,16 @@ export default function AuthPage() {
         setFormError(error.message)
         return
       }
+
+      const identities = data.user?.identities ?? []
+      if (data.user && identities.length === 0) {
+        setFormError(
+          'This email is already registered. Sign in with your password below, or use “Email me a magic link”.',
+        )
+        setMode('signin')
+        return
+      }
+
       try {
         const to = data.user?.email ?? email.trim()
         if (to) {
@@ -197,7 +206,14 @@ export default function AuthPage() {
         plan: 'trial',
         source: 'web',
       })
-      if (data.session) {
+
+      let session = data.session
+      if (!session) {
+        const { data: refreshed } = await supabase.auth.getSession()
+        session = refreshed.session
+      }
+
+      if (session) {
         const referralCode = localStorage.getItem('referral_code')
         if (referralCode) {
           try {
@@ -205,7 +221,7 @@ export default function AuthPage() {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${data.session.access_token}`,
+                Authorization: `Bearer ${session.access_token}`,
               },
               body: JSON.stringify({ referralCode }),
             })
@@ -217,7 +233,7 @@ export default function AuthPage() {
         return
       }
       setSignupMessage(
-        'Check your email for a confirmation link to finish signing up.',
+        'Check your email for a confirmation link to finish signing up. After you confirm, you can sign in here.',
       )
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
@@ -462,7 +478,8 @@ export default function AuthPage() {
               <>
                 <Button
                   type="submit"
-                  data-auth-intent="signup"
+                  name="passwordFlow"
+                  value="signup"
                   className="inline-flex items-center justify-center gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
                   disabled={busy || googleBusy || magicBusy}
                 >
@@ -476,7 +493,8 @@ export default function AuthPage() {
                 </Button>
                 <Button
                   type="submit"
-                  data-auth-intent="signin"
+                  name="passwordFlow"
+                  value="signin"
                   variant="outline"
                   className="inline-flex items-center justify-center gap-2"
                   disabled={busy || googleBusy || magicBusy}
@@ -494,7 +512,8 @@ export default function AuthPage() {
               <>
                 <Button
                   type="submit"
-                  data-auth-intent="signin"
+                  name="passwordFlow"
+                  value="signin"
                   className="inline-flex items-center justify-center gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
                   disabled={busy || googleBusy || magicBusy}
                 >
@@ -508,7 +527,8 @@ export default function AuthPage() {
                 </Button>
                 <Button
                   type="submit"
-                  data-auth-intent="signup"
+                  name="passwordFlow"
+                  value="signup"
                   variant="outline"
                   className="inline-flex items-center justify-center gap-2"
                   disabled={busy || googleBusy || magicBusy}
