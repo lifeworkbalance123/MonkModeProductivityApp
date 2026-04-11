@@ -19,7 +19,7 @@ import {
   Menu,
   X,
   Flame,
-  BarChart3,
+  BarChart2,
   Cloud,
   Timer,
 } from "lucide-react"
@@ -51,7 +51,7 @@ const navItems: NavItem[] = [
   {
     href: "/analytics",
     label: "Analytics",
-    icon: BarChart3,
+    icon: BarChart2,
     proOnly: true,
     proDescription:
       "Track streaks, completion rates, and trends to understand how your habits compound.",

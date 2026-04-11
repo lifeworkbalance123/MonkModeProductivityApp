@@ -12,7 +12,10 @@ import type {
   PersonalTrainingCategory,
   PersonalTrainingResource,
 } from '@/lib/personal-training-resources'
-import type { DeepWorkSession } from '@/lib/deep-work-sessions'
+import {
+  loadDeepWorkSessionsLocal,
+  type DeepWorkSession,
+} from '@/lib/deep-work-sessions'
 
 export type DataServiceContext = {
   userId: string | null
@@ -872,7 +875,9 @@ export async function deletePersonalTrainingResource(
 export async function listDeepWorkSessions(
   ctx: DataServiceContext,
 ): Promise<DeepWorkSession[]> {
-  if (!shouldSyncToCloud(ctx) || !ctx.userId) return []
+  if (!shouldSyncToCloud(ctx) || !ctx.userId) {
+    return loadDeepWorkSessionsLocal()
+  }
   const { data, error } = await supabase
     .from('deep_work_sessions')
     .select(
