@@ -41,6 +41,22 @@ function friendlyAuthNetworkError(): string {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+function passwordFlowFromSubmit(
+  e: React.FormEvent<HTMLFormElement>,
+  mode: 'signin' | 'signup',
+): 'signin' | 'signup' {
+  const submitter = (e.nativeEvent as SubmitEvent).submitter as
+    | HTMLButtonElement
+    | null
+    | undefined
+  const intent = submitter?.dataset.authIntent as
+    | 'signin'
+    | 'signup'
+    | undefined
+  if (intent === 'signin' || intent === 'signup') return intent
+  return mode
+}
+
 export default function AuthPage() {
   const router = useRouter()
   const { session, isLoading: authBootstrapping } = useAuth()
@@ -89,7 +105,7 @@ export default function AuthPage() {
     }
   }, [authBootstrapping, session, router])
 
-  function validatePasswordForm(): boolean {
+  function validatePasswordForm(flow: 'signin' | 'signup'): boolean {
     const next: typeof fieldErrors = {}
     const e = email.trim()
     if (!e) next.email = 'Email is required'
@@ -97,7 +113,7 @@ export default function AuthPage() {
     if (!password) next.password = 'Password is required'
     else if (password.length < 6)
       next.password = 'Password must be at least 6 characters'
-    if (mode === 'signup') {
+    if (flow === 'signup') {
       if (!confirmPassword) next.confirm = 'Confirm your password'
       else if (confirmPassword !== password)
         next.confirm = 'Passwords do not match'
@@ -117,10 +133,18 @@ export default function AuthPage() {
     return !next.magicEmail
   }
 
-  async function handlePasswordSubmit(e: React.FormEvent) {
+  async function handlePasswordSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setSignupMessage(null)
-    if (!validatePasswordForm()) return
+
+    const flow = passwordFlowFromSubmit(e, mode)
+    if (flow === 'signin') {
+      setMode('signin')
+    } else {
+      setMode('signup')
+    }
+
+    if (!validatePasswordForm(flow)) return
 
     setBusy(true)
     setFormError(null)
@@ -130,7 +154,7 @@ export default function AuthPage() {
         setFormError(friendlySupabaseSetupError())
         return
       }
-      if (mode === 'signin') {
+      if (flow === 'signin') {
         const { error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
@@ -345,6 +369,7 @@ export default function AuthPage() {
             }`}
             onClick={() => {
               setMode('signin')
+              setConfirmPassword('')
               setFormError(null)
               setSignupMessage(null)
               setFieldErrors({})
@@ -432,16 +457,73 @@ export default function AuthPage() {
             </p>
           ) : null}
 
-          <Button
-            type="submit"
-            className="w-full inline-flex items-center justify-center gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
-            disabled={busy || googleBusy || magicBusy}
-          >
-            {busy ? (
-              <Loader2 className="h-4 w-4 animate-spin shrink-0" aria-hidden />
-            ) : null}
-            {mode === 'signin' ? 'Sign in' : 'Create account'}
-          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            {mode === 'signup' ? (
+              <>
+                <Button
+                  type="submit"
+                  data-auth-intent="signup"
+                  className="inline-flex items-center justify-center gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+                  disabled={busy || googleBusy || magicBusy}
+                >
+                  {busy ? (
+                    <Loader2
+                      className="h-4 w-4 animate-spin shrink-0"
+                      aria-hidden
+                    />
+                  ) : null}
+                  Create account
+                </Button>
+                <Button
+                  type="submit"
+                  data-auth-intent="signin"
+                  variant="outline"
+                  className="inline-flex items-center justify-center gap-2"
+                  disabled={busy || googleBusy || magicBusy}
+                >
+                  {busy ? (
+                    <Loader2
+                      className="h-4 w-4 animate-spin shrink-0"
+                      aria-hidden
+                    />
+                  ) : null}
+                  Sign in
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  type="submit"
+                  data-auth-intent="signin"
+                  className="inline-flex items-center justify-center gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
+                  disabled={busy || googleBusy || magicBusy}
+                >
+                  {busy ? (
+                    <Loader2
+                      className="h-4 w-4 animate-spin shrink-0"
+                      aria-hidden
+                    />
+                  ) : null}
+                  Sign in
+                </Button>
+                <Button
+                  type="submit"
+                  data-auth-intent="signup"
+                  variant="outline"
+                  className="inline-flex items-center justify-center gap-2"
+                  disabled={busy || googleBusy || magicBusy}
+                >
+                  {busy ? (
+                    <Loader2
+                      className="h-4 w-4 animate-spin shrink-0"
+                      aria-hidden
+                    />
+                  ) : null}
+                  Create account
+                </Button>
+              </>
+            )}
+          </div>
         </form>
 
         <div className="relative">
