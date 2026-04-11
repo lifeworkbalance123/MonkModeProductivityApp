@@ -3,6 +3,7 @@
  * Must only be imported from client components/hooks.
  */
 
+import { addDays, format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { computeStreak } from '@/lib/monk-streak'
 import type { Goal, Habit, HabitLog, MonkData, TimeSlot } from '@/lib/monk-types'
@@ -599,6 +600,40 @@ export async function deletePlannerSlot(
 ): Promise<void> {
   if (!shouldSyncToCloud(ctx) || !ctx.userId) return
   await supabase.from('planner_slots').delete().eq('id', id).eq('user_id', ctx.userId)
+}
+
+/**
+ * Inserts planner rows for the same time block on selected weekdays (Mon=0 … Sun=6)
+ * for the week that starts on `weekStartMonday`.
+ */
+export async function applyTimeBlockToPlannerWeek(
+  ctx: DataServiceContext,
+  block: Pick<TimeSlot, 'time' | 'category' | 'activity' | 'colorClass'>,
+  dayIndices: number[],
+  weekStartMonday: Date,
+): Promise<{ error: string | null }> {
+  if (!shouldSyncToCloud(ctx) || !ctx.userId) {
+    return { error: 'SIGN_IN_REQUIRED' }
+  }
+  const uniq = [...new Set(dayIndices)].filter((i) => i >= 0 && i <= 6)
+  if (uniq.length === 0) return { error: null }
+
+  const rows = uniq.map((di) => ({
+    id: crypto.randomUUID(),
+    user_id: ctx.userId,
+    date: format(addDays(weekStartMonday, di), 'yyyy-MM-dd'),
+    time_slot: block.time,
+    activity: block.activity,
+    category: block.category,
+    colour: block.colorClass,
+  }))
+
+  const { error } = await supabase.from('planner_slots').insert(rows)
+  if (error) {
+    console.error('applyTimeBlockToPlannerWeek', error)
+    return { error: error.message }
+  }
+  return { error: null }
 }
 
 export type JournalType = 'morning' | 'evening'

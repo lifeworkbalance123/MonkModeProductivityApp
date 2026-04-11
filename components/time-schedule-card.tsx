@@ -1,33 +1,130 @@
 'use client'
 
 import Link from 'next/link'
-import { Clock } from 'lucide-react'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { addMinutes, format, parse } from 'date-fns'
+import { Clock, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
 import type { TimeSlot } from '@/lib/monk-types'
 import { cn } from '@/lib/utils'
 
-/** Category tags for time schedule rows; colorClass matches planner defaults */
+const LS_INCREMENT = 'monk_schedule_time_increment'
+
+export type TimeScheduleIncrement = 15 | 30 | 60
+
+const INCREMENT_OPTIONS: { value: TimeScheduleIncrement; label: string }[] = [
+  { value: 15, label: '15 min' },
+  { value: 30, label: '30 min' },
+  { value: 60, label: '1 hour' },
+]
+
+const DAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
+
+/** Category options with Tailwind colour chips (dashboard / planner). */
 export const TIME_SLOT_CATEGORY_OPTIONS: { label: string; colorClass: string }[] =
   [
-    { label: 'Personal', colorClass: 'bg-[oklch(0.75_0.12_145)]' },
-    { label: 'Work', colorClass: 'bg-[oklch(0.65_0.12_185)]' },
-    { label: 'Gym', colorClass: 'bg-[oklch(0.70_0.10_195)]' },
-    { label: 'Health', colorClass: 'bg-[oklch(0.72_0.08_285)]' },
-    { label: 'Meal', colorClass: 'bg-[oklch(0.80_0.06_310)]' },
-    { label: 'Household', colorClass: 'bg-[oklch(0.85_0.18_95)]' },
-    { label: 'Pets', colorClass: 'bg-[oklch(0.80_0.15_85)]' },
-    { label: 'Study', colorClass: 'bg-[oklch(0.70_0.18_55)]' },
-    { label: 'Transport', colorClass: 'bg-[oklch(0.70_0.12_15)]' },
-    { label: 'Family', colorClass: 'bg-[oklch(0.70_0.15_250)]' },
-    { label: 'Kids', colorClass: 'bg-[oklch(0.65_0.12_220)]' },
+    { label: 'Work', colorClass: 'bg-blue-500' },
+    { label: 'Personal', colorClass: 'bg-green-500' },
+    { label: 'Gym', colorClass: 'bg-orange-500' },
+    { label: 'Health', colorClass: 'bg-pink-500' },
+    { label: 'Meal', colorClass: 'bg-purple-500' },
+    { label: 'Study', colorClass: 'bg-yellow-500' },
+    { label: 'Family', colorClass: 'bg-red-500' },
+    { label: 'Household', colorClass: 'bg-neutral-500' },
+    { label: 'Pets', colorClass: 'bg-teal-500' },
+    { label: 'Transport', colorClass: 'bg-indigo-500' },
   ]
+
+const LEGACY_CATEGORY_COLOR: Record<string, string> = {
+  Kids: 'bg-red-400',
+}
 
 function colorClassForTimeCategory(label: string): string {
   return (
     TIME_SLOT_CATEGORY_OPTIONS.find((c) => c.label === label)?.colorClass ??
+    LEGACY_CATEGORY_COLOR[label] ??
     'bg-muted'
   )
+}
+
+function readStoredIncrement(): TimeScheduleIncrement {
+  if (typeof window === 'undefined') return 30
+  try {
+    const v = localStorage.getItem(LS_INCREMENT)
+    if (v === '15' || v === '30' || v === '60') return Number(v) as TimeScheduleIncrement
+  } catch {
+    /* ignore */
+  }
+  return 30
+}
+
+function buildTimeOptions(incrementMinutes: TimeScheduleIncrement): {
+  value: string
+  label: string
+}[] {
+  const base = new Date(2000, 0, 1, 5, 0, 0)
+  const end = new Date(2000, 0, 2, 0, 0, 0)
+  const out: { value: string; label: string }[] = []
+  for (let d = base; d < end; d = addMinutes(d, incrementMinutes)) {
+    out.push({
+      value: format(d, 'HH:mm'),
+      label: format(d, 'h:mm a'),
+    })
+  }
+  return out
+}
+
+function minutesFromHHmm(s: string): number {
+  const [h, m] = s.split(':').map(Number)
+  return h * 60 + m
+}
+
+function nearestTimeOption(
+  hhmm: string,
+  options: { value: string; label: string }[],
+): string {
+  if (options.length === 0) return hhmm
+  const tm = minutesFromHHmm(hhmm)
+  let best = options[0].value
+  let bestD = Infinity
+  for (const o of options) {
+    const d = Math.abs(minutesFromHHmm(o.value) - tm)
+    if (d < bestD) {
+      bestD = d
+      best = o.value
+    }
+  }
+  return best
+}
+
+/** Map free-text or legacy values onto HH:mm when possible. */
+function coerceTimeValue(raw: string, options: { value: string; label: string }[]): string {
+  const t = raw.trim()
+  if (!t) return options[0]?.value ?? '09:00'
+  if (/^\d{1,2}:\d{2}$/.test(t)) {
+    const [h, m] = t.split(':').map(Number)
+    const hh = String(Math.min(23, Math.max(0, h))).padStart(2, '0')
+    const mm = String(Math.min(59, Math.max(0, m))).padStart(2, '0')
+    const key = `${hh}:${mm}`
+    if (options.some((o) => o.value === key)) return key
+    return nearestTimeOption(key, options)
+  }
+  try {
+    const parsed = parse(t, 'h:mm a', new Date(2000, 0, 1))
+    if (!Number.isNaN(parsed.getTime())) {
+      const key = format(parsed, 'HH:mm')
+      if (options.some((o) => o.value === key)) return key
+      return nearestTimeOption(key, options)
+    }
+  } catch {
+    /* ignore */
+  }
+  return options[0]?.value ?? '09:00'
 }
 
 const TIME_SLOT_ACTIVITY_MIN_CH = 28
@@ -41,9 +138,18 @@ function timeSlotActivityWidthCh(text: string): number {
   )
 }
 
+type RepeatPref = { enabled: boolean; days: number[] }
+
 type Props = {
   timeSlots: TimeSlot[]
   onTimeSlotsChange: (next: TimeSlot[]) => void
+  /** New row ids (Supabase UUID when synced). */
+  getNewSlotId: () => string
+  /** When set, “Apply to week” inserts planner rows for signed-in Pro users. */
+  onApplyTimeBlockToWeek?: (
+    block: Pick<TimeSlot, 'time' | 'category' | 'activity' | 'colorClass'>,
+    dayIndices: number[],
+  ) => Promise<{ error: string | null }>
   /** Show link to weekly planner in the card header */
   showPlannerLink?: boolean
   className?: string
@@ -52,30 +158,170 @@ type Props = {
 export function TimeScheduleCard({
   timeSlots,
   onTimeSlotsChange,
+  getNewSlotId,
+  onApplyTimeBlockToWeek,
   showPlannerLink = true,
   className,
 }: Props) {
-  const updateSlot = (
-    id: string,
-    updates: { time?: string; category?: string; activity?: string },
-  ) => {
-    onTimeSlotsChange(
-      timeSlots.map((s) => {
-        if (s.id !== id) return s
-        const next = { ...s, ...updates }
-        if (updates.category !== undefined) {
-          next.colorClass = colorClassForTimeCategory(updates.category)
-        }
+  const [increment, setIncrement] = useState<TimeScheduleIncrement>(() =>
+    typeof window === 'undefined' ? 30 : readStoredIncrement(),
+  )
+  const [savedVisible, setSavedVisible] = useState(false)
+  const saveFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const activityRefs = useRef<Map<string, HTMLInputElement>>(new Map())
+  const [repeatPrefs, setRepeatPrefs] = useState<Record<string, RepeatPref>>({})
+
+  const timeOptions = useMemo(
+    () => buildTimeOptions(increment),
+    [increment],
+  )
+
+  const flashSaved = useCallback(() => {
+    if (saveFlashTimer.current) clearTimeout(saveFlashTimer.current)
+    setSavedVisible(true)
+    saveFlashTimer.current = setTimeout(() => {
+      setSavedVisible(false)
+      saveFlashTimer.current = null
+    }, 2000)
+  }, [])
+
+  const pushChange = useCallback(
+    (next: TimeSlot[]) => {
+      onTimeSlotsChange(next)
+      flashSaved()
+    },
+    [onTimeSlotsChange, flashSaved],
+  )
+
+  const setIncrementAndStore = useCallback(
+    (nextInc: TimeScheduleIncrement) => {
+      setIncrement(nextInc)
+      try {
+        localStorage.setItem(LS_INCREMENT, String(nextInc))
+      } catch {
+        /* ignore */
+      }
+      const nextOptions = buildTimeOptions(nextInc)
+      const normalized = timeSlots.map((s) => ({
+        ...s,
+        time: coerceTimeValue(s.time, nextOptions),
+      }))
+      if (normalized.some((s, i) => s.time !== timeSlots[i].time)) {
+        pushChange(normalized)
+      }
+    },
+    [timeSlots, pushChange],
+  )
+
+  const updateSlot = useCallback(
+    (
+      id: string,
+      updates: { time?: string; category?: string; activity?: string },
+    ) => {
+      pushChange(
+        timeSlots.map((s) => {
+          if (s.id !== id) return s
+          const next = { ...s, ...updates }
+          if (updates.category !== undefined) {
+            next.colorClass = colorClassForTimeCategory(updates.category)
+          }
+          if (updates.time !== undefined) {
+            next.time = coerceTimeValue(updates.time, timeOptions)
+          }
+          return next
+        }),
+      )
+    },
+    [timeSlots, pushChange, timeOptions],
+  )
+
+  const deleteSlot = useCallback(
+    (id: string) => {
+      setRepeatPrefs((p) => {
+        const next = { ...p }
+        delete next[id]
         return next
-      }),
-    )
-  }
+      })
+      pushChange(timeSlots.filter((s) => s.id !== id))
+    },
+    [timeSlots, pushChange],
+  )
+
+  const addEmptyRow = useCallback(() => {
+    const first = timeOptions[0]?.value ?? '09:00'
+    const cat = TIME_SLOT_CATEGORY_OPTIONS[0]
+    pushChange([
+      ...timeSlots,
+      {
+        id: getNewSlotId(),
+        time: first,
+        category: cat.label,
+        activity: '',
+        colorClass: cat.colorClass,
+      },
+    ])
+  }, [timeSlots, getNewSlotId, pushChange, timeOptions])
+
+  const focusActivity = useCallback((id: string) => {
+    activityRefs.current.get(id)?.focus()
+  }, [])
+
+  const getRepeat = useCallback(
+    (id: string): RepeatPref =>
+      repeatPrefs[id] ?? { enabled: false, days: [] },
+    [repeatPrefs],
+  )
+
+  const setRepeatEnabled = useCallback((id: string, enabled: boolean) => {
+    setRepeatPrefs((p) => ({
+      ...p,
+      [id]: { ...(p[id] ?? { enabled: false, days: [] }), enabled },
+    }))
+  }, [])
+
+  const toggleRepeatDay = useCallback((id: string, dayIndex: number) => {
+    setRepeatPrefs((p) => {
+      const cur = p[id] ?? { enabled: false, days: [] }
+      const has = cur.days.includes(dayIndex)
+      const days = has
+        ? cur.days.filter((d) => d !== dayIndex)
+        : [...cur.days, dayIndex].sort((a, b) => a - b)
+      return { ...p, [id]: { ...cur, days } }
+    })
+  }, [])
+
+  const applyRepeat = useCallback(
+    async (slot: TimeSlot) => {
+      const pref = getRepeat(slot.id)
+      if (!pref.enabled || pref.days.length === 0 || !onApplyTimeBlockToWeek) return
+      const r = await onApplyTimeBlockToWeek(
+        {
+          time: slot.time,
+          category: slot.category,
+          activity: slot.activity,
+          colorClass: slot.colorClass,
+        },
+        pref.days,
+      )
+      if (!r.error) flashSaved()
+    },
+    [getRepeat, onApplyTimeBlockToWeek, flashSaved],
+  )
 
   return (
-    <Card className={cn('p-4', className)}>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
+    <Card className={cn('p-4 relative', className)}>
+      {savedVisible ? (
+        <span
+          className="absolute top-3 right-3 text-xs text-muted-foreground tabular-nums"
+          aria-live="polite"
+        >
+          Saved ✓
+        </span>
+      ) : null}
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-3 pr-16">
         <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-accent" />
+          <Clock className="w-4 h-4 text-accent shrink-0" />
           <span className="font-medium">Time Schedule</span>
         </div>
         {showPlannerLink ? (
@@ -87,59 +333,185 @@ export function TimeScheduleCard({
           </Link>
         ) : null}
       </div>
-      <div className="space-y-1">
-        {timeSlots.map((slot) => (
-          <div
-            key={slot.id}
-            className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 transition-colors"
-          >
-            <Input
-              value={slot.time}
-              onChange={(e) => updateSlot(slot.id, { time: e.target.value })}
-              aria-label="Time"
-              className="h-8 w-[4.25rem] shrink-0 text-xs px-2 py-1 bg-background/60 border-border"
-            />
-            <div
-              className={`w-1 h-6 rounded-full shrink-0 ${slot.colorClass}`}
-            />
-            <select
-              value={slot.category}
-              onChange={(e) =>
-                updateSlot(slot.id, { category: e.target.value })
-              }
-              aria-label="Category"
-              className="h-8 max-w-[7.5rem] shrink-0 rounded-md border border-border bg-background/60 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <span className="text-xs text-muted-foreground shrink-0">
+          Time increments:
+        </span>
+        <div className="flex flex-wrap gap-1.5">
+          {INCREMENT_OPTIONS.map((opt) => (
+            <Button
+              key={opt.value}
+              type="button"
+              size="sm"
+              variant={increment === opt.value ? 'secondary' : 'outline'}
+              className="h-8 text-xs"
+              onClick={() => setIncrementAndStore(opt.value)}
             >
-              {!TIME_SLOT_CATEGORY_OPTIONS.some(
-                (c) => c.label === slot.category,
-              ) ? (
-                <option value={slot.category}>{slot.category}</option>
+              {opt.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {timeSlots.map((slot) => {
+          const coerced = coerceTimeValue(slot.time, timeOptions)
+          const repeat = getRepeat(slot.id)
+          return (
+            <div
+              key={slot.id}
+              className="rounded-lg border border-border/60 bg-secondary/20 p-2 space-y-2"
+            >
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                <select
+                  value={coerced}
+                  onChange={(e) =>
+                    updateSlot(slot.id, { time: e.target.value })
+                  }
+                  aria-label="Time"
+                  className="h-8 w-[7.25rem] shrink-0 rounded-md border border-border bg-background/60 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  {!timeOptions.some((o) => o.value === slot.time) ? (
+                    <option value={slot.time}>{slot.time}</option>
+                  ) : null}
+                  {timeOptions.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <div
+                  className={`w-1 h-6 rounded-full shrink-0 ${slot.colorClass}`}
+                  aria-hidden
+                />
+                <select
+                  value={slot.category}
+                  onChange={(e) =>
+                    updateSlot(slot.id, { category: e.target.value })
+                  }
+                  aria-label="Category"
+                  className="h-8 max-w-[9rem] shrink-0 rounded-md border border-border bg-background/60 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  {!TIME_SLOT_CATEGORY_OPTIONS.some(
+                    (c) => c.label === slot.category,
+                  ) ? (
+                    <option value={slot.category}>{slot.category}</option>
+                  ) : null}
+                  {TIME_SLOT_CATEGORY_OPTIONS.map((c) => (
+                    <option key={c.label} value={c.label}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+                <div
+                  className="min-w-0 flex-1 overflow-x-auto overflow-y-hidden rounded-md border border-border bg-background/60 [scrollbar-width:thin]"
+                  title="Scroll sideways for longer activity text"
+                >
+                  <Input
+                    ref={(el) => {
+                      if (el) activityRefs.current.set(slot.id, el)
+                      else activityRefs.current.delete(slot.id)
+                    }}
+                    value={slot.activity}
+                    onChange={(e) =>
+                      updateSlot(slot.id, { activity: e.target.value })
+                    }
+                    aria-label="Activity"
+                    style={{
+                      width: `${timeSlotActivityWidthCh(slot.activity)}ch`,
+                      maxWidth: 'none',
+                    }}
+                    className="h-8 w-auto min-w-[28ch] max-w-none shrink-0 border-0 bg-transparent px-2 py-1 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0 rounded-none"
+                  />
+                </div>
+                <div className="flex items-center gap-1 shrink-0 self-end sm:self-center">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    aria-label="Edit activity"
+                    onClick={() => focusActivity(slot.id)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    aria-label="Remove time block"
+                    onClick={() => deleteSlot(slot.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {onApplyTimeBlockToWeek ? (
+                <div className="flex flex-col gap-2 border-l-2 border-border/50 pl-2 sm:pl-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Switch
+                      id={`repeat-${slot.id}`}
+                      checked={repeat.enabled}
+                      onCheckedChange={(v) => setRepeatEnabled(slot.id, v)}
+                    />
+                    <Label
+                      htmlFor={`repeat-${slot.id}`}
+                      className="text-xs font-normal cursor-pointer"
+                    >
+                      Repeat this block on selected days (copies into planner data
+                      for this week)
+                    </Label>
+                  </div>
+                  {repeat.enabled ? (
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+                      <div className="flex flex-wrap gap-2">
+                        {DAY_SHORT.map((label, i) => (
+                          <label
+                            key={label}
+                            className="inline-flex items-center gap-1.5 rounded-md border border-border/80 bg-background/40 px-2 py-1 text-xs"
+                          >
+                            <Checkbox
+                              checked={repeat.days.includes(i)}
+                              onCheckedChange={() => toggleRepeatDay(slot.id, i)}
+                              className="border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent data-[state=checked]:text-accent-foreground"
+                            />
+                            {label}
+                          </label>
+                        ))}
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="h-8 text-xs shrink-0"
+                        disabled={repeat.days.length === 0}
+                        onClick={() => void applyRepeat(slot)}
+                      >
+                        Apply to week
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
-              {TIME_SLOT_CATEGORY_OPTIONS.map((c) => (
-                <option key={c.label} value={c.label}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-            <div
-              className="min-w-[min(100%,28ch)] flex-1 overflow-x-scroll overflow-y-hidden rounded-md border border-border bg-background/60 [scrollbar-width:thin]"
-              title="Scroll sideways for longer activity text"
-            >
-              <Input
-                value={slot.activity}
-                onChange={(e) =>
-                  updateSlot(slot.id, { activity: e.target.value })
-                }
-                aria-label="Activity"
-                style={{
-                  width: `${timeSlotActivityWidthCh(slot.activity)}ch`,
-                  maxWidth: 'none',
-                }}
-                className="h-8 w-auto min-w-[28ch] max-w-none shrink-0 border-0 bg-transparent px-2 py-1 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0 rounded-none"
-              />
             </div>
-          </div>
-        ))}
+          )
+        })}
+      </div>
+
+      <div className="mt-4">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-full sm:w-auto gap-1.5"
+          onClick={addEmptyRow}
+        >
+          <Plus className="h-4 w-4" aria-hidden />
+          Add time block
+        </Button>
       </div>
     </Card>
   )

@@ -27,7 +27,12 @@ import { usePlan } from '@/hooks/usePlan'
 import { useToast } from '@/context/ToastContext'
 import { GettingStartedChecklist } from '@/components/GettingStartedChecklist'
 import type { DataServiceContext } from '@/lib/dataService'
-import { saveGoal, setHabitCompletion } from '@/lib/dataService'
+import {
+  applyTimeBlockToPlannerWeek,
+  newTimeSlotClientId,
+  saveGoal,
+  setHabitCompletion,
+} from '@/lib/dataService'
 import { captureEvent } from '@/lib/analytics'
 
 const daysShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -357,6 +362,26 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
               onTimeSlotsChange={(timeSlots) =>
                 onChange({ ...data, timeSlots })
               }
+              getNewSlotId={() => newTimeSlotClientId(dataContext)}
+              onApplyTimeBlockToWeek={async (block, dayIndices) => {
+                const r = await applyTimeBlockToPlannerWeek(
+                  dataContext,
+                  block,
+                  dayIndices,
+                  weekStart,
+                )
+                if (r.error === 'SIGN_IN_REQUIRED') {
+                  showToast(
+                    'Pro sign-in is required to copy blocks into your synced planner.',
+                    'info',
+                  )
+                } else if (r.error) {
+                  showToast(r.error, 'error')
+                } else {
+                  showToast('Copied to selected days.', 'success')
+                }
+                return r
+              }}
             />
 
             <Card className="p-4 bg-secondary/50 relative overflow-hidden">

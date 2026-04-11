@@ -1,6 +1,8 @@
 'use client'
 
 import Link from 'next/link'
+import { useMemo } from 'react'
+import { startOfWeek } from 'date-fns'
 import { Loader2 } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { TimeScheduleCard } from '@/components/time-schedule-card'
@@ -10,15 +12,21 @@ import { Card } from '@/components/ui/card'
 import { useMonkData } from '@/hooks/use-monk-data'
 import { useToast } from '@/context/ToastContext'
 import {
+  applyTimeBlockToPlannerWeek,
   newTimeSlotClientId,
   savePlannerSlot,
 } from '@/lib/dataService'
 import { morningRoutineTemplateSlots } from '@/lib/planner-templates'
 import { TIME_SLOT_CATEGORY_OPTIONS } from '@/components/time-schedule-card'
 import { captureEvent } from '@/lib/analytics'
+import type { TimeSlot } from '@/lib/monk-types'
 
 export default function SchedulePage() {
   const { showToast } = useToast()
+  const weekStartMonday = useMemo(
+    () => startOfWeek(new Date(), { weekStartsOn: 1 }),
+    [],
+  )
   const {
     data,
     setData,
@@ -54,6 +62,29 @@ export default function SchedulePage() {
       category: slot.category,
       time_slot: slot.time,
     })
+  }
+
+  async function handleApplyToWeek(
+    block: Pick<TimeSlot, 'time' | 'category' | 'activity' | 'colorClass'>,
+    dayIndices: number[],
+  ) {
+    const r = await applyTimeBlockToPlannerWeek(
+      dataContext,
+      block,
+      dayIndices,
+      weekStartMonday,
+    )
+    if (r.error === 'SIGN_IN_REQUIRED') {
+      showToast(
+        'Pro sign-in is required to copy blocks into your synced planner.',
+        'info',
+      )
+    } else if (r.error) {
+      showToast(r.error, 'error')
+    } else {
+      showToast('Copied to selected days.', 'success')
+    }
+    return r
   }
 
   function applyMorningTemplate() {
@@ -121,6 +152,9 @@ export default function SchedulePage() {
             setData({ ...data, timeSlots })
             void persistSlots(timeSlots)
           }}
+          getNewSlotId={() => newTimeSlotClientId(dataContext)}
+          onApplyTimeBlockToWeek={handleApplyToWeek}
+          showPlannerLink={false}
         />
       </div>
       ) : null}
