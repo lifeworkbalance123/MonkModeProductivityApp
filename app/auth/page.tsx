@@ -9,15 +9,18 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/context/AuthContext'
+import { getAuthCallbackBaseUrl, getAuthCallbackUrl } from '@/lib/app-origin'
 import { getSupabaseConfigProblem, isSupabaseConfigured, supabase } from '@/lib/supabase'
 import { captureEvent } from '@/lib/analytics'
 
+function authCallbackRedirectUrl(): string {
+  const site = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '')
+  if (site) return `${site}/auth/callback`
+  return getAuthCallbackUrl()
+}
+
 function authCallbackRedirectHint(): string {
-  const callback =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/auth/callback`
-      : 'http://127.0.0.1:3000/auth/callback'
-  return `In Supabase → Authentication → URL Configuration, add redirect URL: ${callback}`
+  return `In Supabase → Authentication → URL Configuration, add redirect URL: ${authCallbackRedirectUrl()}`
 }
 
 /** Wrong/missing env — not the same as a failed HTTP request. */
@@ -37,11 +40,6 @@ function friendlyAuthNetworkError(): string {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-function authCallbackUrl(): string {
-  if (typeof window === 'undefined') return ''
-  return `${window.location.origin}/auth/callback`
-}
 
 export default function AuthPage() {
   const router = useRouter()
@@ -139,7 +137,9 @@ export default function AuthPage() {
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
-        options: { emailRedirectTo: authCallbackUrl() },
+        options: {
+          emailRedirectTo: `${(process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '') || getAuthCallbackBaseUrl())}/auth/callback`,
+        },
       })
       if (error) {
         setFormError(error.message)
@@ -211,7 +211,7 @@ export default function AuthPage() {
       const { error } = await supabase.auth.signInWithOtp({
         email: magicEmail.trim(),
         options: {
-          emailRedirectTo: authCallbackUrl(),
+          emailRedirectTo: `${(process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '') || getAuthCallbackBaseUrl())}/auth/callback`,
           shouldCreateUser: true,
         },
       })
@@ -244,7 +244,9 @@ export default function AuthPage() {
       }
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: authCallbackUrl() },
+        options: {
+          redirectTo: `${(process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '') || getAuthCallbackBaseUrl())}/auth/callback`,
+        },
       })
       if (error) setFormError(error.message)
     } catch (err) {
