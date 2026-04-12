@@ -35,3 +35,37 @@ export async function startStripeCheckout(
   window.location.href = data.url
   return { ok: true }
 }
+
+/**
+ * One-time Stripe Checkout for the V2 60-day program ($19 launch).
+ */
+export async function startV2ProgramCheckout(): Promise<
+  { ok: true } | { ok: false; error: string }
+> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.access_token) {
+    return { ok: false, error: 'Sign in to continue.' }
+  }
+
+  const res = await fetch('/api/stripe/create-checkout-session', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ plan: 'v2_program' }),
+  })
+
+  const data = (await res.json()) as { url?: string; error?: string }
+  if (!res.ok || !data.url) {
+    return {
+      ok: false,
+      error: data.error ?? 'Could not start checkout. Try again later.',
+    }
+  }
+
+  window.location.href = data.url
+  return { ok: true }
+}

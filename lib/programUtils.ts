@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { differenceInCalendarDays, startOfDay } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 
@@ -110,13 +111,14 @@ export async function getEnrollment(userId: string): Promise<ProgramEnrollment |
   }
 }
 
-export async function enrollUser(
+/** Server (service role) or browser client — upserts program_enrollments. */
+export async function enrollProgramForUser(
+  client: SupabaseClient,
   userId: string,
   startDate?: string,
-): Promise<ProgramEnrollment | null> {
+): Promise<boolean> {
   const date = startDate ?? todayDateKey()
-
-  const { error } = await supabase.from('program_enrollments').upsert(
+  const { error } = await client.from('program_enrollments').upsert(
     {
       user_id: userId,
       start_date: date,
@@ -129,12 +131,19 @@ export async function enrollUser(
     },
     { onConflict: 'user_id' },
   )
-
   if (error) {
-    console.error('enrollUser error:', error)
-    return null
+    console.error('enrollProgramForUser error:', error)
+    return false
   }
+  return true
+}
 
+export async function enrollUser(
+  userId: string,
+  startDate?: string,
+): Promise<ProgramEnrollment | null> {
+  const ok = await enrollProgramForUser(supabase, userId, startDate)
+  if (!ok) return null
   return getEnrollment(userId)
 }
 

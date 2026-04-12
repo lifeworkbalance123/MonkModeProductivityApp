@@ -9,8 +9,9 @@ export const runtime = 'nodejs'
 export type CheckoutPriceKind = 'monthly' | 'annual' | 'lifetime'
 
 /**
- * Creates a Stripe Checkout Session for Pro subscription or Lifetime.
- * POST JSON: { priceKind: "monthly" | "annual" | "lifetime" }
+ * Creates a Stripe Checkout Session.
+ * - V2 program: POST JSON `{ "plan": "v2_program" }` — one-time payment (price from STRIPE_V2_PROGRAM_PRICE_ID).
+ * - Pro / Lifetime: POST JSON `{ "priceKind": "monthly" | "annual" | "lifetime" }`.
  * Authorization: Bearer <Supabase access_token>
  */
 export async function POST(request: Request) {
@@ -41,11 +42,54 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  let body: { priceKind?: string }
+  let body: { priceKind?: string; plan?: string }
   try {
-    body = (await request.json()) as { priceKind?: string }
+    body = (await request.json()) as { priceKind?: string; plan?: string }
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+
+  const origin = getAppOrigin(request)
+  const stripe = new Stripe(secret)
+
+  if ((body.plan ?? '').toLowerCase() === 'v2_program') {
+    const priceId =
+      process.env.STRIPE_V2_PROGRAM_PRICE_ID?.trim() ||
+      process.env.NEXT_PUBLIC_V2_PROGRAM_PRICE_ID?.trim()
+    if (!priceId) {
+      return NextResponse.json(
+        { error: 'V2 program price not configured (STRIPE_V2_PROGRAM_PRICE_ID)' },
+        { status: 503 },
+      )
+    }
+
+    try {
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [{ price: priceId, quantity: 1 }],
+        success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&plan=v2_program`,
+        cancel_url: `${origin}/join`,
+        allow_promotion_codes: true,
+        billing_address_collection: 'auto',
+        customer_email: user.email ?? undefined,
+        client_reference_id: user.id,
+        metadata: {
+          supabase_user_id: user.id,
+          plan: 'v2_program',
+        },
+      })
+
+      if (!session.url) {
+        return NextResponse.json(
+          { error: 'Checkout session missing URL' },
+          { status: 500 },
+        )
+      }
+      return NextResponse.json({ url: session.url })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Checkout failed'
+      return NextResponse.json({ error: msg }, { status: 500 })
+    }
   }
 
   const kind = (body.priceKind ?? '').toLowerCase() as CheckoutPriceKind
@@ -76,9 +120,6 @@ export async function POST(request: Request) {
       { status: 503 },
     )
   }
-
-  const origin = getAppOrigin(request)
-  const stripe = new Stripe(secret)
 
   const isLifetime = kind === 'lifetime'
 

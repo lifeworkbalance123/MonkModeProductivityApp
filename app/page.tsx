@@ -30,13 +30,13 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://monkmodeapp.com'),
   title: 'MonkMode — Deep Focus Productivity App',
   description:
-    'Track habits, time-box your days, set powerful goals and unlock your full potential. The productivity app for intentional living. Free 14-day trial — no card required.',
+    'Track habits, time-box your days, set powerful goals and unlock your full potential. The productivity app for intentional living. 60-day program from $19 AUD.',
   keywords:
     'productivity app, habit tracker, pomodoro timer, deep work, time boxing, goal setting, monk mode',
   openGraph: {
     title: 'MonkMode — Master your time. Transform your life.',
     description:
-      'Track habits, time-box your days, set powerful goals and unlock your full potential. The productivity app for intentional living. Free 14-day trial — no card required.',
+      'Track habits, time-box your days, set powerful goals and unlock your full potential. The productivity app for intentional living. 60-day program from $19 AUD.',
     images: ['/og-image.png'],
     url: 'https://monkmodeapp.com',
   },
@@ -63,11 +63,11 @@ export default function Home() {
             time.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/auth" className="rounded-md bg-[#F59E0B] px-5 py-3 font-semibold text-[#0F172A]">
-              Start free — no card needed
+            <Link href="/join" className="rounded-md bg-[#F59E0B] px-5 py-3 font-semibold text-[#0F172A]">
+              Start the 60-day program — $19
             </Link>
             <a href="#features" className="rounded-md border border-white/20 px-5 py-3 font-semibold text-white">
-              See how it works
+              See what&apos;s inside
             </a>
           </div>
           <p className="mt-4 text-sm text-[#94A3B8]">⭐⭐⭐⭐⭐ Loved by focused individuals worldwide</p>

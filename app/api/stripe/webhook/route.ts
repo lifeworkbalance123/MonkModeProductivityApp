@@ -3,6 +3,7 @@ import Stripe from 'stripe'
 import { createServiceRoleClient } from '@/lib/supabase-service'
 import { sendPaymentConfirmationEmail } from '@/lib/email'
 import { applyReferralRewardForUpgradedUser } from '@/lib/referral'
+import { enrollProgramForUser } from '@/lib/programUtils'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -79,6 +80,17 @@ export async function POST(request: Request) {
 
         if (!userId) {
           await logWebhook(admin, eventType, eventId, null, false)
+          break
+        }
+
+        if (metaPlan === 'v2_program') {
+          const enrolled = await enrollProgramForUser(admin, userId)
+          if (enrolled) {
+            console.log('User enrolled in V2 program:', userId)
+          } else {
+            console.error('V2 program enrollment failed for user:', userId)
+          }
+          await logWebhook(admin, eventType, eventId, userId, enrolled)
           break
         }
 
