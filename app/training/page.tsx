@@ -3,6 +3,9 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
+import AddVideoModal from '@/components/training/AddVideoModal'
+import TrainingCard from '@/components/training/TrainingCard'
+import VideoModal from '@/components/training/VideoModal'
 import { Navigation } from '@/components/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -57,7 +60,8 @@ import { FREE_PERSONAL_TRAINING_LIBRARY_LIMIT } from '@/lib/plan-limits'
 import { cn } from '@/lib/utils'
 import {
   adminTrainingModules,
-  type AdminTrainingModule,
+  isCuratedYoutubeReady,
+  type TrainingModule,
 } from '@/lib/trainingContent'
 import {
   BookOpen,
@@ -78,11 +82,6 @@ const PERSONAL_CATEGORIES: PersonalTrainingCategory[] = [
   'Podcast',
   'Other',
 ]
-
-function isPlaceholderYoutube(url: string): boolean {
-  const t = url.trim()
-  return !t || t.includes('YOUR_YOUTUBE_URL_HERE')
-}
 
 function looksLikeDirectVideoFile(url: string): boolean {
   try {
@@ -224,7 +223,9 @@ export default function TrainingPage() {
   const [personal, setPersonal] = useState<PersonalTrainingResource[]>([])
   const [personalReady, setPersonalReady] = useState(false)
 
-  const [adminModal, setAdminModal] = useState<AdminTrainingModule | null>(null)
+  const [articleModal, setArticleModal] = useState<TrainingModule | null>(null)
+  const [videoModalModule, setVideoModalModule] = useState<TrainingModule | null>(null)
+  const [addProVideoOpen, setAddProVideoOpen] = useState(false)
 
   const [resourceFormOpen, setResourceFormOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -366,26 +367,73 @@ export default function TrainingPage() {
     setViewerOpen(true)
   }
 
-  function adminPrimaryCta(m: AdminTrainingModule) {
-    if (m.type === 'read') {
-      return (
-        <Button
-          className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
-          onClick={() => setAdminModal(m)}
-        >
-          Read now
-        </Button>
-      )
+  function playCuratedModule(m: TrainingModule) {
+    if (m.type === 'article') {
+      setArticleModal(m)
+      return
     }
-    return (
-      <Button
-        className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
-        onClick={() => setAdminModal(m)}
-        disabled={isPlaceholderYoutube(m.youtubeUrl)}
-      >
-        Watch now
-      </Button>
-    )
+    if (!isCuratedYoutubeReady(m.youtubeUrl)) {
+      showToast('This video will be available once the team adds the real YouTube link in lib/trainingContent.ts.', 'error')
+      return
+    }
+    setVideoModalModule(m)
+  }
+
+  function openProAddVideo() {
+    if (atPersonalLimit) {
+      openUpgrade()
+      return
+    }
+    setAddProVideoOpen(true)
+  }
+
+  async function saveProLibraryVideo(video: {
+    title: string
+    description: string
+    youtube_url: string
+    duration: string
+    category: string
+    notes: string
+  }) {
+    if (!video.title?.trim()) {
+      throw new Error('Please enter a title')
+    }
+    if (atPersonalLimit) {
+      throw new Error('Personal library limit reached.')
+    }
+
+    const notesParts: string[] = []
+    if (video.category && video.category !== 'Personal') {
+      notesParts.push(`Topic: ${video.category}`)
+    }
+    if (video.description) notesParts.push(video.description)
+    if (video.duration) notesParts.push(`Duration: ${video.duration}`)
+    if (video.notes) notesParts.push(video.notes)
+    const combinedNotes = notesParts.join('\n\n').trim()
+
+    if (syncCloud) {
+      const id = newPersonalResourceClientId(true)
+      const row: PersonalTrainingResource = {
+        id,
+        title: video.title.trim(),
+        url: video.youtube_url.trim(),
+        notes: combinedNotes,
+        category: 'Video',
+      }
+      const { error } = await upsertPersonalTrainingResource(ctx, row)
+      if (error) throw new Error(error)
+      await reloadPersonal()
+    } else {
+      const id = newPersonalResourceClientId(false)
+      const row: PersonalTrainingResource = {
+        id,
+        title: video.title.trim(),
+        url: video.youtube_url.trim(),
+        notes: combinedNotes,
+        category: 'Video',
+      }
+      persistLocal([...personal, row])
+    }
   }
 
   return (
@@ -400,12 +448,12 @@ export default function TrainingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {adminTrainingModules.map((m) => (
-              <TrainingModuleCard
+              <TrainingCard
                 key={m.id}
-                title={m.title}
-                duration={m.duration}
-                typeLabel={m.type === 'read' ? 'read' : 'video'}
-                footer={adminPrimaryCta(m)}
+                module={m}
+                isPro={isPro}
+                onPlay={playCuratedModule}
+                onLockedClick={() => openUpgrade()}
               />
             ))}
           </div>
@@ -419,15 +467,23 @@ export default function TrainingPage() {
                 Your own saved videos and resources
               </p>
             </div>
-            <Button
-              variant="outline"
-              className="shrink-0 gap-2"
-              onClick={openAddResource}
-              disabled={!personalReady}
-            >
-              <Plus className="w-4 h-4" />
-              Add resource
-            </Button>
+            <div className="flex flex-wrap gap-2 shrink-0">
+              {isPro ? (
+                <Button className="gap-2" onClick={() => openProAddVideo()} disabled={!personalReady}>
+                  <Plus className="w-4 h-4" />
+                  Add YouTube video
+                </Button>
+              ) : null}
+              <Button
+                variant={isPro ? 'outline' : 'default'}
+                className="gap-2"
+                onClick={openAddResource}
+                disabled={!personalReady}
+              >
+                <Plus className="w-4 h-4" />
+                {isPro ? 'Add other link' : 'Add resource'}
+              </Button>
+            </div>
           </div>
 
           {!syncCloud ? (
@@ -514,38 +570,45 @@ export default function TrainingPage() {
         </section>
       </div>
 
-      <Dialog open={!!adminModal} onOpenChange={(o) => !o && setAdminModal(null)}>
+      <VideoModal
+        isOpen={!!videoModalModule}
+        onClose={() => setVideoModalModule(null)}
+        title={videoModalModule?.title ?? ''}
+        description={videoModalModule?.description ?? ''}
+        youtubeUrl={videoModalModule?.youtubeUrl ?? ''}
+        duration={videoModalModule?.duration ?? ''}
+        category={videoModalModule?.category ?? ''}
+      />
+
+      <Dialog open={!!articleModal} onOpenChange={(o) => !o && setArticleModal(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{adminModal?.title}</DialogTitle>
-            <DialogDescription>
-              {adminModal?.type === 'read'
-                ? adminModal.description
-                : isPlaceholderYoutube(adminModal?.youtubeUrl ?? '')
-                  ? 'This module will be available once the team adds the video link in training content settings.'
-                  : 'Curated MonkMode training video.'}
+            <DialogTitle>{articleModal?.title}</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              {articleModal?.category} · {articleModal?.duration}
             </DialogDescription>
           </DialogHeader>
-          {adminModal?.type === 'read' ? (
+          {articleModal ? (
             <div className="space-y-4 py-2">
               <div className="flex items-start gap-3 rounded-lg border bg-muted/30 p-4">
                 <BookOpen className="w-5 h-5 text-accent shrink-0 mt-0.5" />
-                <p className="text-sm leading-relaxed">{adminModal.description}</p>
+                <p className="text-sm leading-relaxed">{articleModal.description}</p>
               </div>
             </div>
-          ) : adminModal && !isPlaceholderYoutube(adminModal.youtubeUrl) ? (
-            <MediaModalBody
-              url={adminModal.youtubeUrl}
-              title={adminModal.title}
-            />
           ) : null}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAdminModal(null)}>
+            <Button variant="outline" onClick={() => setArticleModal(null)}>
               Close
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AddVideoModal
+        isOpen={addProVideoOpen}
+        onClose={() => setAddProVideoOpen(false)}
+        onSave={saveProLibraryVideo}
+      />
 
       <Dialog open={resourceFormOpen} onOpenChange={setResourceFormOpen}>
         <DialogContent>

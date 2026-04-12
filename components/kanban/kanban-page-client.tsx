@@ -12,6 +12,12 @@ export function KanbanPageClient() {
   const { data, setData, ready, loadError, reload } = useMonkData()
   const { isPro, isLoading: planLoading } = usePlan()
 
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Kanban render — isPro:', isPro)
+    console.log('Kanban render — isLoading:', planLoading)
+    console.log('Kanban render — ready:', ready)
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />

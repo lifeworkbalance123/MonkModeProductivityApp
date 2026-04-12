@@ -1,74 +1,152 @@
 /**
- * Layer 1 — Admin-curated MonkMode training modules.
- * Update `youtubeUrl` here (no deploy needed beyond saving this file in dev;
- * production still ships whatever is in the repo at build time).
+ * Admin-curated MonkMode training catalog.
+ * Edit this file to add, remove, or update modules (ship via deploy / repo).
  */
 
-export type AdminTrainingModuleType = 'video' | 'read'
-
-export type AdminTrainingModule = {
+export type TrainingModule = {
   id: string
   title: string
-  duration: string
-  type: AdminTrainingModuleType
-  /** YouTube watch or share URL; used for embed when type is `video`. */
-  youtubeUrl: string
   description: string
+  youtubeUrl: string
+  duration: string
+  type: 'video' | 'article'
+  isPro: boolean
+  category: string
+  thumbnail?: string
 }
 
-export const adminTrainingModules: AdminTrainingModule[] = [
+export const adminTrainingModules: TrainingModule[] = [
   {
-    id: '1',
+    id: 'monk-mode-explained',
     title: 'Monk Mode Explained',
+    description:
+      'What monk mode is, why it works, ' +
+      'and how to apply it to your daily ' +
+      'life starting today.',
+    youtubeUrl: 'https://www.youtube.com/watch?v=REPLACE_WITH_REAL_ID',
     duration: '15 min',
     type: 'video',
-    youtubeUrl: 'YOUR_YOUTUBE_URL_HERE',
-    description:
-      'What monk mode is and how to apply it to your life for sustained focus and calm.',
+    isPro: false,
+    category: 'Foundations',
   },
   {
-    id: '2',
+    id: 'pomodoro-technique',
     title: 'The Pomodoro Technique',
+    description:
+      'Master 25-minute focused sessions ' +
+      'to maximise productivity and beat ' +
+      'procrastination for good.',
+    youtubeUrl: 'https://www.youtube.com/watch?v=REPLACE_WITH_REAL_ID',
     duration: '12 min',
     type: 'video',
-    youtubeUrl: 'YOUR_YOUTUBE_URL_HERE',
-    description:
-      'Work in focused bursts with short breaks to stay sharp without burning out.',
+    isPro: false,
+    category: 'Focus',
   },
   {
-    id: '3',
+    id: 'time-boxing-mastery',
     title: 'Time Boxing Mastery',
+    description:
+      'Schedule every minute of your day ' +
+      'with intention. The system used by ' +
+      'Elon Musk and Bill Gates.',
+    youtubeUrl: 'https://www.youtube.com/watch?v=REPLACE_WITH_REAL_ID',
     duration: '18 min',
     type: 'video',
-    youtubeUrl: 'YOUR_YOUTUBE_URL_HERE',
-    description:
-      'Assign every hour a job so your day reflects your priorities, not your inbox.',
+    isPro: true,
+    category: 'Planning',
   },
   {
-    id: '4',
+    id: 'atomic-habits',
     title: 'Building Atomic Habits',
-    duration: '8 min',
-    type: 'read',
-    youtubeUrl: '',
     description:
-      'Tiny repeatable actions stack into identity-level change—how to design yours.',
-  },
-  {
-    id: '5',
-    title: 'Deep Work Protocol',
+      'Small changes, remarkable results. ' +
+      'The science behind habits that ' +
+      'actually stick long term.',
+    youtubeUrl: 'https://www.youtube.com/watch?v=REPLACE_WITH_REAL_ID',
     duration: '22 min',
     type: 'video',
-    youtubeUrl: 'YOUR_YOUTUBE_URL_HERE',
-    description:
-      'Rules and rituals to protect uninterrupted blocks where your best work happens.',
+    isPro: true,
+    category: 'Habits',
   },
   {
-    id: '6',
-    title: 'Morning Routine Blueprint',
-    duration: '15 min',
-    type: 'video',
-    youtubeUrl: 'YOUR_YOUTUBE_URL_HERE',
+    id: 'deep-work-protocol',
+    title: 'Deep Work Protocol',
     description:
-      'A repeatable start that primes energy, intention, and momentum before the world rushes in.',
+      "Cal Newport's framework for " +
+      'producing your best work in ' +
+      'distraction-free 90-minute sprints.',
+    youtubeUrl: 'https://www.youtube.com/watch?v=REPLACE_WITH_REAL_ID',
+    duration: '25 min',
+    type: 'video',
+    isPro: true,
+    category: 'Focus',
+  },
+  {
+    id: 'morning-routine',
+    title: 'Morning Routine Blueprint',
+    description:
+      'Design a powerful morning routine ' +
+      'that sets the tone for a focused, ' +
+      'productive day every single day.',
+    youtubeUrl: 'https://www.youtube.com/watch?v=REPLACE_WITH_REAL_ID',
+    duration: '18 min',
+    type: 'video',
+    isPro: true,
+    category: 'Routine',
+  },
+  {
+    id: 'evening-reflection',
+    title: 'Evening Reflection Practice',
+    description:
+      'How to review your day, celebrate ' +
+      'wins, and prepare mentally for ' +
+      'an even better tomorrow.',
+    youtubeUrl: 'https://www.youtube.com/watch?v=REPLACE_WITH_REAL_ID',
+    duration: '10 min',
+    type: 'video',
+    isPro: true,
+    category: 'Routine',
+  },
+  {
+    id: 'stoic-mindset',
+    title: 'Stoic Mindset for High Performance',
+    description:
+      'Ancient philosophy meets modern ' +
+      'productivity. How stoicism builds ' +
+      'unshakeable mental discipline.',
+    youtubeUrl: 'https://www.youtube.com/watch?v=REPLACE_WITH_REAL_ID',
+    duration: '20 min',
+    type: 'video',
+    isPro: true,
+    category: 'Mindset',
   },
 ]
+
+/** True when the URL resolves to a real embeddable YouTube id (not a placeholder). */
+export function isCuratedYoutubeReady(url: string): boolean {
+  const id = getYouTubeId(url.trim())
+  return !!id && id !== 'REPLACE_WITH_REAL_ID'
+}
+
+export function getYouTubeId(url: string): string | null {
+  if (!url) return null
+
+  const patterns = [
+    /youtube\.com\/watch\?v=([^&\s]+)/,
+    /youtu\.be\/([^?\s]+)/,
+    /youtube\.com\/embed\/([^?\s]+)/,
+    /youtube\.com\/shorts\/([^?\s]+)/,
+  ]
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern)
+    if (match) return match[1]
+  }
+  return null
+}
+
+export function getYouTubeThumbnail(url: string): string {
+  const id = getYouTubeId(url)
+  if (!id || id === 'REPLACE_WITH_REAL_ID') return ''
+  return `https://img.youtube.com/vi/${id}/mqdefault.jpg`
+}

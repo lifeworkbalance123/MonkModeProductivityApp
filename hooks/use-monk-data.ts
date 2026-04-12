@@ -19,8 +19,10 @@ function looksLikeSessionError(msg: string) {
 
 export function useMonkData() {
   const ctx = useDataServiceContext()
-  const ctxKey = `${ctx.userId ?? 'anon'}:${ctx.isPro ? '1' : '0'}`
+  const userId = ctx.userId ?? null
+  const isPro = ctx.isPro
   const { showToast } = useToast()
+  const prevUserIdRef = useRef<string | null | undefined>(undefined)
 
   const [data, setData] = useState<MonkData>(defaultMonkData)
   const [ready, setReady] = useState(false)
@@ -46,12 +48,16 @@ export function useMonkData() {
   useEffect(() => {
     let cancelled = false
     skipSaveOnce.current = true
-    setReady(false)
-    setLoadError(null)
-    const c = ctxRef.current
+    const userIdChanged = prevUserIdRef.current !== userId
+    prevUserIdRef.current = userId
+
+    if (userIdChanged) {
+      setReady(false)
+      setLoadError(null)
+    }
 
     ;(async () => {
-      const { data: loaded, error } = await loadFullMonkData(c)
+      const { data: loaded, error } = await loadFullMonkData(ctxRef.current)
       if (cancelled) return
       setData(loaded)
       setLoadError(error)
@@ -61,7 +67,7 @@ export function useMonkData() {
     return () => {
       cancelled = true
     }
-  }, [ctxKey])
+  }, [userId, isPro])
 
   useEffect(() => {
     function onOnline() {
@@ -123,7 +129,7 @@ export function useMonkData() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
-  }, [data, ready, ctxKey, showToast])
+  }, [data, ready, userId, showToast])
 
   const update = useCallback((fn: (prev: MonkData) => MonkData) => {
     setData(fn)

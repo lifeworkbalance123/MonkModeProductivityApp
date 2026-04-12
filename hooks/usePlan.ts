@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 
@@ -58,8 +58,13 @@ export function usePlan() {
   const [isTrial, setIsTrial] = useState(false)
   const [cancellationDate, setCancellationDate] = useState<string | null>(null)
 
+  /** After first resolved fetch for this user, refetches stay silent (no planLoading flash). */
+  const entitlementHydratedUserId = useRef<string | null>(null)
+  const fetchGeneration = useRef(0)
+
   const fetchEntitlement = useCallback(async () => {
     if (!user?.id) {
+      entitlementHydratedUserId.current = null
       setIsPro(false)
       setPlan('free')
       setSubscriptionEndDate(null)
@@ -70,69 +75,83 @@ export function usePlan() {
       return
     }
 
-    setPlanLoading(true)
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-    const token = session?.access_token
-    if (!token) {
-      setIsPro(false)
-      setPlan('free')
-      setSubscriptionEndDate(null)
-      setTrialEndDate(null)
-      setIsTrial(false)
-      setCancellationDate(null)
-      setPlanLoading(false)
-      return
+    const showSpinner = entitlementHydratedUserId.current !== user.id
+    if (showSpinner) setPlanLoading(true)
+
+    const gen = ++fetchGeneration.current
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) {
+        if (gen !== fetchGeneration.current) return
+        setIsPro(false)
+        setPlan('free')
+        setSubscriptionEndDate(null)
+        setTrialEndDate(null)
+        setIsTrial(false)
+        setCancellationDate(null)
+        entitlementHydratedUserId.current = user.id
+        return
+      }
+
+      const res = await fetch('/api/user/entitlement', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      })
+
+      if (!res.ok) {
+        if (gen !== fetchGeneration.current) return
+        setIsPro(false)
+        setPlan('free')
+        setSubscriptionEndDate(null)
+        setTrialEndDate(null)
+        setIsTrial(false)
+        setCancellationDate(null)
+        entitlementHydratedUserId.current = user.id
+        return
+      }
+
+      const data = (await res.json()) as EntitlementResponse
+      if (gen !== fetchGeneration.current) return
+      const p = (data.plan ?? 'free').toLowerCase()
+      const normalized: EntitlementPlan =
+        p === 'monthly' ||
+        p === 'annual' ||
+        p === 'lifetime' ||
+        p === 'trial' ||
+        p === 'free'
+          ? (p as EntitlementPlan)
+          : 'free'
+
+      setIsPro(!!data.isPro)
+      setPlan(normalized)
+      setSubscriptionEndDate(
+        data.subscriptionEndDate != null
+          ? String(data.subscriptionEndDate)
+          : null,
+      )
+      setTrialEndDate(data.trialEndDate != null ? String(data.trialEndDate) : null)
+      setIsTrial(Boolean(data.isTrial))
+      setCancellationDate(
+        data.cancellationDate != null ? String(data.cancellationDate) : null,
+      )
+      entitlementHydratedUserId.current = user.id
+    } finally {
+      if (gen === fetchGeneration.current) {
+        setPlanLoading(false)
+      }
     }
-
-    const res = await fetch('/api/user/entitlement', {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${token}` },
-      cache: 'no-store',
-    })
-
-    if (!res.ok) {
-      setIsPro(false)
-      setPlan('free')
-      setSubscriptionEndDate(null)
-      setTrialEndDate(null)
-      setIsTrial(false)
-      setCancellationDate(null)
-      setPlanLoading(false)
-      return
-    }
-
-    const data = (await res.json()) as EntitlementResponse
-    const p = (data.plan ?? 'free').toLowerCase()
-    const normalized: EntitlementPlan =
-      p === 'monthly' ||
-      p === 'annual' ||
-      p === 'lifetime' ||
-      p === 'trial' ||
-      p === 'free'
-        ? (p as EntitlementPlan)
-        : 'free'
-
-    setIsPro(!!data.isPro)
-    setPlan(normalized)
-    setSubscriptionEndDate(
-      data.subscriptionEndDate != null
-        ? String(data.subscriptionEndDate)
-        : null,
-    )
-    setTrialEndDate(data.trialEndDate != null ? String(data.trialEndDate) : null)
-    setIsTrial(Boolean(data.isTrial))
-    setCancellationDate(
-      data.cancellationDate != null ? String(data.cancellationDate) : null,
-    )
-    setPlanLoading(false)
-  }, [user?.id, user?.email])
+  }, [user?.id])
 
   useEffect(() => {
     if (authLoading) return
 
     if (!user) {
+      entitlementHydratedUserId.current = null
       setIsPro(false)
       setPlan('free')
       setSubscriptionEndDate(null)
@@ -153,7 +172,7 @@ export function usePlan() {
     return () => {
       cancelled = true
     }
-  }, [user, authLoading, fetchEntitlement])
+  }, [user?.id, authLoading, fetchEntitlement])
 
   useEffect(() => {
     const {

@@ -57,7 +57,7 @@ const navItems: NavItem[] = [
       "Track streaks, completion rates, and trends to understand how your habits compound.",
   },
   { href: "/training", label: "Training", icon: PlayCircle },
-  { href: "/focus", label: "Focus", icon: Timer },
+  { href: "/focus", label: "Focus & Deep Work", icon: Timer },
   {
     href: "/sync",
     label: "Cloud sync",

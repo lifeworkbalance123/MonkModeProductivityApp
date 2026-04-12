@@ -79,3 +79,42 @@ export async function setUserAsProTrial(): Promise<{
   const r = await setUserAsPro()
   return { ok: r.success, message: r.message }
 }
+
+/**
+ * Sets `is_admin` for the signed-in user via POST /api/debug/grant-admin (service role).
+ * Server must allow the route (development or ALLOW_ADMIN_DEBUG_GRANT=1).
+ */
+export async function grantAdminToSelf(): Promise<SetProResult> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (!token) {
+      return {
+        success: false,
+        message: 'No session — sign in first.',
+      }
+    }
+
+    const res = await fetch('/api/debug/grant-admin', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    const body = (await res.json().catch(() => ({}))) as { error?: string }
+
+    if (!res.ok) {
+      const msg = body.error ?? `Request failed (${res.status})`
+      return { success: false, message: msg }
+    }
+
+    return {
+      success: true,
+      message:
+        '✅ Admin access granted. Open Settings → Administration or go to /admin.',
+    }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    return { success: false, message: 'Unexpected error: ' + message }
+  }
+}

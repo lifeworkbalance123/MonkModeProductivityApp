@@ -1,6 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import Link from 'next/link'
 import { format, parseISO } from 'date-fns'
 import {
@@ -69,6 +76,28 @@ import { Download, Loader2 } from 'lucide-react'
 function periodDayCount(p: AnalyticsPeriod): number {
   if (p === 'all') return 120
   return p
+}
+
+/** Lets layout settle so Recharts ResponsiveContainer gets a non-zero width. */
+function useChartsPaintGate(active: boolean) {
+  const [ok, setOk] = useState(false)
+  useLayoutEffect(() => {
+    if (!active) {
+      setOk(false)
+      return
+    }
+    let cancelled = false
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!cancelled) setOk(true)
+      })
+    })
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(id)
+    }
+  }, [active])
+  return ok
 }
 
 function exportCsv(monk: MonkData, sessions: DeepWorkSession[]) {
@@ -191,8 +220,15 @@ export function AnalyticsPageClient() {
   const [targetHours, setTargetHours] = useState(20)
   const [loadingExtra, setLoadingExtra] = useState(true)
 
+  const chartsGateActive = ready && !planLoading && stats != null
+  const chartsPaint = useChartsPaintGate(chartsGateActive)
+
   const uid = ctx.userId
   const isProUser = isPro
+
+  /** Avoid re-fetching sessions on every MonkData change (causes loading flicker). */
+  const dataRef = useRef(data)
+  dataRef.current = data
 
   const loadSessionsAndStats = useCallback(async () => {
     if (!ready) return
@@ -200,16 +236,33 @@ export function AnalyticsPageClient() {
     try {
       const s = await fetchAnalyticsSessions(ctx)
       setSessions(s)
-      const st = await getCurrentStats(uid, isProUser, data, s)
+      const st = await getCurrentStats(
+        uid,
+        isProUser,
+        dataRef.current,
+        s,
+      )
       setStats(st)
     } finally {
       setLoadingExtra(false)
     }
-  }, [ready, ctx, uid, isProUser, data])
+  }, [ready, ctx, uid, isProUser])
 
   useEffect(() => {
     void loadSessionsAndStats()
   }, [loadSessionsAndStats])
+
+  useEffect(() => {
+    if (!ready) return
+    let cancelled = false
+    void (async () => {
+      const st = await getCurrentStats(uid, isProUser, data, sessions)
+      if (!cancelled) setStats(st)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [ready, uid, isProUser, data, sessions])
 
   useEffect(() => {
     setTargetHours(getDeepWorkWeeklyTargetHours())
@@ -439,7 +492,8 @@ export function AnalyticsPageClient() {
                   <h2 className="text-base font-semibold">
                     Weekly habit completion
                   </h2>
-                  <div className="mt-4 h-72 w-full">
+                  <div className="mt-4 h-72 w-full min-w-0">
+                    {chartsPaint ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chartWeekly}>
                         <XAxis dataKey="day" stroke="#9CA3AF" fontSize={12} />
@@ -469,6 +523,7 @@ export function AnalyticsPageClient() {
                         />
                       </BarChart>
                     </ResponsiveContainer>
+                    ) : null}
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">
                     Best day:{' '}
@@ -513,7 +568,8 @@ export function AnalyticsPageClient() {
                     Goals or Analytics. Days before tracking use habit
                     completion as an estimate.
                   </p>
-                  <div className="mt-4 h-72 w-full">
+                  <div className="mt-4 h-72 w-full min-w-0">
+                    {chartsPaint ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={chartGoal}>
                         <XAxis
@@ -545,6 +601,7 @@ export function AnalyticsPageClient() {
                         />
                       </LineChart>
                     </ResponsiveContainer>
+                    ) : null}
                   </div>
                 </Card>
 
@@ -600,7 +657,8 @@ export function AnalyticsPageClient() {
                       </label>
                     </div>
                   </div>
-                  <div className="mt-4 h-72 w-full">
+                  <div className="mt-4 h-72 w-full min-w-0">
+                    {chartsPaint ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chartDeep}>
                         <XAxis
@@ -624,6 +682,7 @@ export function AnalyticsPageClient() {
                         />
                       </BarChart>
                     </ResponsiveContainer>
+                    ) : null}
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">
                     This week: {stats.deepWorkHoursThisWeek.toFixed(1)} hours
@@ -641,7 +700,8 @@ export function AnalyticsPageClient() {
 
                 <Card className="border-border bg-card p-4 md:p-6">
                   <h2 className="text-base font-semibold">Streak history</h2>
-                  <div className="mt-4 h-72 w-full">
+                  <div className="mt-4 h-72 w-full min-w-0">
+                    {chartsPaint ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={chartStreak}>
                         <XAxis
@@ -666,6 +726,7 @@ export function AnalyticsPageClient() {
                         />
                       </AreaChart>
                     </ResponsiveContainer>
+                    ) : null}
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">
                     Longest streak: {streakMeta.longest} days

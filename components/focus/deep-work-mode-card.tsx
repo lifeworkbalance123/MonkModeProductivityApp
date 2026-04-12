@@ -305,7 +305,10 @@ export function DeepWorkModeCard({ setSessions }: Props) {
 
   return (
     <>
-      <Card className="relative overflow-hidden border-border p-6">
+      <Card
+        id="deep-work"
+        className="relative scroll-mt-24 overflow-hidden border-border p-6 md:scroll-mt-28"
+      >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <div className="flex flex-wrap items-center gap-2">

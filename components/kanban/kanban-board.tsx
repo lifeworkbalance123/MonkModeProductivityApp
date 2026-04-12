@@ -122,6 +122,13 @@ export function KanbanBoard({ data, setData }: Props) {
 
   const todayKey = format(new Date(), 'yyyy-MM-dd')
 
+  if (process.env.NODE_ENV === 'development') {
+    console.log('KanbanBoard render — isPro:', ctx.isPro)
+    console.log('KanbanBoard render — loading:', loading)
+    console.log('KanbanBoard render — columns:', columns.length)
+    console.log('KanbanBoard render — cards:', cards.length)
+  }
+
   const reload = useCallback(async () => {
     setLoading(true)
     try {

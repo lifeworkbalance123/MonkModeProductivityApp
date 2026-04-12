@@ -27,15 +27,27 @@ export function FocusPageClient() {
     }
   }, [planLoading, ctx.userId, ctx.isPro])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.location.hash !== '#deep-work') return
+    const el = document.getElementById('deep-work')
+    if (!el) return
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [])
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
       <div className="mx-auto max-w-xl space-y-8 px-4 py-8 pt-24">
         <div>
-          <h1 className="text-2xl font-semibold">Focus</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Focus & Deep Work
+          </h1>
           <p className="text-sm text-muted-foreground">
-            Pomodoro for quick blocks and Deep Work for long, distraction-free
-            sprints.
+            Pomodoro at the top; Deep Work Mode (90-minute sprints) below—scroll
+            after the timer.
           </p>
         </div>
         <PomodoroTimerCard />

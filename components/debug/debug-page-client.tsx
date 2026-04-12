@@ -16,6 +16,8 @@ export function DebugPageClient() {
   const [entitlementError, setEntitlementError] = useState<string | null>(null)
   const [proMessage, setProMessage] = useState('')
   const [proLoading, setProLoading] = useState(false)
+  const [adminMessage, setAdminMessage] = useState('')
+  const [adminLoading, setAdminLoading] = useState(false)
 
   const load = useCallback(async () => {
     setUsersError(null)
@@ -102,6 +104,24 @@ export function DebugPageClient() {
     }
   }
 
+  async function handleGrantAdmin() {
+    setAdminLoading(true)
+    setAdminMessage('')
+    try {
+      const { grantAdminToSelf } = await import('@/lib/devUtils')
+      const result = await grantAdminToSelf()
+      setAdminMessage(result.message)
+      if (result.success) {
+        await load()
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setAdminMessage('Error: ' + msg)
+    } finally {
+      setAdminLoading(false)
+    }
+  }
+
   const canAccessPro =
     !plan.isLoading && plan.isPro ? 'YES' : plan.isLoading ? '…' : 'NO'
 
@@ -123,7 +143,9 @@ export function DebugPageClient() {
             20260412120000_users_restore_self_update_rls.sql
           </code>{' '}
           (or add <code className="text-gray-200">SUPABASE_SERVICE_ROLE_KEY</code>{' '}
-          on Vercel for server routes).
+          on Vercel for server routes). &quot;Grant admin&quot; needs{' '}
+          <code className="text-gray-200">ALLOW_ADMIN_DEBUG_GRANT=1</code> on the
+          server outside local dev.
         </p>
 
         <section className="space-y-2">
@@ -205,6 +227,27 @@ export function DebugPageClient() {
               }
             >
               {proMessage}
+            </p>
+          ) : null}
+          <button
+            type="button"
+            disabled={adminLoading}
+            onClick={() => void handleGrantAdmin()}
+            className="mt-4 block w-full max-w-md rounded border border-slate-500/80 bg-slate-900/50 px-4 py-3 text-left text-sm text-slate-100 hover:bg-slate-800/50 disabled:cursor-wait disabled:opacity-50"
+          >
+            {adminLoading
+              ? 'Granting admin…'
+              : 'Grant admin to current user (testing only)'}
+          </button>
+          {adminMessage ? (
+            <p
+              className={
+                adminMessage.includes('✅')
+                  ? 'text-xs whitespace-pre-wrap text-emerald-400'
+                  : 'text-xs whitespace-pre-wrap text-red-400'
+              }
+            >
+              {adminMessage}
             </p>
           ) : null}
           <button
