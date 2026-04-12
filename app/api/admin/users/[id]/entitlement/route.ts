@@ -54,7 +54,13 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid user id' }, { status: 400 })
   }
 
-  let body: { is_pro?: boolean; plan?: string }
+  let body: {
+    is_pro?: boolean
+    plan?: string
+    trial_end_date?: string | null
+    trial_start_date?: string | null
+    is_trial_active?: boolean | null
+  }
   try {
     body = await request.json()
   } catch {
@@ -62,17 +68,41 @@ export async function PATCH(
   }
 
   const planRaw = (body.plan ?? 'free').toLowerCase()
-  const plan = ['free', 'monthly', 'lifetime'].includes(planRaw)
+  const allowedPlans = [
+    'free',
+    'trial',
+    'monthly',
+    'annual',
+    'lifetime',
+  ] as const
+  const plan = allowedPlans.includes(planRaw as (typeof allowedPlans)[number])
     ? planRaw
     : 'free'
+
   const isPro =
     typeof body.is_pro === 'boolean'
       ? body.is_pro
-      : plan === 'monthly' || plan === 'lifetime'
+      : plan === 'monthly' ||
+          plan === 'annual' ||
+          plan === 'lifetime'
+
+  const patch: Record<string, unknown> = {
+    is_pro: isPro,
+    plan,
+  }
+  if (body.trial_end_date !== undefined) {
+    patch.trial_end_date = body.trial_end_date
+  }
+  if (body.trial_start_date !== undefined) {
+    patch.trial_start_date = body.trial_start_date
+  }
+  if (body.is_trial_active !== undefined) {
+    patch.is_trial_active = body.is_trial_active
+  }
 
   const { error: upError } = await admin
     .from('users')
-    .update({ is_pro: isPro, plan })
+    .update(patch)
     .eq('id', targetId)
 
   if (upError) {

@@ -65,7 +65,9 @@ export default function SettingsPage() {
   const [referralCode, setReferralCode] = useState('')
   const [referralCount, setReferralCount] = useState(0)
   const [rewardMonths, setRewardMonths] = useState(0)
+  const [isAdmin, setIsAdmin] = useState(false)
   const planKey = currentPlan.toLowerCase()
+  const canOpenAdminPanel = isAdmin === true
   const nextBill = formatBillingDate(subscriptionEndDate)
   const trialEnds = formatBillingDate(trialEndDate)
   const trialDaysLeft = trialEndDate
@@ -98,6 +100,22 @@ export default function SettingsPage() {
       setReferralCode(data.referralCode ?? '')
       setReferralCount(data.referralCount ?? 0)
       setRewardMonths(data.referralRewardMonths ?? 0)
+    })()
+  }, [session?.user?.id])
+
+  useEffect(() => {
+    const uid = session?.user?.id
+    if (!uid) {
+      setIsAdmin(false)
+      return
+    }
+    void (async () => {
+      const { data } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('id', uid)
+        .maybeSingle()
+      setIsAdmin(Boolean((data as { is_admin?: boolean } | null)?.is_admin))
     })()
   }, [session?.user?.id])
 
@@ -259,6 +277,36 @@ export default function SettingsPage() {
             <Button type="button" variant="outline" size="sm" onClick={handleSignOut}>
               Sign out
             </Button>
+          </div>
+        </Card>
+        <Card className="p-4 space-y-3">
+          <div>
+            <h2 className="font-medium mb-1">Administration</h2>
+            <p className="text-sm text-muted-foreground">
+              {canOpenAdminPanel
+                ? 'Waitlist, announcements, revenue summaries, and support tools.'
+                : 'Restricted to accounts with is_admin in Supabase.'}
+            </p>
+            {!canOpenAdminPanel ? (
+              <p className="text-xs text-muted-foreground">
+                Set{' '}
+                <code className="rounded bg-muted px-1 py-0.5">is_admin = true</code> on
+                your row in Supabase (Table Editor → public.users), or open{' '}
+                <Link href="/debug" className="text-accent underline">
+                  /debug
+                </Link>{' '}
+                and use &quot;Grant admin&quot; when the server has{' '}
+                <code className="rounded bg-muted px-1 py-0.5">
+                  ALLOW_ADMIN_DEBUG_GRANT=1
+                </code>{' '}
+                and <code className="rounded bg-muted px-1 py-0.5">SUPABASE_SERVICE_ROLE_KEY</code>.
+              </p>
+            ) : null}
+            {canOpenAdminPanel ? (
+              <Button type="button" size="sm" variant="outline" className="mt-2" asChild>
+                <Link href="/admin">Open admin panel</Link>
+              </Button>
+            ) : null}
           </div>
         </Card>
         <Card className="p-4 space-y-4">
