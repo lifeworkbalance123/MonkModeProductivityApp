@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
 import DailyLesson from '@/components/program/DailyLesson'
 import DistractionLog from '@/components/program/DistractionLog'
+import EnergyLog from '@/components/program/EnergyLog'
 import ProgramHeader from '@/components/program/ProgramHeader'
 import { Navigation } from '@/components/navigation'
 import { useProgram } from '@/hooks/useProgram'
@@ -43,6 +44,9 @@ export default function TodayPage() {
             <DailyLesson dayNumber={enrollment.currentDay} onComplete={() => void refresh()} />
             {enrollment.currentDay >= 3 ? (
               <DistractionLog dayNumber={enrollment.currentDay} />
+            ) : null}
+            {enrollment.currentDay >= 7 ? (
+              <EnergyLog dayNumber={enrollment.currentDay} />
             ) : null}
           </>
         ) : null}
