@@ -26,6 +26,7 @@ import {
   type KanbanGoalCompletedDetail,
 } from '@/lib/kanban-events'
 import { recordTodayGoalSnapshot } from '@/lib/goal-daily-snapshots'
+import OneBigTask from '@/components/program/OneBigTask'
 
 const checkClass =
   'border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent data-[state=checked]:text-accent-foreground'
@@ -135,6 +136,7 @@ export default function GoalsPage() {
       ) : null}
       {ready ? (
       <div className="max-w-xl mx-auto px-4 py-8 pt-24 space-y-6">
+        <OneBigTask />
         <div>
           <h1 className="text-2xl font-semibold">Goals</h1>
           <p className="text-sm text-muted-foreground">

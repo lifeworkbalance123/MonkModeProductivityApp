@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react'
 import DailyLesson from '@/components/program/DailyLesson'
 import DistractionLog from '@/components/program/DistractionLog'
 import EnergyLog from '@/components/program/EnergyLog'
+import OneBigTask from '@/components/program/OneBigTask'
 import ProgramHeader from '@/components/program/ProgramHeader'
 import WeeklyReview, { isReviewDay } from '@/components/program/WeeklyReview'
 import { Navigation } from '@/components/navigation'
@@ -42,6 +43,9 @@ export default function TodayPage() {
         {!loading && enrolled && enrollment ? (
           <>
             <ProgramHeader />
+            {enrollment.currentDay >= 2 ? (
+              <OneBigTask dayNumber={enrollment.currentDay} />
+            ) : null}
             {isReviewDay(enrollment.currentDay) ? (
               <WeeklyReview dayNumber={enrollment.currentDay} />
             ) : null}

@@ -170,7 +170,8 @@ export async function loadFullMonkData(
     supabase
       .from('goals')
       .select('id,title,priority,completed,type,date')
-      .eq('user_id', uid),
+      .eq('user_id', uid)
+      .eq('is_one_big_task', false),
     supabase
       .from('planner_slots')
       .select('id,date,time_slot,activity,category,colour')
@@ -327,9 +328,10 @@ export async function persistFullMonkData(
     completed: g.completed,
     type: 'daily' as const,
     date: GOAL_ANCHOR_DATE,
+    is_one_big_task: false,
   }))
 
-  await supabase.from('goals').delete().eq('user_id', uid)
+  await supabase.from('goals').delete().eq('user_id', uid).eq('is_one_big_task', false)
   if (goalRows.length) {
     const { error: gErr } = await supabase.from('goals').insert(goalRows)
     if (gErr) {
@@ -501,6 +503,7 @@ export async function getGoals(ctx: DataServiceContext): Promise<Goal[]> {
       .from('goals')
       .select('id,title,completed')
       .eq('user_id', ctx.userId)
+      .eq('is_one_big_task', false)
     if (error) {
       console.error(error)
       return loadMonk().goals
@@ -533,6 +536,7 @@ export async function saveGoal(
       completed: goal.completed,
       type,
       date,
+      is_one_big_task: false,
     },
     { onConflict: 'id' },
   )
