@@ -35,8 +35,8 @@ function PaymentSuccessBody() {
         asChild
         className="mt-8 bg-[#F59E0B] font-semibold text-[#111827] hover:bg-[#F59E0B]/90"
       >
-        <Link href={isV2Program ? '/today' : '/dashboard'}>
-          {isV2Program ? 'Go to Today' : 'Go to dashboard'}
+        <Link href={isV2Program ? '/onboarding' : '/dashboard'}>
+          {isV2Program ? 'Continue setup' : 'Go to dashboard'}
         </Link>
       </Button>
     </div>
