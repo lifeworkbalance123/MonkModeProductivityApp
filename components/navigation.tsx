@@ -22,6 +22,7 @@ import {
   BarChart2,
   Cloud,
   Timer,
+  Sunrise,
 } from "lucide-react"
 
 type IconType = typeof LayoutDashboard
@@ -35,6 +36,7 @@ type NavItem = {
 }
 
 const navItems: NavItem[] = [
+  { href: "/today", label: "Today", icon: Sunrise },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/schedule", label: "Time Schedule", icon: Clock },
   { href: "/planner", label: "Weekly Planner", icon: Calendar },
