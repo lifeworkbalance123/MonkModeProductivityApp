@@ -26,6 +26,7 @@ import { youtubeEmbedFromUrl } from '@/lib/morning-video'
 import { usePlan } from '@/hooks/usePlan'
 import { useToast } from '@/context/ToastContext'
 import { GettingStartedChecklist } from '@/components/GettingStartedChecklist'
+import ProgramHeader from '@/components/program/ProgramHeader'
 import type { DataServiceContext } from '@/lib/dataService'
 import {
   applyTimeBlockToPlannerWeek,
@@ -256,6 +257,8 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
             </button>
           </div>
         </div>
+
+        <ProgramHeader />
 
         <div className="grid min-w-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           <div className="flex max-md:contents flex-col gap-6 md:col-span-1 lg:col-span-2">
