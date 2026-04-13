@@ -23,6 +23,8 @@ export default function AdminShellLayout({
   const pathname = usePathname()
   const [checking, setChecking] = useState(true)
   const [allowed, setAllowed] = useState(false)
+  /** Why the shell is hidden (avoids a blank screen if client navigation stalls). */
+  const [blockReason, setBlockReason] = useState<'signed_out' | 'not_admin' | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -34,26 +36,45 @@ export default function AdminShellLayout({
         } = await supabase.auth.getUser()
 
         if (!user) {
+          setBlockReason('signed_out')
           router.replace('/auth')
           return
         }
 
-        const { data: row, error } = await supabase
-          .from('users')
-          .select('is_admin')
-          .eq('id', user.id)
-          .maybeSingle()
-
+        // Prefer SECURITY DEFINER RPC so admin checks match RLS used in SQL policies.
+        const { data: rpcData, error: rpcError } = await supabase.rpc('is_current_user_admin')
         if (cancelled) return
 
-        if (error || !(row as { is_admin?: boolean } | null)?.is_admin) {
+        let isAdmin = rpcData === true
+        if (rpcError || rpcData === null || rpcData === undefined) {
+          const { data: row, error } = await supabase
+            .from('users')
+            .select('is_admin')
+            .eq('id', user.id)
+            .maybeSingle()
+          if (cancelled) return
+          if (error) {
+            console.error('Admin gate: is_current_user_admin RPC failed; users select:', rpcError, error)
+            setBlockReason('not_admin')
+            router.replace('/dashboard')
+            return
+          }
+          isAdmin = !!(row as { is_admin?: boolean } | null)?.is_admin
+        }
+
+        if (!isAdmin) {
+          setBlockReason('not_admin')
           router.replace('/dashboard')
           return
         }
 
         setAllowed(true)
-      } catch {
-        if (!cancelled) router.replace('/dashboard')
+      } catch (e) {
+        console.error('Admin gate:', e)
+        if (!cancelled) {
+          setBlockReason('not_admin')
+          router.replace('/dashboard')
+        }
       } finally {
         if (!cancelled) setChecking(false)
       }
@@ -76,7 +97,32 @@ export default function AdminShellLayout({
     )
   }
 
-  if (!allowed) return null
+  if (!allowed) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0F172A] px-6 text-center text-sm text-slate-300">
+        {blockReason === 'signed_out' ? (
+          <>
+            <p>Sign in is required for the admin area.</p>
+            <Link href="/auth" className="text-amber-400 underline hover:text-amber-300">
+              Go to sign in
+            </Link>
+          </>
+        ) : (
+          <>
+            <p>This area is only available to admin accounts.</p>
+            <p className="max-w-md text-xs text-slate-500">
+              If you recently deployed, confirm your user has <code className="text-slate-400">is_admin = true</code>{' '}
+              in Supabase (Table Editor or SQL) and that migrations defining{' '}
+              <code className="text-slate-400">is_current_user_admin</code> have been applied.
+            </p>
+            <Link href="/dashboard" className="text-amber-400 underline hover:text-amber-300">
+              Back to app
+            </Link>
+          </>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#0F172A] font-sans text-slate-200 antialiased">
