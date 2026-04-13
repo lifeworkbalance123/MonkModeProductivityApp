@@ -52,11 +52,37 @@ export default function AdminShellLayout({
       }
 
       console.log('User ID:', user.id)
+      console.log('Checking users table for is_admin...')
+      const { data: selfRow, error: selfErr } = await supabase
+        .from('users')
+        .select('is_admin, email, id')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      console.log('Self row:', selfRow)
+      console.log('Self row error:', selfErr?.message)
+
+      if ((selfRow as { is_admin?: boolean } | null)?.is_admin === true) {
+        console.log('✅ Admin verified from client users row')
+        setAllowed(true)
+        setBlockReason(null)
+        return
+      }
+
       console.log('Checking /api/admin/verify ...')
       const {
         data: { session },
       } = await supabase.auth.getSession()
-      const token = session?.access_token
+      let token = session?.access_token
+      console.log('Session token present:', !!token)
+
+      if (!token) {
+        console.log('No token yet, attempting refreshSession...')
+        const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession()
+        if (refreshErr) console.log('refreshSession error:', refreshErr.message)
+        token = refreshData.session?.access_token
+        console.log('Token after refresh present:', !!token)
+      }
 
       const response = await fetch('/api/admin/verify', {
         method: 'GET',
