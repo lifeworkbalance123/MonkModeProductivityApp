@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/context/ToastContext'
 
-type Tab = 'lessons' | 'onboarding' | 'habits'
+type Tab = 'lessons' | 'onboarding' | 'habits' | 'training'
 
 const ONBOARDING_STEP_ORDER = ['welcome', 'why', 'commitment', 'setup', 'ready'] as const
 
@@ -43,11 +43,15 @@ export default function AdminContentPage() {
         <button type="button" style={tabStyle('habits')} onClick={() => setActiveTab('habits')}>
           Default Habits
         </button>
+        <button type="button" style={tabStyle('training')} onClick={() => setActiveTab('training')}>
+          🎬 Training Videos
+        </button>
       </div>
 
       {activeTab === 'lessons' ? <LessonsEditor /> : null}
       {activeTab === 'onboarding' ? <OnboardingEditor /> : null}
       {activeTab === 'habits' ? <HabitsEditor /> : null}
+      {activeTab === 'training' ? <TrainingVideosEditor /> : null}
     </div>
   )
 }
@@ -719,6 +723,459 @@ function OnboardingEditor() {
 }
 
 type OnboardingHabitAdmin = { id: string; name: string; icon: string; active: boolean; display_order: number }
+
+type TrainingModuleAdmin = {
+  id: string
+  title: string
+  description: string
+  youtube_url: string
+  duration: string
+  type: string
+  is_pro: boolean
+  category: string
+  display_order: number
+  published: boolean
+}
+
+function TrainingVideosEditor() {
+  const { showToast } = useToast()
+  const [modules, setModules] = useState<TrainingModuleAdmin[]>([])
+  const [editing, setEditing] = useState<TrainingModuleAdmin | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  const fallbackFromConfig: TrainingModuleAdmin[] = [
+    {
+      id: 'monk-mode-explained',
+      title: 'Monk Mode Explained',
+      description: 'What monk mode is, why it works, and how to apply it to your daily life starting today.',
+      youtube_url: '',
+      duration: '15 min',
+      type: 'video',
+      is_pro: false,
+      category: 'Foundations',
+      display_order: 1,
+      published: true,
+    },
+    {
+      id: 'pomodoro-technique',
+      title: 'The Pomodoro Technique',
+      description: 'Master 25-minute focused sessions to maximise productivity and beat procrastination.',
+      youtube_url: '',
+      duration: '12 min',
+      type: 'video',
+      is_pro: false,
+      category: 'Focus',
+      display_order: 2,
+      published: true,
+    },
+    {
+      id: 'time-boxing-mastery',
+      title: 'Time Boxing Mastery',
+      description: 'Schedule every minute of your day with intention.',
+      youtube_url: '',
+      duration: '18 min',
+      type: 'video',
+      is_pro: true,
+      category: 'Planning',
+      display_order: 3,
+      published: true,
+    },
+    {
+      id: 'atomic-habits',
+      title: 'Building Atomic Habits',
+      description: 'Small changes, remarkable results. The science behind habits that stick.',
+      youtube_url: '',
+      duration: '22 min',
+      type: 'video',
+      is_pro: true,
+      category: 'Habits',
+      display_order: 4,
+      published: true,
+    },
+    {
+      id: 'deep-work-protocol',
+      title: 'Deep Work Protocol',
+      description: 'Cal Newport\'s framework for producing your best work in distraction-free sprints.',
+      youtube_url: '',
+      duration: '25 min',
+      type: 'video',
+      is_pro: true,
+      category: 'Focus',
+      display_order: 5,
+      published: true,
+    },
+    {
+      id: 'morning-routine',
+      title: 'Morning Routine Blueprint',
+      description: 'Design a powerful morning routine that sets the tone for a focused day.',
+      youtube_url: '',
+      duration: '18 min',
+      type: 'video',
+      is_pro: true,
+      category: 'Routine',
+      display_order: 6,
+      published: true,
+    },
+    {
+      id: 'evening-reflection',
+      title: 'Evening Reflection Practice',
+      description: 'How to review your day and prepare for an even better tomorrow.',
+      youtube_url: '',
+      duration: '10 min',
+      type: 'video',
+      is_pro: true,
+      category: 'Routine',
+      display_order: 7,
+      published: true,
+    },
+    {
+      id: 'stoic-mindset',
+      title: 'Stoic Mindset for High Performance',
+      description: 'Ancient philosophy meets modern productivity.',
+      youtube_url: '',
+      duration: '20 min',
+      type: 'video',
+      is_pro: true,
+      category: 'Mindset',
+      display_order: 8,
+      published: true,
+    },
+  ]
+
+  useEffect(() => {
+    void loadModules()
+  }, [])
+
+  async function loadModules() {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('training_modules')
+      .select('*')
+      .order('display_order', { ascending: true })
+    if (error) {
+      showToast(error.message, 'error')
+      setModules(fallbackFromConfig)
+    } else {
+      const rows = (data as TrainingModuleAdmin[] | null) ?? []
+      setModules(rows.length > 0 ? rows : fallbackFromConfig)
+    }
+    setLoading(false)
+  }
+
+  async function saveModule() {
+    if (!editing) return
+    setSaving(true)
+    const { error } = await supabase
+      .from('training_modules')
+      .upsert(
+        {
+          id: editing.id,
+          title: editing.title,
+          description: editing.description,
+          youtube_url: editing.youtube_url,
+          duration: editing.duration,
+          type: editing.type,
+          is_pro: editing.is_pro,
+          category: editing.category,
+          display_order: editing.display_order,
+          published: editing.published,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' },
+      )
+
+    setSaving(false)
+    if (error) {
+      showToast(error.message, 'error')
+      return
+    }
+    setSaved(true)
+    setTimeout(() => setSaved(false), 3000)
+    await loadModules()
+    setEditing(null)
+  }
+
+  function getYouTubeId(url: string) {
+    if (!url) return null
+    const patterns = [/youtube\.com\/watch\?v=([^&\s]+)/, /youtu\.be\/([^?\s]+)/, /youtube\.com\/embed\/([^?\s]+)/]
+    for (const p of patterns) {
+      const match = url.match(p)
+      if (match) return match[1]
+    }
+    return null
+  }
+
+  const inputStyle = {
+    width: '100%',
+    background: '#0F172A',
+    border: '1px solid #334155',
+    borderRadius: '8px',
+    padding: '10px 14px',
+    color: 'white',
+    fontSize: '14px',
+    outline: 'none',
+    boxSizing: 'border-box' as const,
+  }
+
+  const labelStyle = {
+    display: 'block',
+    color: '#94A3B8',
+    fontSize: '12px',
+    fontWeight: '500' as const,
+    marginBottom: '6px',
+  }
+
+  if (editing) {
+    const videoId = getYouTubeId(editing.youtube_url)
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+          <h2 style={{ color: 'white', fontSize: '18px', fontWeight: '600', margin: 0 }}>Edit: {editing.title}</h2>
+          <button
+            type="button"
+            onClick={() => setEditing(null)}
+            style={{
+              background: '#1E293B',
+              border: '1px solid #334155',
+              color: '#94A3B8',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '13px',
+            }}
+          >
+            ← Back to list
+          </button>
+        </div>
+
+        <div style={{ background: '#1E293B', borderRadius: '12px', padding: '24px', border: '1px solid #334155' }}>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>YouTube URL * (paste full YouTube link here)</label>
+            <input
+              type="url"
+              placeholder="https://www.youtube.com/watch?v=..."
+              value={editing.youtube_url}
+              onChange={(e) => setEditing({ ...editing, youtube_url: e.target.value })}
+              style={{ ...inputStyle, borderColor: videoId ? '#10B981' : '#334155' }}
+            />
+            {videoId ? (
+              <div style={{ marginTop: '10px' }}>
+                <img
+                  src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
+                  alt="Video thumbnail"
+                  style={{ width: '100%', maxWidth: '320px', borderRadius: '8px', border: '1px solid #334155' }}
+                />
+                <p style={{ color: '#10B981', fontSize: '12px', marginTop: '6px' }}>
+                  ✓ Valid YouTube link — thumbnail preview above
+                </p>
+              </div>
+            ) : null}
+            {editing.youtube_url && !videoId ? (
+              <p style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px' }}>
+                ✗ Could not detect YouTube ID — check the URL format
+              </p>
+            ) : null}
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>Title *</label>
+            <input
+              type="text"
+              value={editing.title}
+              onChange={(e) => setEditing({ ...editing, title: e.target.value })}
+              style={inputStyle}
+            />
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>Description</label>
+            <textarea
+              rows={3}
+              value={editing.description}
+              onChange={(e) => setEditing({ ...editing, description: e.target.value })}
+              style={{ ...inputStyle, resize: 'vertical' }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+            <div>
+              <label style={labelStyle}>Duration</label>
+              <input
+                type="text"
+                placeholder="e.g. 15 min"
+                value={editing.duration}
+                onChange={(e) => setEditing({ ...editing, duration: e.target.value })}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Category</label>
+              <select
+                value={editing.category}
+                onChange={(e) => setEditing({ ...editing, category: e.target.value })}
+                style={{ ...inputStyle, cursor: 'pointer' }}
+              >
+                {['Foundations', 'Focus', 'Planning', 'Habits', 'Mindset', 'Routine', 'Physical', 'Other'].map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '24px', marginBottom: '24px', flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#CBD5E1', fontSize: '14px' }}>
+              <input
+                type="checkbox"
+                checked={editing.is_pro}
+                onChange={(e) => setEditing({ ...editing, is_pro: e.target.checked })}
+                style={{ cursor: 'pointer' }}
+              />
+              Pro only (locked for free users)
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#CBD5E1', fontSize: '14px' }}>
+              <input
+                type="checkbox"
+                checked={editing.published}
+                onChange={(e) => setEditing({ ...editing, published: e.target.checked })}
+                style={{ cursor: 'pointer' }}
+              />
+              Published (visible to users)
+            </label>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button
+              type="button"
+              onClick={() => void saveModule()}
+              disabled={saving || !editing.title}
+              style={{
+                background: editing.title ? '#F59E0B' : '#334155',
+                color: editing.title ? '#000' : '#64748B',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '12px 28px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: saving ? 'wait' : 'pointer',
+              }}
+            >
+              {saving ? 'Saving...' : 'Save module'}
+            </button>
+            {saved ? (
+              <span style={{ color: '#10B981', fontSize: '13px' }}>✓ Saved — changes are live immediately</span>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <p style={{ color: '#64748B', fontSize: '14px', margin: '0 0 20px', lineHeight: '1.6' }}>
+        Click any module to add or update its YouTube URL. Changes are live immediately — no code changes needed.
+      </p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {loading ? (
+          <p style={{ color: '#64748B' }}>Loading modules...</p>
+        ) : (
+          modules.map((module) => {
+            const hasVideo = !!module.youtube_url
+            const videoId = getYouTubeId(module.youtube_url)
+            return (
+              <div
+                key={module.id}
+                onClick={() => setEditing({ ...module })}
+                style={{
+                  background: '#1E293B',
+                  borderRadius: '10px',
+                  padding: '14px 16px',
+                  border: `1px solid ${hasVideo ? '#334155' : '#EF444422'}`,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '14px',
+                  transition: 'border-color 0.15s',
+                }}
+                onMouseOver={(e) => {
+                  ;(e.currentTarget as HTMLElement).style.borderColor = '#F59E0B'
+                }}
+                onMouseOut={(e) => {
+                  ;(e.currentTarget as HTMLElement).style.borderColor = hasVideo ? '#334155' : '#EF444422'
+                }}
+              >
+                <div
+                  style={{
+                    width: '64px',
+                    height: '40px',
+                    borderRadius: '6px',
+                    overflow: 'hidden',
+                    flexShrink: 0,
+                    background: '#0F172A',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {videoId ? (
+                    <img
+                      src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
+                      alt={module.title}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <span style={{ fontSize: '20px' }}>🎬</span>
+                  )}
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <p style={{ color: 'white', fontSize: '14px', fontWeight: '500', margin: '0 0 3px' }}>{module.title}</p>
+                  <p style={{ color: '#64748B', fontSize: '12px', margin: 0 }}>
+                    {module.category} · {module.duration} · {module.is_pro ? 'Pro' : 'Free'} ·{' '}
+                    {module.published ? 'Published' : 'Draft'}
+                  </p>
+                </div>
+
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  {hasVideo ? (
+                    <span
+                      style={{
+                        background: '#065F46',
+                        color: '#10B981',
+                        fontSize: '11px',
+                        padding: '3px 8px',
+                        borderRadius: '4px',
+                      }}
+                    >
+                      ✓ Video linked
+                    </span>
+                  ) : (
+                    <span
+                      style={{
+                        background: '#450A0A',
+                        color: '#EF4444',
+                        fontSize: '11px',
+                        padding: '3px 8px',
+                        borderRadius: '4px',
+                      }}
+                    >
+                      No video yet
+                    </span>
+                  )}
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+    </div>
+  )
+}
 
 function HabitsEditor() {
   const { showToast } = useToast()

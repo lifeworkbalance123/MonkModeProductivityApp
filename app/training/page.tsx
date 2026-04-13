@@ -42,6 +42,7 @@ import { useToast } from '@/context/ToastContext'
 import { useUpgradeOffer } from '@/context/UpgradeOfferContext'
 import { useDataServiceContext } from '@/hooks/use-data-service-context'
 import { usePlan } from '@/hooks/usePlan'
+import { supabase } from '@/lib/supabase'
 import {
   deletePersonalTrainingResource,
   listPersonalTrainingResources,
@@ -59,7 +60,6 @@ import {
 import { FREE_PERSONAL_TRAINING_LIBRARY_LIMIT } from '@/lib/plan-limits'
 import { cn } from '@/lib/utils'
 import {
-  adminTrainingModules,
   isCuratedYoutubeReady,
   type TrainingModule,
 } from '@/lib/trainingContent'
@@ -222,6 +222,7 @@ export default function TrainingPage() {
 
   const [personal, setPersonal] = useState<PersonalTrainingResource[]>([])
   const [personalReady, setPersonalReady] = useState(false)
+  const [adminModules, setAdminModules] = useState<TrainingModule[]>([])
 
   const [articleModal, setArticleModal] = useState<TrainingModule | null>(null)
   const [videoModalModule, setVideoModalModule] = useState<TrainingModule | null>(null)
@@ -262,6 +263,35 @@ export default function TrainingPage() {
       cancelled = true
     }
   }, [planLoading, reloadPersonal])
+
+  useEffect(() => {
+    async function loadModules() {
+      const { data, error } = await supabase
+        .from('training_modules')
+        .select('*')
+        .eq('published', true)
+        .order('display_order', { ascending: true })
+
+      if (error) {
+        showToast(error.message, 'error')
+        setAdminModules([])
+        return
+      }
+
+      const mapped = ((data as Array<Record<string, unknown>>) ?? []).map((m) => ({
+        id: String(m.id ?? ''),
+        title: String(m.title ?? ''),
+        description: String(m.description ?? ''),
+        youtubeUrl: String(m.youtube_url ?? ''),
+        duration: String(m.duration ?? ''),
+        type: (m.type === 'article' ? 'article' : 'video') as 'video' | 'article',
+        isPro: Boolean(m.is_pro),
+        category: String(m.category ?? ''),
+      }))
+      setAdminModules(mapped)
+    }
+    void loadModules()
+  }, [showToast])
 
   const atPersonalLimit =
     !planLoading && !syncCloud && personal.length >= FREE_PERSONAL_TRAINING_LIBRARY_LIMIT
@@ -444,10 +474,16 @@ export default function TrainingPage() {
           <div className="text-center space-y-1 max-w-2xl mx-auto">
             <h1 className="text-2xl sm:text-3xl font-semibold">MonkMode Training</h1>
             <p className="text-sm text-muted-foreground">Curated by the MonkMode team</p>
+            <p className="text-xs text-muted-foreground">
+              <Link href="/videos" className="text-accent underline-offset-4 hover:underline">
+                Video library
+              </Link>{' '}
+              — team catalog you can update from the admin panel.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {adminTrainingModules.map((m) => (
+            {adminModules.map((m) => (
               <TrainingCard
                 key={m.id}
                 module={m}
