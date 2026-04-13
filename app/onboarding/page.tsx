@@ -4,9 +4,6 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { enrollUser } from '@/lib/programUtils'
-import { useDataServiceContext } from '@/hooks/use-data-service-context'
-import { usePlan } from '@/hooks/usePlan'
-import { shouldSyncToCloud } from '@/lib/dataService'
 import { useToast } from '@/context/ToastContext'
 
 type Step = 'welcome' | 'why' | 'commitment' | 'setup' | 'ready'
@@ -38,10 +35,7 @@ const DEFAULT_HABITS = [
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const ctx = useDataServiceContext()
-  const { isLoading: planLoading } = usePlan()
   const { showToast } = useToast()
-  const syncCloud = !planLoading && shouldSyncToCloud(ctx)
 
   const [step, setStep] = useState<Step>('welcome')
   const [wakeTime, setWakeTime] = useState<string>('06:00')
@@ -93,24 +87,22 @@ export default function OnboardingPage() {
         showToast('Profile could not be saved. You can update settings later.', 'error')
       }
 
-      if (syncCloud) {
-        const { count, error: countError } = await supabase
-          .from('habits')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id)
+      const { count, error: countError } = await supabase
+        .from('habits')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
 
-        if (!countError && (count ?? 0) === 0) {
-          const rows = DEFAULT_HABITS.map((h) => ({
-            id: crypto.randomUUID(),
-            user_id: user.id,
-            name: h.name,
-            icon: h.icon,
-          }))
-          const { error: habitError } = await supabase.from('habits').insert(rows)
-          if (habitError) {
-            console.error(habitError)
-            showToast('Starter habits could not be added. Add them from Habits.', 'error')
-          }
+      if (!countError && (count ?? 0) === 0) {
+        const rows = DEFAULT_HABITS.map((h) => ({
+          id: crypto.randomUUID(),
+          user_id: user.id,
+          name: h.name,
+          icon: h.icon,
+        }))
+        const { error: habitError } = await supabase.from('habits').insert(rows)
+        if (habitError) {
+          console.error(habitError)
+          showToast('Starter habits could not be added. Add them from Habits.', 'error')
         }
       }
 
@@ -403,9 +395,7 @@ Each day takes 5–10 minutes. The results last a lifetime.`}
               }}
             >
               <p style={{ color: '#94A3B8', fontSize: '13px', margin: '0 0 8px' }}>
-                {syncCloud
-                  ? 'We will pre-load these starter habits for you:'
-                  : 'When you use Pro cloud sync, we can pre-load these starter habits:'}
+                We&apos;ll pre-load these starter habits for you:
               </p>
               {[
                 '🛏️ Make bed',
