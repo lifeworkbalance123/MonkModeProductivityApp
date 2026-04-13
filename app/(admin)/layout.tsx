@@ -29,6 +29,7 @@ export default function AdminShellLayout({
   const [allowed, setAllowed] = useState(false)
   /** Why the shell is hidden (avoids a blank screen if client navigation stalls). */
   const [blockReason, setBlockReason] = useState<'signed_out' | 'not_admin' | null>(null)
+  const [debugReason, setDebugReason] = useState<string | null>(null)
 
   const verifyAdmin = useCallback(async () => {
     try {
@@ -47,11 +48,24 @@ export default function AdminShellLayout({
         console.log('No user — redirecting to /auth')
         setAllowed(false)
         setBlockReason('signed_out')
+        setDebugReason('no_user')
         router.replace('/auth')
         return
       }
 
       console.log('User ID:', user.id)
+      console.log('Checking RPC is_current_user_admin...')
+      const { data: rpcData, error: rpcError } = await supabase.rpc('is_current_user_admin')
+      console.log('RPC result:', rpcData)
+      console.log('RPC error:', rpcError?.message)
+      if (rpcData === true) {
+        console.log('✅ Admin verified from RPC')
+        setAllowed(true)
+        setBlockReason(null)
+        setDebugReason(null)
+        return
+      }
+
       console.log('Checking users table for is_admin...')
       const { data: selfRow, error: selfErr } = await supabase
         .from('users')
@@ -66,6 +80,7 @@ export default function AdminShellLayout({
         console.log('✅ Admin verified from client users row')
         setAllowed(true)
         setBlockReason(null)
+        setDebugReason(null)
         return
       }
 
@@ -102,21 +117,26 @@ export default function AdminShellLayout({
       console.log('Admin verify response:', adminData)
 
       if (!adminData.isAdmin) {
-        console.log('isAdmin is false — redirecting to /dashboard. reason:', adminData.reason)
+        console.log('isAdmin is false. reason:', adminData.reason)
         setAllowed(false)
         setBlockReason('not_admin')
-        router.replace('/dashboard')
+        setDebugReason(
+          adminData.reason
+            ? `api_verify:${adminData.reason}${adminData.error ? ` (${adminData.error})` : ''}`
+            : 'api_verify:false',
+        )
         return
       }
 
       console.log('✅ Admin verified — showing panel')
       setAllowed(true)
       setBlockReason(null)
+      setDebugReason(null)
     } catch (err) {
       console.error('Admin check threw error:', err)
       setAllowed(false)
       setBlockReason('not_admin')
-      router.replace('/dashboard')
+      setDebugReason(err instanceof Error ? err.message : String(err))
     } finally {
       setChecking(false)
     }
@@ -139,6 +159,7 @@ export default function AdminShellLayout({
         } else {
           setAllowed(false)
           setBlockReason('signed_out')
+          setDebugReason('auth_state_no_session')
           router.replace('/auth')
         }
       }
@@ -205,6 +226,11 @@ export default function AdminShellLayout({
               in Supabase (Table Editor or SQL) and that migrations defining{' '}
               <code className="text-slate-400">is_current_user_admin</code> have been applied.
             </p>
+            {debugReason ? (
+              <p className="max-w-md rounded border border-slate-700 bg-slate-900/70 px-3 py-2 text-left text-[11px] text-slate-400">
+                Debug: {debugReason}
+              </p>
+            ) : null}
             <Link href="/dashboard" className="text-amber-400 underline hover:text-amber-300">
               Back to app
             </Link>
