@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -30,73 +30,133 @@ export default function AdminShellLayout({
   /** Why the shell is hidden (avoids a blank screen if client navigation stalls). */
   const [blockReason, setBlockReason] = useState<'signed_out' | 'not_admin' | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
+  const verifyAdmin = useCallback(async () => {
+    try {
+      console.log('=== ADMIN AUTH CHECK ===')
+      setChecking(true)
 
-    async function verifyAdmin() {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser()
 
-        if (!user) {
-          setBlockReason('signed_out')
-          router.replace('/auth')
-          return
-        }
+      console.log('Auth user:', user?.email)
+      console.log('Auth error:', authError?.message)
 
-        // Prefer SECURITY DEFINER RPC so admin checks match RLS used in SQL policies.
-        const { data: rpcData, error: rpcError } = await supabase.rpc('is_current_user_admin')
-        if (cancelled) return
-
-        let isAdmin = rpcData === true
-        if (rpcError || rpcData === null || rpcData === undefined) {
-          const { data: row, error } = await supabase
-            .from('users')
-            .select('is_admin')
-            .eq('id', user.id)
-            .maybeSingle()
-          if (cancelled) return
-          if (error) {
-            console.error('Admin gate: is_current_user_admin RPC failed; users select:', rpcError, error)
-            setBlockReason('not_admin')
-            router.replace('/dashboard')
-            return
-          }
-          isAdmin = !!(row as { is_admin?: boolean } | null)?.is_admin
-        }
-
-        if (!isAdmin) {
-          setBlockReason('not_admin')
-          router.replace('/dashboard')
-          return
-        }
-
-        setAllowed(true)
-      } catch (e) {
-        console.error('Admin gate:', e)
-        if (!cancelled) {
-          setBlockReason('not_admin')
-          router.replace('/dashboard')
-        }
-      } finally {
-        if (!cancelled) setChecking(false)
+      if (!user) {
+        console.log('No user — redirecting to /auth')
+        setAllowed(false)
+        setBlockReason('signed_out')
+        router.replace('/auth')
+        return
       }
-    }
 
-    void verifyAdmin()
-    return () => {
-      cancelled = true
+      console.log('User ID:', user.id)
+      console.log('Checking /api/admin/verify ...')
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      const response = await fetch('/api/admin/verify', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        cache: 'no-store',
+      })
+      const adminData = (await response.json()) as {
+        isAdmin?: boolean
+        reason?: string
+        email?: string
+        error?: string
+      }
+
+      console.log('Admin verify response:', adminData)
+
+      if (!adminData.isAdmin) {
+        console.log('isAdmin is false — redirecting to /dashboard. reason:', adminData.reason)
+        setAllowed(false)
+        setBlockReason('not_admin')
+        router.replace('/dashboard')
+        return
+      }
+
+      console.log('✅ Admin verified — showing panel')
+      setAllowed(true)
+      setBlockReason(null)
+    } catch (err) {
+      console.error('Admin check threw error:', err)
+      setAllowed(false)
+      setBlockReason('not_admin')
+      router.replace('/dashboard')
+    } finally {
+      setChecking(false)
     }
   }, [router])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void verifyAdmin()
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [verifyAdmin])
+
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        if (session?.user) {
+          void verifyAdmin()
+        } else {
+          setAllowed(false)
+          setBlockReason('signed_out')
+          router.replace('/auth')
+        }
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [router, verifyAdmin])
 
   if (checking) {
     return (
       <div
-        className="flex min-h-screen items-center justify-center bg-[#0F172A] text-sm text-slate-400"
+        style={{
+          background: '#0F172A',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '16px',
+        }}
         aria-busy="true"
       >
-        Verifying access…
+        <div
+          style={{
+            width: '40px',
+            height: '40px',
+            border: '3px solid #334155',
+            borderTop: '3px solid #F59E0B',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }}
+        />
+        <p
+          style={{
+            color: '#64748B',
+            fontSize: '14px',
+          }}
+        >
+          Verifying admin access...
+        </p>
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     )
   }
