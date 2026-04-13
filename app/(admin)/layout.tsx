@@ -30,6 +30,7 @@ export default function AdminShellLayout({
   /** Why the shell is hidden (avoids a blank screen if client navigation stalls). */
   const [blockReason, setBlockReason] = useState<'signed_out' | 'not_admin' | null>(null)
   const [debugReason, setDebugReason] = useState<string | null>(null)
+  const [debugUser, setDebugUser] = useState<{ id?: string; email?: string }>({})
 
   const verifyAdmin = useCallback(async () => {
     try {
@@ -43,6 +44,7 @@ export default function AdminShellLayout({
 
       console.log('Auth user:', user?.email)
       console.log('Auth error:', authError?.message)
+      setDebugUser({ id: user?.id, email: user?.email })
 
       if (!user) {
         console.log('No user — redirecting to /auth')
@@ -65,6 +67,7 @@ export default function AdminShellLayout({
         setDebugReason(null)
         return
       }
+      setDebugReason(`rpc_not_admin${rpcError?.message ? ` (${rpcError.message})` : ''}`)
 
       console.log('Checking users table for is_admin...')
       const { data: selfRow, error: selfErr } = await supabase
@@ -83,6 +86,7 @@ export default function AdminShellLayout({
         setDebugReason(null)
         return
       }
+      setDebugReason('self_row_not_admin')
 
       console.log('Checking /api/admin/verify ...')
       const {
@@ -231,6 +235,9 @@ export default function AdminShellLayout({
                 Debug: {debugReason}
               </p>
             ) : null}
+            <p className="max-w-md rounded border border-slate-700 bg-slate-900/70 px-3 py-2 text-left text-[11px] text-slate-400">
+              User: {debugUser.email ?? 'unknown'} {debugUser.id ? `(${debugUser.id})` : ''}
+            </p>
             <Link href="/dashboard" className="text-amber-400 underline hover:text-amber-300">
               Back to app
             </Link>
