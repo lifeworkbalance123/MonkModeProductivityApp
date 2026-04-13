@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
-import DailyLesson from '@/components/program/DailyLesson'
+import DailyLessonComponent from '@/components/program/DailyLesson'
 import DistractionLog from '@/components/program/DistractionLog'
 import EnergyLog from '@/components/program/EnergyLog'
 import OneBigTask from '@/components/program/OneBigTask'
@@ -10,9 +11,34 @@ import ProgramHeader from '@/components/program/ProgramHeader'
 import WeeklyReview, { isReviewDay } from '@/components/program/WeeklyReview'
 import { Navigation } from '@/components/navigation'
 import { useProgram } from '@/hooks/useProgram'
+import { getLessonForDayAsync, type DailyLesson as DailyLessonData } from '@/lib/lessonContent'
 
 export default function TodayPage() {
   const { enrollment, loading, enrolled, refresh } = useProgram()
+  const [lesson, setLesson] = useState<DailyLessonData | null>(null)
+  const [lessonLoading, setLessonLoading] = useState(false)
+
+  useEffect(() => {
+    if (!enrollment) {
+      setLesson(null)
+      setLessonLoading(false)
+      return
+    }
+    const currentDay = enrollment.currentDay
+    let cancelled = false
+    async function fetchLesson() {
+      setLessonLoading(true)
+      const data = await getLessonForDayAsync(currentDay)
+      if (!cancelled) {
+        setLesson(data)
+        setLessonLoading(false)
+      }
+    }
+    void fetchLesson()
+    return () => {
+      cancelled = true
+    }
+  }, [enrollment?.currentDay, enrollment])
 
   return (
     <div className="min-h-screen bg-background">
@@ -49,7 +75,16 @@ export default function TodayPage() {
             {isReviewDay(enrollment.currentDay) ? (
               <WeeklyReview dayNumber={enrollment.currentDay} />
             ) : null}
-            <DailyLesson dayNumber={enrollment.currentDay} onComplete={() => void refresh()} />
+            {lessonLoading ? (
+              <div
+                className="mb-6 rounded-2xl border border-border bg-card py-12 text-center text-sm text-muted-foreground"
+                aria-busy="true"
+              >
+                Loading today&apos;s lesson…
+              </div>
+            ) : lesson ? (
+              <DailyLessonComponent dayNumber={enrollment.currentDay} lesson={lesson} onComplete={() => void refresh()} />
+            ) : null}
             {enrollment.currentDay >= 3 ? (
               <DistractionLog dayNumber={enrollment.currentDay} />
             ) : null}

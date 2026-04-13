@@ -2,16 +2,16 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { getLessonForDay } from '@/lib/lessonContent'
+import type { DailyLesson as DailyLessonType } from '@/lib/lessonContent'
 import { markDayComplete } from '@/lib/programUtils'
 
 type DailyLessonProps = {
   dayNumber: number
+  lesson: DailyLessonType
   onComplete?: () => void
 }
 
-export default function DailyLesson({ dayNumber, onComplete }: DailyLessonProps) {
-  const lesson = getLessonForDay(dayNumber)
+export default function DailyLesson({ dayNumber, lesson, onComplete }: DailyLessonProps) {
   const [completed, setCompleted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [completing, setCompleting] = useState(false)
@@ -79,26 +79,6 @@ export default function DailyLesson({ dayNumber, onComplete }: DailyLessonProps)
     }
   }
 
-  if (!lesson) return null
-
-  if (loading) {
-    return (
-      <div
-        style={{
-          background: '#1E293B',
-          borderRadius: '16px',
-          border: '1px solid #334155',
-          padding: '24px',
-          marginBottom: '24px',
-          color: '#94A3B8',
-          fontSize: '14px',
-        }}
-      >
-        Loading lesson…
-      </div>
-    )
-  }
-
   return (
     <div
       style={{
@@ -142,7 +122,11 @@ export default function DailyLesson({ dayNumber, onComplete }: DailyLessonProps)
             {lesson.category}
           </span>
         </div>
-        {completed ? (
+        {loading ? (
+          <span style={{ color: '#64748B', fontSize: '12px' }} aria-busy="true">
+            Checking…
+          </span>
+        ) : completed ? (
           <span style={{ color: '#10B981', fontSize: '13px', fontWeight: '500' }}>✓ Completed</span>
         ) : null}
       </div>

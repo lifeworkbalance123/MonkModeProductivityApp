@@ -8,10 +8,14 @@ import { supabase } from '@/lib/supabase'
 const navLinks = [
   { label: 'Overview', href: '/admin' },
   { label: 'Users', href: '/admin/users' },
+  { label: 'Content', href: '/admin/content' },
   { label: 'Revenue', href: '/admin/revenue' },
   { label: 'Waitlist', href: '/admin/waitlist' },
   { label: 'Store Kit', href: '/admin/store-kit' },
   { label: 'Announcements', href: '/admin/announcements' },
+  { label: 'Themes', href: '/admin/themes' },
+  { label: 'Videos', href: '/admin/videos' },
+  { label: 'Onboarding', href: '/admin/onboarding' },
 ] as const
 
 export default function AdminShellLayout({
