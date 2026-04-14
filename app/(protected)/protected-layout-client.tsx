@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { AnnouncementBanner } from '@/components/AnnouncementBanner'
+import OfflineBanner from '@/components/OfflineBanner'
 import { useAuth } from '@/context/AuthContext'
 
 export default function ProtectedLayoutClient({
@@ -35,6 +36,7 @@ export default function ProtectedLayoutClient({
 
   return (
     <div className="min-h-screen protected-app-touch">
+      <OfflineBanner />
       <AnnouncementBanner />
       {children}
     </div>

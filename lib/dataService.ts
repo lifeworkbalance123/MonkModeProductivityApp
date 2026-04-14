@@ -155,6 +155,10 @@ export type PersistMonkResult =
   | { ok: true; deferred?: boolean }
   | { ok: false; error: string }
 
+function looksOfflineLikeError(message: string): boolean {
+  return /network|fetch|offline|internet|connection|timeout|failed to fetch/i.test(message)
+}
+
 export async function loadFullMonkData(
   ctx: DataServiceContext,
 ): Promise<LoadMonkResult> {
@@ -277,15 +281,6 @@ export async function persistFullMonkData(
 
   if (!shouldSyncToCloud(ctx) || !ctx.userId) {
     return { ok: true }
-  }
-
-  if (typeof navigator !== 'undefined' && !navigator.onLine) {
-    try {
-      localStorage.setItem('monk_deferred_cloud_sync', '1')
-    } catch {
-      /* ignore */
-    }
-    return { ok: true, deferred: true }
   }
 
   const uid = ctx.userId
@@ -423,6 +418,14 @@ export async function persistFullMonkData(
   }
 
   if (failures.length > 0) {
+    if (failures.some(looksOfflineLikeError)) {
+      try {
+        localStorage.setItem('monk_deferred_cloud_sync', '1')
+      } catch {
+        /* ignore */
+      }
+      return { ok: true, deferred: true }
+    }
     return { ok: false, error: failures[0] }
   }
 

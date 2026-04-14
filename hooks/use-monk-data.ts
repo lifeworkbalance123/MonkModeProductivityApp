@@ -73,6 +73,10 @@ export function useMonkData() {
     function onOnline() {
       void (async () => {
         const r = await persistFullMonkData(ctxRef.current, dataRef.current)
+        if (r.ok && r.deferred) {
+          showToast('Saved locally - will sync when online', 'warning')
+          return
+        }
         if (!r.ok && r.error) {
           showToast("Couldn't save changes. Please try again.", 'error')
         }
@@ -96,7 +100,12 @@ export function useMonkData() {
           ctxRef.current,
           dataRef.current,
         )
-        if (result.ok) return
+        if (result.ok) {
+          if (result.deferred) {
+            showToast('Saved locally - will sync when online', 'warning')
+          }
+          return
+        }
         const err = result.error
         if (looksLikeSessionError(err)) {
           showToast(

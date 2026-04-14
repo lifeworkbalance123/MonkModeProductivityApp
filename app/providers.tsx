@@ -5,7 +5,6 @@ import { AuthProvider } from '@/context/AuthContext'
 import { ColorThemeProvider } from '@/context/ColorThemeContext'
 import { ToastProvider } from '@/context/ToastContext'
 import { UpgradeOfferProvider } from '@/context/UpgradeOfferContext'
-import { NetworkOfflineBanner } from '@/components/NetworkOfflineBanner'
 import { SentryErrorBoundary } from '@/components/SentryErrorBoundary'
 import { CookieBanner } from '@/components/CookieBanner'
 import { SupportFloatingButton } from '@/components/SupportFloatingButton'
@@ -19,7 +18,6 @@ export function Providers({ children }: { children: ReactNode }) {
           <PostHogBootstrap />
           <ToastProvider>
             <UpgradeOfferProvider>
-              <NetworkOfflineBanner />
               {children}
               <SupportFloatingButton />
               <CookieBanner />
