@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { DailyLesson as DailyLessonType } from '@/lib/lessonContent'
 import { markDayComplete } from '@/lib/programUtils'
+import LessonMedia from '@/components/program/LessonMedia'
 
 type DailyLessonProps = {
   dayNumber: number
@@ -156,6 +157,20 @@ export default function DailyLesson({
           >
             {lesson.category}
           </span>
+          {lesson.isBonus ? (
+            <span
+              style={{
+                background: '#4C1D95',
+                color: '#C4B5FD',
+                fontSize: '10px',
+                fontWeight: '600',
+                padding: '3px 8px',
+                borderRadius: '4px',
+              }}
+            >
+              ✨ Bonus
+            </span>
+          ) : null}
         </div>
         {loading ? (
           <span style={{ color: '#64748B', fontSize: '12px' }} aria-busy="true">
@@ -226,6 +241,8 @@ export default function DailyLesson({
         >
           {expanded ? '↑ Show less' : '↓ Read full lesson'}
         </button>
+
+        <LessonMedia mediaType={lesson.media_type} mediaUrl={lesson.media_url} />
 
         <div
           style={{

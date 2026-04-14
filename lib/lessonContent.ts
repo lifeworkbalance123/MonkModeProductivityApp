@@ -11,6 +11,9 @@ export type DailyLesson = {
   actionLabel: string
   category: string
   tip?: string
+  media_type?: string | null
+  media_url?: string | null
+  isBonus?: boolean
 }
 
 function parsePhase(raw: string | null | undefined): LessonPhase {
@@ -20,7 +23,7 @@ function parsePhase(raw: string | null | undefined): LessonPhase {
 
 const fallbackLesson = (day: number): DailyLesson => ({
   day,
-  phase: day <= 30 ? 'student' : 'monk',
+  phase: day <= 30 ? 'student' : day <= 60 ? 'monk' : 'master',
   title: `Day ${day}`,
   lesson: `Day ${day} content is being prepared. Check back soon.`,
   action: 'Come back tomorrow.',
@@ -37,6 +40,9 @@ type LessonRow = {
   action_label: string
   category: string
   tip: string | null
+  is_bonus?: boolean | null
+  media_type?: string | null
+  media_url?: string | null
 }
 
 function rowToLesson(data: LessonRow): DailyLesson {
@@ -49,29 +55,51 @@ function rowToLesson(data: LessonRow): DailyLesson {
     actionLabel: data.action_label,
     category: data.category,
     tip: data.tip?.trim() ? data.tip : undefined,
+    media_type: data.media_type ?? null,
+    media_url: data.media_url ?? null,
+    isBonus: !!data.is_bonus,
   }
 }
 
-/** Fetch a single published lesson from Supabase; falls back if missing or error. */
-export async function getLessonForDayAsync(day: number): Promise<DailyLesson | null> {
+export type PublishedLessonsForDay = {
+  primary: DailyLesson
+  bonus: DailyLesson | null
+}
+
+/** Primary (+ optional bonus) published lessons for a calendar day. */
+export async function getPublishedLessonsForDayAsync(day: number): Promise<PublishedLessonsForDay> {
   try {
     const { data, error } = await supabase
       .from('lessons')
       .select('*')
       .eq('day_number', day)
       .eq('published', true)
-      .maybeSingle()
+      .order('is_bonus', { ascending: true })
 
-    if (error || !data) {
-      console.warn(`No lesson found for day ${day} in database, using fallback`)
-      return fallbackLesson(day)
+    if (error || !data?.length) {
+      const fb = fallbackLesson(day)
+      return { primary: fb, bonus: null }
     }
 
-    return rowToLesson(data as LessonRow)
+    const rows = data as LessonRow[]
+    const primaryRow = rows.find((r) => !r.is_bonus)
+    const bonusRow = rows.find((r) => r.is_bonus)
+
+    const primary = primaryRow ? rowToLesson(primaryRow) : fallbackLesson(day)
+    const bonus = bonusRow ? rowToLesson(bonusRow) : null
+
+    return { primary, bonus }
   } catch (err) {
-    console.error('getLessonForDayAsync:', err)
-    return fallbackLesson(day)
+    console.error('getPublishedLessonsForDayAsync:', err)
+    const fb = fallbackLesson(day)
+    return { primary: fb, bonus: null }
   }
+}
+
+/** Fetch a single published primary lesson from Supabase; falls back if missing or error. */
+export async function getLessonForDayAsync(day: number): Promise<DailyLesson | null> {
+  const { primary } = await getPublishedLessonsForDayAsync(day)
+  return primary
 }
 
 /** All lessons (admin; includes drafts). */

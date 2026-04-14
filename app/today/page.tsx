@@ -12,11 +12,16 @@ import ProgramHeader from '@/components/program/ProgramHeader'
 import WeeklyReview, { isReviewDay } from '@/components/program/WeeklyReview'
 import { Navigation } from '@/components/navigation'
 import { useProgram } from '@/hooks/useProgram'
-import { getLessonForDayAsync, type DailyLesson as DailyLessonData } from '@/lib/lessonContent'
+import {
+  getPublishedLessonsForDayAsync,
+  type DailyLesson as DailyLessonData,
+} from '@/lib/lessonContent'
 
 export default function TodayPage() {
   const { enrollment, loading, enrolled, refresh } = useProgram()
   const [lesson, setLesson] = useState<DailyLessonData | null>(null)
+  const [bonusLesson, setBonusLesson] = useState<DailyLessonData | null>(null)
+  const [activeTab, setActiveTab] = useState<'primary' | 'bonus'>('primary')
   const [lessonLoading, setLessonLoading] = useState(false)
   const [viewingDay, setViewingDay] = useState<number | null>(null)
   const [actionCompletedCurrent, setActionCompletedCurrent] = useState(false)
@@ -43,6 +48,8 @@ export default function TodayPage() {
   useEffect(() => {
     if (!enrollment) {
       setLesson(null)
+      setBonusLesson(null)
+      setActiveTab('primary')
       setLessonLoading(false)
       return
     }
@@ -50,9 +57,11 @@ export default function TodayPage() {
     let cancelled = false
     async function fetchLesson() {
       setLessonLoading(true)
-      const data = await getLessonForDayAsync(day)
+      const { primary, bonus } = await getPublishedLessonsForDayAsync(day)
       if (!cancelled) {
-        setLesson(data)
+        setLesson(primary)
+        setBonusLesson(bonus)
+        setActiveTab('primary')
         setLessonLoading(false)
       }
     }
@@ -227,9 +236,48 @@ export default function TodayPage() {
               </div>
             ) : lesson ? (
               <>
+                {bonusLesson ? (
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('primary')}
+                      style={{
+                        flex: 1,
+                        padding: '10px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        background: activeTab === 'primary' ? '#F59E0B' : '#1E293B',
+                        color: activeTab === 'primary' ? '#000' : '#94A3B8',
+                      }}
+                    >
+                      Today&apos;s Lesson
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('bonus')}
+                      style={{
+                        flex: 1,
+                        padding: '10px',
+                        borderRadius: '8px',
+                        border: '1px solid #7C3AED',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        background: activeTab === 'bonus' ? '#7C3AED' : 'transparent',
+                        color: activeTab === 'bonus' ? 'white' : '#8B5CF6',
+                      }}
+                    >
+                      ✨ Bonus Lesson
+                    </button>
+                  </div>
+                ) : null}
                 <DailyLessonComponent
+                  key={activeTab === 'bonus' && bonusLesson ? 'bonus' : 'primary'}
                   dayNumber={displayDay}
-                  lesson={lesson}
+                  lesson={activeTab === 'bonus' && bonusLesson ? bonusLesson : lesson}
                   readOnly={isPastDay}
                   onCompletionLoaded={onCompletionLoaded}
                   onComplete={() => void refresh()}

@@ -1,8 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/context/ToastContext'
+import MediaUploader, { type MediaType } from '@/components/admin/MediaUploader'
 
 type Tab = 'lessons' | 'onboarding' | 'habits' | 'training'
 
@@ -10,6 +11,10 @@ const ONBOARDING_STEP_ORDER = ['welcome', 'why', 'commitment', 'setup', 'ready']
 
 export default function AdminContentPage() {
   const [activeTab, setActiveTab] = useState<Tab>('lessons')
+
+  useEffect(() => {
+    void fetch('/api/admin/setup-storage', { method: 'POST' }).catch(() => {})
+  }, [])
 
   const tabStyle = (tab: Tab) =>
     ({
@@ -67,6 +72,11 @@ type LessonRow = {
   category: string
   tip: string
   published: boolean
+  media_type?: string | null
+  media_url?: string | null
+  media_storage_path?: string | null
+  is_bonus?: boolean
+  parent_day_number?: number | null
 }
 
 function LessonsEditor() {
@@ -78,6 +88,11 @@ function LessonsEditor() {
   const [saved, setSaved] = useState(false)
   const [filterPhase, setFilterPhase] = useState('all')
   const [search, setSearch] = useState('')
+  const [maxDay, setMaxDay] = useState(60)
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastSavedRef = useRef<string>('')
+  const editSessionKeyRef = useRef<string>('')
 
   const loadLessons = useCallback(async () => {
     setLoading(true)
@@ -86,7 +101,16 @@ function LessonsEditor() {
       showToast(error.message, 'error')
       setLessons([])
     } else {
-      setLessons((data as LessonRow[]) || [])
+      const rows = (data as LessonRow[]) || []
+      rows.sort((a, b) => {
+        if (a.day_number !== b.day_number) return a.day_number - b.day_number
+        return (a.is_bonus ? 1 : 0) - (b.is_bonus ? 1 : 0)
+      })
+      setLessons(rows)
+      const maxFromDb = rows.reduce((m, r) => Math.max(m, r.day_number), 0)
+      if (maxFromDb > 0) {
+        setMaxDay((prev) => Math.min(120, Math.max(prev, maxFromDb)))
+      }
     }
     setLoading(false)
   }, [showToast])
@@ -95,31 +119,130 @@ function LessonsEditor() {
     void loadLessons()
   }, [loadLessons])
 
+  const lessonPayload = useCallback((row: LessonRow) => {
+    const isBonus = !!row.is_bonus
+    return {
+      day_number: row.day_number,
+      phase: row.phase,
+      title: row.title,
+      lesson: row.lesson,
+      action: row.action,
+      action_label: row.action_label,
+      category: row.category,
+      tip: row.tip || '',
+      published: row.published,
+      media_type: row.media_type || null,
+      media_url: row.media_url || null,
+      media_storage_path: row.media_storage_path || null,
+      is_bonus: isBonus,
+      parent_day_number: isBonus ? (row.parent_day_number ?? row.day_number) : null,
+      updated_at: new Date().toISOString(),
+    }
+  }, [])
+
+  const performSave = useCallback(
+    async (lessonData: LessonRow) => {
+      if (!lessonData?.title || !lessonData?.lesson || !lessonData?.action) {
+        return
+      }
+
+      const dataString = JSON.stringify(lessonPayload(lessonData))
+      if (dataString === lastSavedRef.current) {
+        return
+      }
+
+      setAutoSaveStatus('saving')
+
+      try {
+        const { error } = await supabase
+          .from('lessons')
+          .upsert(lessonPayload(lessonData), { onConflict: 'day_number,is_bonus' })
+
+        if (error) throw error
+
+        lastSavedRef.current = dataString
+        setAutoSaveStatus('saved')
+        setTimeout(() => setAutoSaveStatus('idle'), 3000)
+      } catch {
+        setAutoSaveStatus('error')
+      }
+    },
+    [lessonPayload],
+  )
+
+  useEffect(() => {
+    if (!editing) {
+      editSessionKeyRef.current = ''
+      return
+    }
+    const sessionKey = `${editing.day_number}-${editing.is_bonus ? 'b' : 'p'}-${editing.id ?? 'new'}`
+    if (sessionKey === editSessionKeyRef.current) return
+    editSessionKeyRef.current = sessionKey
+    const complete = !!(editing.title && editing.lesson && editing.action)
+    lastSavedRef.current = complete ? JSON.stringify(lessonPayload(editing)) : ''
+  }, [editing, lessonPayload])
+
+  useEffect(() => {
+    if (!editing) return
+
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current)
+    }
+
+    autoSaveTimerRef.current = setTimeout(() => {
+      void performSave(editing)
+    }, 30000)
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current)
+      }
+    }
+  }, [editing, performSave])
+
+  useEffect(() => {
+    function handleBlur() {
+      if (editing) void performSave(editing)
+    }
+
+    function handleVisibility() {
+      if (document.hidden && editing) void performSave(editing)
+    }
+
+    window.addEventListener('blur', handleBlur)
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      window.removeEventListener('blur', handleBlur)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [editing, performSave])
+
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      const dataString = editing ? JSON.stringify(lessonPayload(editing)) : ''
+      if (editing && dataString !== lastSavedRef.current) {
+        e.preventDefault()
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?'
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [editing, lessonPayload])
+
   async function saveLesson() {
     if (!editing) return
     setSaving(true)
     const { error } = await supabase
       .from('lessons')
-      .upsert(
-        {
-          day_number: editing.day_number,
-          phase: editing.phase,
-          title: editing.title,
-          lesson: editing.lesson,
-          action: editing.action,
-          action_label: editing.action_label,
-          category: editing.category,
-          tip: editing.tip || '',
-          published: editing.published,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'day_number' },
-      )
+      .upsert(lessonPayload(editing), { onConflict: 'day_number,is_bonus' })
     setSaving(false)
     if (error) {
       showToast(error.message, 'error')
       return
     }
+    lastSavedRef.current = JSON.stringify(lessonPayload(editing))
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
     await loadLessons()
@@ -129,7 +252,7 @@ function LessonsEditor() {
   function createNewLesson(day: number) {
     setEditing({
       day_number: day,
-      phase: day <= 30 ? 'student' : 'monk',
+      phase: day <= 30 ? 'student' : day <= 60 ? 'monk' : 'master',
       title: '',
       lesson: '',
       action: '',
@@ -137,19 +260,59 @@ function LessonsEditor() {
       category: 'focus',
       tip: '',
       published: true,
+      is_bonus: false,
+      parent_day_number: null,
+      media_type: null,
+      media_url: '',
+      media_storage_path: '',
     })
   }
 
-  const allDays = Array.from({ length: 60 }, (_, i) => i + 1)
-  const lessonsMap = Object.fromEntries(lessons.map((l) => [l.day_number, l])) as Record<number, LessonRow>
+  async function createBonusLesson(dayNumber: number) {
+    setEditing({
+      day_number: dayNumber,
+      phase: dayNumber <= 30 ? 'student' : dayNumber <= 60 ? 'monk' : 'master',
+      title: '',
+      lesson: '',
+      action: '',
+      action_label: 'Done ✓',
+      category: 'focus',
+      tip: '',
+      published: true,
+      is_bonus: true,
+      parent_day_number: dayNumber,
+      media_type: null,
+      media_url: '',
+      media_storage_path: '',
+    })
+  }
+
+  const allDays = Array.from({ length: maxDay }, (_, i) => i + 1)
+
+  const lessonsMap: Record<string, { primary: LessonRow | null; bonus: LessonRow | null }> = {}
+  lessons.forEach((l) => {
+    const day = l.day_number.toString()
+    if (!lessonsMap[day]) {
+      lessonsMap[day] = { primary: null, bonus: null }
+    }
+    if (l.is_bonus) {
+      lessonsMap[day].bonus = l
+    } else {
+      lessonsMap[day].primary = l
+    }
+  })
 
   const filtered = allDays.filter((day) => {
-    const lesson = lessonsMap[day]
+    const slot = lessonsMap[day.toString()]
+    const primary = slot?.primary
     if (filterPhase === 'student' && day > 30) return false
     if (filterPhase === 'monk' && (day < 31 || day > 60)) return false
+    if (filterPhase === 'master' && (day < 61 || day > maxDay)) return false
     if (search.trim()) {
-      if (!lesson) return false
-      return lesson.title.toLowerCase().includes(search.trim().toLowerCase())
+      const q = search.trim().toLowerCase()
+      const inPrimary = !!(primary?.title && primary.title.toLowerCase().includes(q))
+      const inBonus = !!(slot?.bonus?.title && slot.bonus.title.toLowerCase().includes(q))
+      if (!inPrimary && !inBonus) return false
     }
     return true
   })
@@ -195,24 +358,60 @@ function LessonsEditor() {
               {editing.phase} phase · {editing.category}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setEditing(null)}
-            style={{
-              background: '#1E293B',
-              border: '1px solid #334155',
-              color: '#94A3B8',
-              padding: '8px 16px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '13px',
-            }}
-          >
-            ← Back to list
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+              {autoSaveStatus === 'saving' ? (
+                <span style={{ color: '#64748B' }}>⏳ Auto-saving...</span>
+              ) : null}
+              {autoSaveStatus === 'saved' ? (
+                <span style={{ color: '#10B981' }}>✓ Auto-saved</span>
+              ) : null}
+              {autoSaveStatus === 'error' ? (
+                <span style={{ color: '#EF4444' }}>✗ Auto-save failed</span>
+              ) : null}
+              {autoSaveStatus === 'idle' && editing ? (
+                <span style={{ color: '#475569' }}>Auto-saves on tab switch</span>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={() => setEditing(null)}
+              style={{
+                background: '#1E293B',
+                border: '1px solid #334155',
+                color: '#94A3B8',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '13px',
+              }}
+            >
+              ← Back to list
+            </button>
+          </div>
         </div>
 
         <div style={{ background: '#1E293B', borderRadius: '12px', padding: '24px', border: '1px solid #334155' }}>
+          {editing.is_bonus ? (
+            <div
+              style={{
+                background: '#2E1065',
+                border: '1px solid #7C3AED',
+                borderRadius: '8px',
+                padding: '10px 16px',
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              <span style={{ fontSize: '14px' }}>✨</span>
+              <span style={{ color: '#C4B5FD', fontSize: '13px' }}>
+                Bonus lesson for Day {editing.day_number} — this is optional content shown as a second tab on the
+                Today page
+              </span>
+            </div>
+          ) : null}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <div>
               <label style={labelStyle}>Phase</label>
@@ -265,6 +464,25 @@ function LessonsEditor() {
             <p style={{ color: '#475569', fontSize: '11px', margin: '4px 0 0' }}>
               {editing.lesson.split(/\s+/).filter(Boolean).length} words (aim for 100-250)
             </p>
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <MediaUploader
+              key={`${editing.day_number}-${editing.is_bonus ? 'bonus' : 'primary'}`}
+              currentType={(editing.media_type as MediaType) ?? null}
+              currentUrl={editing.media_url ?? ''}
+              currentStoragePath={editing.media_storage_path ?? ''}
+              onMediaChange={(data) =>
+                setEditing({
+                  ...editing,
+                  media_type: data.type,
+                  media_url: data.url,
+                  media_storage_path: data.storagePath,
+                })
+              }
+              context="lesson"
+              contextId={editing.day_number?.toString() ?? '0'}
+            />
           </div>
 
           <div style={{ marginBottom: '16px' }}>
@@ -383,9 +601,10 @@ function LessonsEditor() {
           <option value="all">All phases</option>
           <option value="student">Student (1-30)</option>
           <option value="monk">Monk (31-60)</option>
+          <option value="master">Master (61+)</option>
         </select>
         <span style={{ color: '#64748B', fontSize: '13px', marginLeft: 'auto' }}>
-          {lessons.length}/60 days have content
+          {lessons.filter((l) => !l.is_bonus).length}/{maxDay} days have content
         </span>
       </div>
 
@@ -394,25 +613,55 @@ function LessonsEditor() {
           <p style={{ color: '#64748B', fontSize: '14px' }}>Loading lessons...</p>
         ) : (
           filtered.map((day) => {
-            const lesson = lessonsMap[day]
-            const hasContent = !!lesson
+            const slot = lessonsMap[day.toString()] ?? { primary: null, bonus: null }
+            const primary = slot.primary
+            const bonus = slot.bonus
+            const hasContent = !!primary
+            const hasBonusContent = !!bonus
+            const displayLesson = primary ?? bonus
+            const hasAny = !!displayLesson
+
+            function openRowEditor() {
+              if (primary) {
+                setEditing({
+                  ...primary,
+                  media_type: primary.media_type ?? null,
+                  media_url: primary.media_url ?? '',
+                  media_storage_path: primary.media_storage_path ?? '',
+                  is_bonus: !!primary.is_bonus,
+                  parent_day_number: primary.parent_day_number ?? null,
+                })
+              } else if (bonus) {
+                setEditing({
+                  ...bonus,
+                  media_type: bonus.media_type ?? null,
+                  media_url: bonus.media_url ?? '',
+                  media_storage_path: bonus.media_storage_path ?? '',
+                  is_bonus: true,
+                  parent_day_number: bonus.parent_day_number ?? day,
+                })
+              } else {
+                createNewLesson(day)
+              }
+            }
+
             return (
               <div
                 key={day}
                 role="button"
                 tabIndex={0}
-                onClick={() => (hasContent ? setEditing({ ...lesson }) : createNewLesson(day))}
+                onClick={() => openRowEditor()}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
-                    hasContent ? setEditing({ ...lesson! }) : createNewLesson(day)
+                    openRowEditor()
                   }
                 }}
                 style={{
                   background: '#1E293B',
                   borderRadius: '10px',
                   padding: '14px 16px',
-                  border: `1px solid ${hasContent ? '#334155' : '#1E293B'}`,
+                  border: `1px solid ${hasAny ? '#334155' : '#1E293B'}`,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -423,13 +672,13 @@ function LessonsEditor() {
                   e.currentTarget.style.borderColor = '#F59E0B'
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.borderColor = hasContent ? '#334155' : '#1E293B'
+                  e.currentTarget.style.borderColor = hasAny ? '#334155' : '#1E293B'
                 }}
               >
                 <div
                   style={{
-                    background: hasContent ? '#F59E0B' : '#334155',
-                    color: hasContent ? '#000' : '#64748B',
+                    background: hasAny ? '#F59E0B' : '#334155',
+                    color: hasAny ? '#000' : '#64748B',
                     fontSize: '11px',
                     fontWeight: '700',
                     padding: '4px 8px',
@@ -441,10 +690,10 @@ function LessonsEditor() {
                 >
                   Day {day}
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <p
                     style={{
-                      color: hasContent ? 'white' : '#475569',
+                      color: hasAny ? 'white' : '#475569',
                       fontSize: '13px',
                       fontWeight: '500',
                       margin: '0 0 2px',
@@ -453,19 +702,128 @@ function LessonsEditor() {
                       textOverflow: 'ellipsis',
                     }}
                   >
-                    {hasContent ? lesson.title : 'No content yet — click to add'}
+                    {hasAny ? (displayLesson?.title ?? '') : 'No content yet — click to add'}
                   </p>
-                  {hasContent ? (
+                  {hasAny && displayLesson ? (
                     <p style={{ color: '#64748B', fontSize: '11px', margin: 0, textTransform: 'capitalize' }}>
-                      {lesson.category} · {lesson.published ? 'Published' : 'Draft'}
+                      {displayLesson.category} · {displayLesson.published ? 'Published' : 'Draft'}
                     </p>
                   ) : null}
                 </div>
-                <span style={{ fontSize: '14px' }}>{hasContent ? (lesson.published ? '✅' : '📝') : '➕'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                  {hasContent && !hasBonusContent ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        createBonusLesson(day)
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#8B5CF6',
+                        fontSize: '10px',
+                        cursor: 'pointer',
+                        padding: '2px 4px',
+                        flexShrink: 0,
+                      }}
+                      title="Add bonus lesson for this day"
+                    >
+                      + Bonus
+                    </button>
+                  ) : null}
+                  {hasBonusContent && bonus ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditing({
+                          ...bonus,
+                          media_type: bonus.media_type ?? null,
+                          media_url: bonus.media_url ?? '',
+                          media_storage_path: bonus.media_storage_path ?? '',
+                          is_bonus: true,
+                          parent_day_number: bonus.parent_day_number ?? day,
+                        })
+                      }}
+                      style={{
+                        background: '#4C1D95',
+                        color: '#C4B5FD',
+                        fontSize: '10px',
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        flexShrink: 0,
+                        border: 'none',
+                        cursor: 'pointer',
+                      }}
+                      title="Edit bonus lesson"
+                    >
+                      + Bonus
+                    </button>
+                  ) : null}
+                  <span style={{ fontSize: '14px' }}>
+                    {hasAny && displayLesson ? (displayLesson.published ? '✅' : '📝') : '➕'}
+                  </span>
+                </div>
               </div>
             )
           })
         )}
+      </div>
+
+      <div
+        style={{
+          textAlign: 'center',
+          marginTop: '16px',
+          paddingTop: '16px',
+          borderTop: '1px solid #334155',
+        }}
+      >
+        <p style={{ color: '#64748B', fontSize: '13px', marginBottom: '10px' }}>
+          Program length: {maxDay} days
+          {maxDay === 60 ? (
+            <span style={{ color: '#475569', marginLeft: '8px' }}>(Standard program)</span>
+          ) : null}
+          {maxDay === 90 ? (
+            <span style={{ color: '#8B5CF6', marginLeft: '8px' }}>(Master extension included)</span>
+          ) : null}
+        </p>
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          {maxDay < 90 ? (
+            <button
+              type="button"
+              onClick={() => setMaxDay(90)}
+              style={{
+                background: '#1E293B',
+                border: '1px solid #8B5CF6',
+                color: '#8B5CF6',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '13px',
+              }}
+            >
+              + Add Days 61-90 (Master Phase)
+            </button>
+          ) : null}
+          {maxDay < 120 ? (
+            <button
+              type="button"
+              onClick={() => setMaxDay((prev) => prev + 10)}
+              style={{
+                background: '#1E293B',
+                border: '1px solid #334155',
+                color: '#94A3B8',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '13px',
+              }}
+            >
+              + Add 10 more days
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   )
@@ -477,6 +835,22 @@ type OnboardingContentStep = {
   body: string
   cta_label: string
   highlight_text: string | null
+  media_type?: string | null
+  media_url?: string | null
+  media_storage_path?: string | null
+}
+
+function onboardingStepSerialize(s: OnboardingContentStep) {
+  return JSON.stringify({
+    step_key: s.step_key,
+    heading: s.heading,
+    body: s.body,
+    cta_label: s.cta_label,
+    highlight_text: s.highlight_text ?? '',
+    media_type: s.media_type ?? null,
+    media_url: s.media_url ?? '',
+    media_storage_path: s.media_storage_path ?? '',
+  })
 }
 
 function OnboardingEditor() {
@@ -486,6 +860,10 @@ function OnboardingEditor() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastSavedRef = useRef<string>('')
+  const onboardSessionKeyRef = useRef<string>('')
 
   const STEP_LABELS: Record<string, string> = {
     welcome: '1. Welcome screen',
@@ -516,6 +894,99 @@ function OnboardingEditor() {
     void load()
   }, [load])
 
+  const performOnboardingSave = useCallback(async (step: OnboardingContentStep) => {
+    const dataString = onboardingStepSerialize(step)
+    if (dataString === lastSavedRef.current) {
+      return
+    }
+
+    setAutoSaveStatus('saving')
+
+    try {
+      const { error } = await supabase
+        .from('onboarding_content')
+        .update({
+          heading: step.heading,
+          body: step.body,
+          cta_label: step.cta_label,
+          highlight_text: step.highlight_text || '',
+          media_type: step.media_type || null,
+          media_url: step.media_url || null,
+          media_storage_path: step.media_storage_path || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('step_key', step.step_key)
+
+      if (error) throw error
+
+      lastSavedRef.current = dataString
+      setAutoSaveStatus('saved')
+      setTimeout(() => setAutoSaveStatus('idle'), 3000)
+    } catch {
+      setAutoSaveStatus('error')
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!editingStep) {
+      onboardSessionKeyRef.current = ''
+      return
+    }
+    const key = editingStep.step_key
+    if (key === onboardSessionKeyRef.current) return
+    onboardSessionKeyRef.current = key
+    lastSavedRef.current = onboardingStepSerialize(editingStep)
+  }, [editingStep])
+
+  useEffect(() => {
+    if (!editingStep) return
+
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current)
+    }
+
+    autoSaveTimerRef.current = setTimeout(() => {
+      void performOnboardingSave(editingStep)
+    }, 30000)
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current)
+      }
+    }
+  }, [editingStep, performOnboardingSave])
+
+  useEffect(() => {
+    function handleBlur() {
+      if (editingStep) void performOnboardingSave(editingStep)
+    }
+
+    function handleVisibility() {
+      if (document.hidden && editingStep) void performOnboardingSave(editingStep)
+    }
+
+    window.addEventListener('blur', handleBlur)
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      window.removeEventListener('blur', handleBlur)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [editingStep, performOnboardingSave])
+
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      const dataString = editingStep ? onboardingStepSerialize(editingStep) : ''
+      if (editingStep && dataString !== lastSavedRef.current) {
+        e.preventDefault()
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?'
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [editingStep])
+
   async function saveStep() {
     if (!editingStep) return
     setSaving(true)
@@ -526,6 +997,9 @@ function OnboardingEditor() {
         body: editingStep.body,
         cta_label: editingStep.cta_label,
         highlight_text: editingStep.highlight_text || '',
+        media_type: editingStep.media_type || null,
+        media_url: editingStep.media_url || null,
+        media_storage_path: editingStep.media_storage_path || null,
         updated_at: new Date().toISOString(),
       })
       .eq('step_key', editingStep.step_key)
@@ -534,6 +1008,7 @@ function OnboardingEditor() {
       showToast(error.message, 'error')
       return
     }
+    lastSavedRef.current = onboardingStepSerialize(editingStep)
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
     await load()
@@ -576,21 +1051,37 @@ function OnboardingEditor() {
           <h2 style={{ color: 'white', fontSize: '18px', fontWeight: '600', margin: 0 }}>
             Edit: {STEP_LABELS[editingStep.step_key] ?? editingStep.step_key}
           </h2>
-          <button
-            type="button"
-            onClick={() => setEditingStep(null)}
-            style={{
-              background: '#1E293B',
-              border: '1px solid #334155',
-              color: '#94A3B8',
-              padding: '8px 16px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '13px',
-            }}
-          >
-            ← Back
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+              {autoSaveStatus === 'saving' ? (
+                <span style={{ color: '#64748B' }}>⏳ Auto-saving...</span>
+              ) : null}
+              {autoSaveStatus === 'saved' ? (
+                <span style={{ color: '#10B981' }}>✓ Auto-saved</span>
+              ) : null}
+              {autoSaveStatus === 'error' ? (
+                <span style={{ color: '#EF4444' }}>✗ Auto-save failed</span>
+              ) : null}
+              {autoSaveStatus === 'idle' && editingStep ? (
+                <span style={{ color: '#475569' }}>Auto-saves on tab switch</span>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={() => setEditingStep(null)}
+              style={{
+                background: '#1E293B',
+                border: '1px solid #334155',
+                color: '#94A3B8',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '13px',
+              }}
+            >
+              ← Back
+            </button>
+          </div>
         </div>
 
         <div style={{ background: '#1E293B', borderRadius: '12px', padding: '24px', border: '1px solid #334155' }}>
@@ -610,6 +1101,24 @@ function OnboardingEditor() {
               value={editingStep.body}
               onChange={(e) => setEditingStep({ ...editingStep, body: e.target.value })}
               style={{ ...inputStyle, resize: 'vertical', lineHeight: '1.7' }}
+            />
+          </div>
+          <div style={{ marginBottom: '16px' }}>
+            <MediaUploader
+              key={editingStep.step_key}
+              currentType={(editingStep.media_type as MediaType) ?? null}
+              currentUrl={editingStep.media_url ?? ''}
+              currentStoragePath={editingStep.media_storage_path ?? ''}
+              onMediaChange={(data) =>
+                setEditingStep({
+                  ...editingStep,
+                  media_type: data.type,
+                  media_url: data.url,
+                  media_storage_path: data.storagePath,
+                })
+              }
+              context="onboarding"
+              contextId={editingStep.step_key}
             />
           </div>
           <div style={{ marginBottom: '16px' }}>
