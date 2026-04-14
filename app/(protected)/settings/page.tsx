@@ -77,6 +77,11 @@ export default function SettingsPage() {
       )
     : 0
 
+  const accountLabel =
+    session?.user?.email?.trim() ||
+    session?.user?.phone?.trim() ||
+    (session?.user?.id ? `${session.user.id.slice(0, 8)}…` : null)
+
   useEffect(() => {
     captureEvent('settings_opened')
   }, [])
@@ -258,6 +263,17 @@ export default function SettingsPage() {
         </div>
         <Card className="p-4 space-y-4">
           <div>
+            <h2 className="font-medium mb-1">Appearance</h2>
+            <p className="text-sm text-muted-foreground mb-3">
+              Color persona (Forge, Sanctuary, or Sage) — same app, different palette.
+            </p>
+            <Button type="button" size="sm" variant="outline" asChild>
+              <Link href="/settings/appearance">Theme & colors</Link>
+            </Button>
+          </div>
+        </Card>
+        <Card className="p-4 space-y-4">
+          <div>
             <h2 className="font-medium mb-1">Sync status</h2>
             <p className="text-sm text-muted-foreground">
               {planLoading
@@ -271,6 +287,17 @@ export default function SettingsPage() {
         <Card className="p-4 space-y-4">
           <div>
             <h2 className="font-medium mb-1">Account</h2>
+            {accountLabel ? (
+              <div className="mb-3 rounded-md border border-border bg-secondary/30 px-3 py-2.5">
+                <p className="text-xs font-medium text-muted-foreground">Signed in as</p>
+                <p
+                  className="mt-0.5 truncate text-sm text-foreground"
+                  title={accountLabel}
+                >
+                  {accountLabel}
+                </p>
+              </div>
+            ) : null}
             <p className="text-sm text-muted-foreground mb-3">
               Sign out of MONKMODE on this device.
             </p>

@@ -23,6 +23,7 @@ import {
   Cloud,
   Timer,
   Sunrise,
+  Clapperboard,
 } from "lucide-react"
 
 type IconType = typeof LayoutDashboard
@@ -59,6 +60,7 @@ const navItems: NavItem[] = [
       "Track streaks, completion rates, and trends to understand how your habits compound.",
   },
   { href: "/training", label: "Training", icon: PlayCircle },
+  { href: "/videos", label: "Video library", icon: Clapperboard },
   { href: "/focus", label: "Focus & Deep Work", icon: Timer },
   {
     href: "/sync",

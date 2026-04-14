@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { getDaysSinceStart } from '@/lib/programUtils'
 
 type UserRow = {
   id: string
@@ -10,6 +11,401 @@ type UserRow = {
   is_admin?: boolean | null
   trial_end_date: string | null
   created_at: string | null
+}
+
+type EnrollmentRow = {
+  start_date: string
+  current_day: number | null
+}
+
+function TestModePanel() {
+  const [testMode, setTestMode] = useState(false)
+  const [testDay, setTestDay] = useState(1)
+  const [enrollmentRow, setEnrollmentRow] = useState<EnrollmentRow | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
+
+  const loadTestMode = useCallback(async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data: userData } = await supabase
+      .from('users')
+      .select('test_mode_enabled, test_day_override')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    const { data: enrollment } = await supabase
+      .from('program_enrollments')
+      .select('start_date, current_day')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    setTestMode(userData?.test_mode_enabled === true)
+    setTestDay(
+      (typeof userData?.test_day_override === 'number' && Number.isFinite(userData.test_day_override)
+        ? userData.test_day_override
+        : null) ??
+        (typeof enrollment?.current_day === 'number' ? enrollment.current_day : null) ??
+        1,
+    )
+    setEnrollmentRow(enrollment as EnrollmentRow | null)
+  }, [])
+
+  useEffect(() => {
+    void loadTestMode()
+  }, [loadTestMode])
+
+  async function saveTestMode() {
+    setSaving(true)
+    setMessage('')
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      setSaving(false)
+      return
+    }
+
+    const { error } = await supabase
+      .from('users')
+      .update({
+        test_mode_enabled: testMode,
+        test_day_override: testMode ? testDay : null,
+      })
+      .eq('id', user.id)
+
+    setSaving(false)
+    if (error) {
+      setMessage(error.message)
+      return
+    }
+    setMessage(
+      testMode
+        ? `✅ Test mode ON — you are now on Day ${testDay}. Go to /today to test.`
+        : '✅ Test mode OFF — back to real day progression.',
+    )
+    window.setTimeout(() => setMessage(''), 5000)
+    await loadTestMode()
+  }
+
+  async function advanceOneDay() {
+    const nextDay = Math.min(testDay + 1, 60)
+    setTestDay(nextDay)
+
+    setSaving(true)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      setSaving(false)
+      return
+    }
+
+    const { error } = await supabase
+      .from('users')
+      .update({
+        test_mode_enabled: true,
+        test_day_override: nextDay,
+      })
+      .eq('id', user.id)
+
+    setSaving(false)
+    if (error) {
+      setMessage(error.message)
+      return
+    }
+    setMessage(`✅ Advanced to Day ${nextDay}. Go to /today to see it.`)
+    window.setTimeout(() => setMessage(''), 4000)
+    await loadTestMode()
+  }
+
+  async function resetToDay1() {
+    setTestDay(1)
+    setSaving(true)
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      setSaving(false)
+      return
+    }
+
+    const today = new Date().toISOString().slice(0, 10)
+    const { error: enrErr } = await supabase
+      .from('program_enrollments')
+      .update({
+        start_date: today,
+        current_day: 1,
+        completed_days: [],
+        phase: 'student',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', user.id)
+
+    if (enrErr) {
+      setSaving(false)
+      setMessage(enrErr.message)
+      return
+    }
+
+    const { error: userErr } = await supabase
+      .from('users')
+      .update({
+        test_mode_enabled: false,
+        test_day_override: null,
+      })
+      .eq('id', user.id)
+
+    setTestMode(false)
+    setSaving(false)
+    if (userErr) {
+      setMessage(userErr.message)
+      return
+    }
+    setMessage('✅ Reset to Day 1. Start date set to today.')
+    window.setTimeout(() => setMessage(''), 4000)
+    await loadTestMode()
+  }
+
+  const realDay = enrollmentRow?.start_date ? getDaysSinceStart(enrollmentRow.start_date) : 1
+
+  return (
+    <div
+      style={{
+        background: '#1E293B',
+        borderRadius: '12px',
+        padding: '20px 24px',
+        border: '2px solid #F59E0B44',
+        marginBottom: '32px',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          marginBottom: '16px',
+        }}
+      >
+        <span style={{ fontSize: '20px' }}>🧪</span>
+        <div>
+          <h3 style={{ color: 'white', fontSize: '16px', fontWeight: '600', margin: '0 0 2px' }}>
+            Test Mode — Your Account
+          </h3>
+          <p style={{ color: '#64748B', fontSize: '12px', margin: 0 }}>
+            Override your program day to test any lesson without waiting. Only affects your account.
+          </p>
+        </div>
+        {testMode ? (
+          <span
+            style={{
+              marginLeft: 'auto',
+              background: '#F59E0B',
+              color: '#000',
+              fontSize: '11px',
+              fontWeight: '700',
+              padding: '4px 10px',
+              borderRadius: '4px',
+            }}
+          >
+            TEST MODE ON
+          </span>
+        ) : null}
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '10px',
+          marginBottom: '16px',
+        }}
+      >
+        <div style={{ background: '#0F172A', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+          <p style={{ color: '#64748B', fontSize: '11px', margin: '0 0 4px' }}>Real day</p>
+          <p style={{ color: 'white', fontSize: '20px', fontWeight: '700', margin: 0 }}>{realDay}</p>
+        </div>
+        <div style={{ background: '#0F172A', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+          <p style={{ color: '#64748B', fontSize: '11px', margin: '0 0 4px' }}>Test day</p>
+          <p style={{ color: testMode ? '#F59E0B' : '#334155', fontSize: '20px', fontWeight: '700', margin: 0 }}>
+            {testMode ? testDay : '—'}
+          </p>
+        </div>
+        <div style={{ background: '#0F172A', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+          <p style={{ color: '#64748B', fontSize: '11px', margin: '0 0 4px' }}>Status</p>
+          <p style={{ color: testMode ? '#F59E0B' : '#10B981', fontSize: '13px', fontWeight: '600', margin: 0 }}>
+            {testMode ? 'Override' : 'Normal'}
+          </p>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          gap: '10px',
+          flexWrap: 'wrap',
+          alignItems: 'flex-end',
+          marginBottom: '12px',
+        }}
+      >
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+            color: '#CBD5E1',
+            fontSize: '14px',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={testMode}
+            onChange={(e) => setTestMode(e.target.checked)}
+            style={{
+              cursor: 'pointer',
+              width: '16px',
+              height: '16px',
+            }}
+          />
+          Enable test mode
+        </label>
+
+        <div>
+          <p style={{ color: '#64748B', fontSize: '11px', margin: '0 0 4px' }}>Jump to day</p>
+          <input
+            type="number"
+            min={1}
+            max={60}
+            value={testDay}
+            onChange={(e) =>
+              setTestDay(Math.min(60, Math.max(1, Number.parseInt(e.target.value, 10) || 1)))
+            }
+            style={{
+              background: '#0F172A',
+              border: '1px solid #334155',
+              borderRadius: '8px',
+              padding: '8px 12px',
+              color: 'white',
+              fontSize: '14px',
+              width: '80px',
+              outline: 'none',
+            }}
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={() => void saveTestMode()}
+          disabled={saving}
+          style={{
+            background: '#F59E0B',
+            color: '#000',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '9px 20px',
+            cursor: saving ? 'wait' : 'pointer',
+            fontSize: '13px',
+            fontWeight: '600',
+          }}
+        >
+          {saving ? 'Saving...' : 'Apply'}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => void advanceOneDay()}
+          disabled={saving || testDay >= 60}
+          style={{
+            background: '#1E293B',
+            color: '#94A3B8',
+            border: '1px solid #334155',
+            borderRadius: '8px',
+            padding: '9px 16px',
+            cursor: saving || testDay >= 60 ? 'not-allowed' : 'pointer',
+            fontSize: '13px',
+          }}
+        >
+          +1 Day
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            if (
+              window.confirm(
+                'Reset your enrollment to Day 1? This will clear all completed days.',
+              )
+            ) {
+              void resetToDay1()
+            }
+          }}
+          disabled={saving}
+          style={{
+            background: 'transparent',
+            color: '#EF4444',
+            border: '1px solid #EF444444',
+            borderRadius: '8px',
+            padding: '9px 16px',
+            cursor: saving ? 'not-allowed' : 'pointer',
+            fontSize: '13px',
+          }}
+        >
+          Reset to Day 1
+        </button>
+      </div>
+
+      {message ? (
+        <div
+          style={{
+            background: '#0F172A',
+            borderRadius: '8px',
+            padding: '10px 14px',
+            color: message.startsWith('✅') ? '#10B981' : '#F87171',
+            fontSize: '13px',
+            lineHeight: '1.5',
+          }}
+        >
+          {message}
+        </div>
+      ) : null}
+
+      <div
+        style={{
+          marginTop: '12px',
+          padding: '12px',
+          background: '#0F172A',
+          borderRadius: '8px',
+          border: '1px solid #1E293B',
+        }}
+      >
+        <p style={{ color: '#475569', fontSize: '12px', margin: '0 0 6px', fontWeight: '500' }}>How to use:</p>
+        <p style={{ color: '#475569', fontSize: '12px', margin: '0 0 4px', lineHeight: '1.6' }}>
+          1. Tick &quot;Enable test mode&quot;
+        </p>
+        <p style={{ color: '#475569', fontSize: '12px', margin: '0 0 4px', lineHeight: '1.6' }}>
+          2. Type a day number (1-60) in &quot;Jump to day&quot;
+        </p>
+        <p style={{ color: '#475569', fontSize: '12px', margin: '0 0 4px', lineHeight: '1.6' }}>
+          3. Click Apply
+        </p>
+        <p style={{ color: '#475569', fontSize: '12px', margin: '0 0 4px', lineHeight: '1.6' }}>
+          4. Go to /today — you will see that day&apos;s lesson
+        </p>
+        <p style={{ color: '#475569', fontSize: '12px', margin: '0 0 4px', lineHeight: '1.6' }}>
+          5. Use +1 Day to step through lessons one at a time
+        </p>
+        <p style={{ color: '#475569', fontSize: '12px', margin: 0, lineHeight: '1.6' }}>
+          6. Turn off test mode when done — real day progression resumes
+        </p>
+      </div>
+    </div>
+  )
 }
 
 export default function AdminUsersPage() {
@@ -122,6 +518,7 @@ export default function AdminUsersPage() {
 
   return (
     <div>
+      <TestModePanel />
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-white">Users</h1>
         <p className="mt-1 text-sm text-slate-500">{users.length} total users</p>

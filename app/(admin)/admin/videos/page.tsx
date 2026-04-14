@@ -30,10 +30,20 @@ const emptyForm = {
   sort_order: '0',
 }
 
+/** Supabase/PostgREST when `training_videos` was never migrated to this project. */
+function looksLikeMissingTrainingVideosTable(message: string): boolean {
+  const m = message.toLowerCase()
+  return (
+    m.includes('training_videos') ||
+    (m.includes('could not find') && m.includes('schema cache'))
+  )
+}
+
 export default function AdminVideosPage() {
   const { showToast } = useToast()
   const [videos, setVideos] = useState<TrainingVideo[]>([])
   const [loading, setLoading] = useState(true)
+  const [catalogError, setCatalogError] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -51,22 +61,23 @@ export default function AdminVideosPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
+    setCatalogError(null)
     try {
       const res = await fetch('/api/videos')
       const json = (await res.json()) as { videos?: TrainingVideo[]; error?: string }
       if (!res.ok) {
-        showToast(json.error ?? 'Failed to load videos', 'error')
+        setCatalogError(json.error ?? 'Failed to load videos')
         setVideos([])
         return
       }
       setVideos(json.videos ?? [])
     } catch {
-      showToast('Could not reach the server', 'error')
+      setCatalogError('Could not reach the server')
       setVideos([])
     } finally {
       setLoading(false)
     }
-  }, [showToast])
+  }, [])
 
   useEffect(() => {
     void load()
@@ -143,7 +154,11 @@ export default function AdminVideosPage() {
       })
       const json = (await res.json()) as { error?: string }
       if (!res.ok) {
-        showToast(json.error ?? 'Save failed', 'error')
+        const msg = json.error ?? 'Save failed'
+        showToast(msg, 'error')
+        if (msg && looksLikeMissingTrainingVideosTable(msg)) {
+          setCatalogError(msg)
+        }
         return
       }
       showToast(isEdit ? 'Video updated' : 'Video created', 'success')
@@ -170,7 +185,9 @@ export default function AdminVideosPage() {
       })
       const json = (await res.json()) as { error?: string }
       if (!res.ok) {
-        showToast(json.error ?? 'Delete failed', 'error')
+        const msg = json.error ?? 'Delete failed'
+        showToast(msg, 'error')
+        if (msg && looksLikeMissingTrainingVideosTable(msg)) setCatalogError(msg)
         return
       }
       showToast('Video removed', 'success')
@@ -194,6 +211,49 @@ export default function AdminVideosPage() {
           page. Use a YouTube watch or youtu.be URL for embed playback.
         </p>
       </div>
+
+      {catalogError ? (
+        <Card
+          className={
+            looksLikeMissingTrainingVideosTable(catalogError)
+              ? 'border-red-900/60 bg-red-950/30 p-6 text-sm text-red-200'
+              : 'border-amber-900/50 bg-amber-950/20 p-6 text-sm text-amber-100'
+          }
+        >
+          <p className="font-medium text-white">
+            {looksLikeMissingTrainingVideosTable(catalogError)
+              ? 'Database: training_videos is missing on this Supabase project'
+              : 'Could not load the video catalog'}
+          </p>
+          <p className="mt-2 opacity-90">{catalogError}</p>
+          {looksLikeMissingTrainingVideosTable(catalogError) ? (
+            <p className="mt-3 text-xs opacity-80">
+              Run the migration{' '}
+              <code className="rounded bg-black/30 px-1">supabase/migrations/20260418120000_training_videos.sql</code>{' '}
+              on production (SQL Editor or <code className="rounded bg-black/30 px-1">supabase db push</code>), then
+              retry. Saves will fail until the table exists.
+            </p>
+          ) : null}
+          <div className="mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="border-slate-500 text-slate-100 hover:bg-slate-800"
+              disabled={loading}
+              onClick={() => void load()}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                  Retrying…
+                </>
+              ) : (
+                'Retry catalog load'
+              )}
+            </Button>
+          </div>
+        </Card>
+      ) : null}
 
       <Card className="border-slate-700 bg-slate-900/40 p-6">
         <h2 className="mb-4 text-sm font-medium text-slate-200">

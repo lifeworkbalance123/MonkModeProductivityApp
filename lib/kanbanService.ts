@@ -321,20 +321,41 @@ export async function moveCard(
   destColumnId: string,
   sourceIndex: number,
   destinationIndex: number,
+  opts?: {
+    visibleSourceColumnCards?: KanbanCard[]
+    visibleDestColumnCards?: KanbanCard[]
+  },
 ): Promise<{ error: string | null }> {
   const cards = await getCards(ctx)
   const moving = cards.find((c) => c.id === cardId)
   if (!moving) return { error: 'Card not found' }
 
   if (sourceColumnId === destColumnId) {
-    const list = cards
+    const fullList = cards
       .filter((c) => c.columnId === sourceColumnId)
       .sort((a, b) => a.order - b.order)
-    const reordered = [...list]
+    const visibleList = (
+      opts?.visibleSourceColumnCards?.length
+        ? opts.visibleSourceColumnCards
+        : fullList
+    ).slice()
+    const reordered = [...visibleList]
     const [removed] = reordered.splice(sourceIndex, 1)
     if (!removed || removed.id !== cardId) return { error: 'Invalid drag state' }
     reordered.splice(destinationIndex, 0, removed)
-    const stamped = reordered.map((c, i) => ({
+    const reorderedIds = reordered.map((c) => c.id)
+    const merged = [...fullList]
+    let visibleCursor = 0
+    for (let i = 0; i < merged.length; i += 1) {
+      const id = merged[i].id
+      if (reorderedIds.includes(id)) {
+        const nextId = reorderedIds[visibleCursor]
+        const nextCard = cards.find((c) => c.id === nextId)
+        if (nextCard) merged[i] = { ...nextCard, columnId: sourceColumnId }
+        visibleCursor += 1
+      }
+    }
+    const stamped = merged.map((c, i) => ({
       ...c,
       order: i,
       columnId: sourceColumnId,
@@ -354,7 +375,18 @@ export async function moveCard(
     .filter((c) => c.columnId === destColumnId)
     .sort((a, b) => a.order - b.order)
   const moved = { ...moving, columnId: destColumnId }
-  const insertAt = Math.max(0, Math.min(destinationIndex, dstList.length))
+  const visibleDest = (
+    opts?.visibleDestColumnCards?.length
+      ? opts.visibleDestColumnCards
+      : dstList
+  ).slice()
+  const boundedDest = Math.max(0, Math.min(destinationIndex, visibleDest.length))
+  let insertAt = dstList.length
+  if (boundedDest < visibleDest.length) {
+    const targetId = visibleDest[boundedDest]?.id
+    const targetIdx = dstList.findIndex((c) => c.id === targetId)
+    if (targetIdx >= 0) insertAt = targetIdx
+  }
   const newDst = [...dstList.slice(0, insertAt), moved, ...dstList.slice(insertAt)]
   const stampedSrc = srcList.map((c, i) => ({ ...c, order: i }))
   const stampedDst = newDst.map((c, i) => ({ ...c, order: i }))

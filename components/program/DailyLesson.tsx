@@ -9,9 +9,19 @@ type DailyLessonProps = {
   dayNumber: number
   lesson: DailyLessonType
   onComplete?: () => void
+  /** Past-day archive: no complete action, read-only UI */
+  readOnly?: boolean
+  /** Report completion state for the visible day (skipped when readOnly) */
+  onCompletionLoaded?: (completed: boolean) => void
 }
 
-export default function DailyLesson({ dayNumber, lesson, onComplete }: DailyLessonProps) {
+export default function DailyLesson({
+  dayNumber,
+  lesson,
+  onComplete,
+  readOnly = false,
+  onCompletionLoaded,
+}: DailyLessonProps) {
   const [completed, setCompleted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [completing, setCompleting] = useState(false)
@@ -21,6 +31,10 @@ export default function DailyLesson({ dayNumber, lesson, onComplete }: DailyLess
   const checkCompletion = useCallback(async () => {
     setLoading(true)
     try {
+      if (readOnly) {
+        setCompleted(true)
+        return
+      }
       const {
         data: { user },
       } = await supabase.auth.getUser()
@@ -40,13 +54,19 @@ export default function DailyLesson({ dayNumber, lesson, onComplete }: DailyLess
     } finally {
       setLoading(false)
     }
-  }, [dayNumber])
+  }, [dayNumber, readOnly])
 
   useEffect(() => {
     void checkCompletion()
   }, [checkCompletion])
 
+  useEffect(() => {
+    if (readOnly || loading) return
+    onCompletionLoaded?.(completed)
+  }, [readOnly, loading, completed, onCompletionLoaded])
+
   async function handleComplete() {
+    if (readOnly) return
     setCompleting(true)
     try {
       const {
@@ -73,6 +93,7 @@ export default function DailyLesson({ dayNumber, lesson, onComplete }: DailyLess
 
       setCompleted(true)
       if (lesson?.tip) setShowTip(true)
+      onCompletionLoaded?.(true)
       onComplete?.()
     } finally {
       setCompleting(false)
@@ -99,7 +120,7 @@ export default function DailyLesson({ dayNumber, lesson, onComplete }: DailyLess
           justifyContent: 'space-between',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <span
             style={{
               background: '#F59E0B',
@@ -112,6 +133,20 @@ export default function DailyLesson({ dayNumber, lesson, onComplete }: DailyLess
           >
             DAY {dayNumber}
           </span>
+          {readOnly ? (
+            <span
+              style={{
+                background: '#334155',
+                color: '#94A3B8',
+                fontSize: '10px',
+                fontWeight: '600',
+                padding: '3px 8px',
+                borderRadius: '4px',
+              }}
+            >
+              Past lesson — read only
+            </span>
+          ) : null}
           <span
             style={{
               color: '#64748B',
@@ -126,7 +161,7 @@ export default function DailyLesson({ dayNumber, lesson, onComplete }: DailyLess
           <span style={{ color: '#64748B', fontSize: '12px' }} aria-busy="true">
             Checking…
           </span>
-        ) : completed ? (
+        ) : completed || readOnly ? (
           <span style={{ color: '#10B981', fontSize: '13px', fontWeight: '500' }}>✓ Completed</span>
         ) : null}
       </div>
@@ -217,7 +252,7 @@ export default function DailyLesson({ dayNumber, lesson, onComplete }: DailyLess
             {lesson.action}
           </p>
 
-          {!completed ? (
+          {!completed && !readOnly ? (
             <button
               type="button"
               onClick={() => void handleComplete()}
@@ -253,6 +288,7 @@ export default function DailyLesson({ dayNumber, lesson, onComplete }: DailyLess
                 color: '#10B981',
                 fontSize: '15px',
                 fontWeight: '600',
+                opacity: readOnly ? 0.85 : 1,
               }}
             >
               ✓ {lesson.actionLabel}

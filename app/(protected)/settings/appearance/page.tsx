@@ -1,0 +1,121 @@
+'use client'
+
+import Link from 'next/link'
+import { Loader2, Palette } from 'lucide-react'
+import { Navigation } from '@/components/navigation'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { useColorTheme } from '@/context/ColorThemeContext'
+import { useThemePersonas } from '@/hooks/useThemePersonas'
+import { THEME_ACCENT_SWATCH, THEME_IDS, type ColorThemeId } from '@/lib/colorThemes'
+import { cn } from '@/lib/utils'
+
+const FALLBACK: Record<ColorThemeId, { display_name: string; description: string }> = {
+  forge: { display_name: 'The Forge', description: 'Intense, gritty — for the warrior.' },
+  sanctuary: { display_name: 'The Sanctuary', description: 'Calm, focused — teal clarity.' },
+  sage: { display_name: 'The Sage', description: 'Warm stone and olive — grounded wisdom.' },
+}
+
+export default function AppearanceSettingsPage() {
+  const { themeId, setThemeId, ready } = useColorTheme()
+  const { personas, loading, error } = useThemePersonas()
+
+  function meta(id: ColorThemeId) {
+    const row = personas.find((p) => p.id === id)
+    const fb = FALLBACK[id]
+    return {
+      name: row?.display_name?.trim() || fb.display_name,
+      description: (row?.description ?? fb.description) || '',
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navigation />
+      <div className="mx-auto max-w-lg space-y-6 px-4 pb-16 pt-24">
+        <div>
+          <Link
+            href="/settings"
+            className="mb-3 inline-block text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            ← Settings
+          </Link>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold">
+            <Palette className="h-7 w-7 text-accent" aria-hidden />
+            Appearance
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Choose a color persona. Names and descriptions are managed in the admin panel.
+          </p>
+        </div>
+
+        {error ? (
+          <p className="text-sm text-amber-600 dark:text-amber-400">
+            Could not load theme labels ({error}). Showing defaults until the database migration is applied.
+          </p>
+        ) : null}
+
+        {!ready || loading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+            Loading…
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {THEME_IDS.map((id) => {
+              const { name, description } = meta(id)
+              const selected = themeId === id
+              return (
+                <Card
+                  key={id}
+                  className={cn(
+                    'cursor-pointer border-2 p-4 transition-colors',
+                    selected ? 'border-accent bg-card' : 'border-transparent hover:border-border',
+                  )}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => void setThemeId(id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      void setThemeId(id)
+                    }
+                  }}
+                >
+                  <div className="flex gap-4">
+                    <div
+                      className="mt-0.5 h-12 w-12 shrink-0 rounded-full border border-border shadow-inner"
+                      style={{ backgroundColor: THEME_ACCENT_SWATCH[id] }}
+                      aria-hidden
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="font-semibold text-foreground">{name}</h2>
+                        <span className="rounded bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+                          {id}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="mt-3"
+                        variant={selected ? 'default' : 'outline'}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          void setThemeId(id)
+                        }}
+                      >
+                        {selected ? 'Selected' : 'Use this theme'}
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

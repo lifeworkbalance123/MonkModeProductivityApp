@@ -161,39 +161,115 @@
   background-color: var(--color-volcanic);
 }
 
-.dark {
-  --background: #111827;
-  --foreground: #f9fafb;
-  --card: #1f2937;
-  --card-foreground: #f9fafb;
-  --popover: #1f2937;
-  --popover-foreground: #f9fafb;
-  --primary: var(--color-wasabi);
-  --primary-foreground: var(--color-wasabi-fore);
-  --secondary: #374151;
-  --secondary-foreground: #f9fafb;
-  --muted: #374151;
-  --muted-foreground: #9ca3af;
-  --accent: var(--color-wasabi);
-  --accent-foreground: var(--color-wasabi-fore);
+/* ── Color personas (fixed hex). Persona labels from `theme_personas` in Supabase. */
+/* Default / forge — "The Forge" */
+.dark,
+html.dark {
+  --theme-success: #4caf50;
+  --background: #0a0a0a;
+  --foreground: #f5f5f5;
+  --card: #1a1a1a;
+  --card-foreground: #f5f5f5;
+  --popover: #141414;
+  --popover-foreground: #f5f5f5;
+  --primary: #e25822;
+  --primary-foreground: #0c0c0c;
+  --secondary: #3d2418;
+  --secondary-foreground: #f5f5f5;
+  --muted: #252525;
+  --muted-foreground: #a0a0a0;
+  --accent: #e25822;
+  --accent-foreground: #0c0c0c;
   --destructive: oklch(0.55 0.22 27);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: #374151;
-  --input: #374151;
-  --ring: var(--color-wasabi);
-  --chart-1: var(--color-wasabi);
-  --chart-2: oklch(0.65 0.12 185);
-  --chart-3: oklch(0.70 0.18 85);
-  --chart-4: oklch(0.60 0.15 280);
-  --chart-5: oklch(0.70 0.20 30);
-  --sidebar: #0f172a;
-  --sidebar-foreground: #f9fafb;
-  --sidebar-primary: var(--color-wasabi);
-  --sidebar-primary-foreground: var(--color-wasabi-fore);
-  --sidebar-accent: #374151;
-  --sidebar-accent-foreground: #f9fafb;
-  --sidebar-border: #374151;
-  --sidebar-ring: var(--color-wasabi);
+  --border: #2a2a2a;
+  --input: #2a2a2a;
+  --ring: #e25822;
+  --chart-1: #e25822;
+  --chart-2: #8b3a0f;
+  --chart-3: oklch(0.7 0.18 85);
+  --chart-4: oklch(0.6 0.15 280);
+  --chart-5: #4caf50;
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #f5f5f5;
+  --sidebar-primary: #e25822;
+  --sidebar-primary-foreground: #0c0c0c;
+  --sidebar-accent: #1f1f1f;
+  --sidebar-accent-foreground: #f5f5f5;
+  --sidebar-border: #2a2a2a;
+  --sidebar-ring: #e25822;
+}
+
+html.dark[data-color-theme='sanctuary'] {
+  --theme-success: #2a9d8f;
+  --background: #121212;
+  --foreground: #ededed;
+  --card: #1e1e1e;
+  --card-foreground: #ededed;
+  --popover: #181818;
+  --popover-foreground: #ededed;
+  --primary: #2a9d8f;
+  --primary-foreground: #0a1614;
+  --secondary: #1e3540;
+  --secondary-foreground: #ededed;
+  --muted: #262626;
+  --muted-foreground: #b0b0b0;
+  --accent: #2a9d8f;
+  --accent-foreground: #0a1614;
+  --destructive: oklch(0.55 0.22 27);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: #333333;
+  --input: #333333;
+  --ring: #2a9d8f;
+  --chart-1: #2a9d8f;
+  --chart-2: #264653;
+  --chart-3: oklch(0.7 0.18 85);
+  --chart-4: oklch(0.6 0.15 280);
+  --chart-5: #2a9d8f;
+  --sidebar: #121212;
+  --sidebar-foreground: #ededed;
+  --sidebar-primary: #2a9d8f;
+  --sidebar-primary-foreground: #0a1614;
+  --sidebar-accent: #252525;
+  --sidebar-accent-foreground: #ededed;
+  --sidebar-border: #333333;
+  --sidebar-ring: #2a9d8f;
+}
+
+html.dark[data-color-theme='sage'] {
+  --theme-success: #8a9a5b;
+  --background: #1a1d1a;
+  --foreground: #f0f0e8;
+  --card: #2a2f2a;
+  --card-foreground: #f0f0e8;
+  --popover: #222622;
+  --popover-foreground: #f0f0e8;
+  --primary: #c0a080;
+  --primary-foreground: #1a1816;
+  --secondary: #2f3828;
+  --secondary-foreground: #f0f0e8;
+  --muted: #2a3028;
+  --muted-foreground: #b0b0a0;
+  --accent: #c0a080;
+  --accent-foreground: #1a1816;
+  --destructive: oklch(0.55 0.22 27);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: #3a4238;
+  --input: #3a4238;
+  --ring: #c0a080;
+  --chart-1: #c0a080;
+  --chart-2: #8a9a5b;
+  --chart-3: oklch(0.7 0.18 85);
+  --chart-4: oklch(0.6 0.15 280);
+  --chart-5: #8a9a5b;
+  --sidebar: #1a1d1a;
+  --sidebar-foreground: #f0f0e8;
+  --sidebar-primary: #c0a080;
+  --sidebar-primary-foreground: #1a1816;
+  --sidebar-accent: #2a2f2a;
+  --sidebar-accent-foreground: #f0f0e8;
+  --sidebar-border: #3a4238;
+  --sidebar-ring: #c0a080;
 }
 
 @theme inline {

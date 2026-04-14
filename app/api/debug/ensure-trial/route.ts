@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-service'
+import {
+  allowTrialDebugUpsertInProduction,
+  debugApiNotFound,
+  isNodeProduction,
+} from '@/lib/debug-production-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,11 +23,8 @@ function randomReferralCode(): string {
  * Requires NODE_ENV=development OR ALLOW_TRIAL_DEBUG_UPSERT=1 on the server.
  */
 export async function POST(request: Request) {
-  const allowed =
-    process.env.NODE_ENV === 'development' ||
-    process.env.ALLOW_TRIAL_DEBUG_UPSERT === '1'
-  if (!allowed) {
-    return NextResponse.json({ error: 'Not allowed' }, { status: 403 })
+  if (isNodeProduction() && !allowTrialDebugUpsertInProduction()) {
+    return debugApiNotFound()
   }
 
   let admin

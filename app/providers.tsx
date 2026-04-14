@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { AuthProvider } from '@/context/AuthContext'
+import { ColorThemeProvider } from '@/context/ColorThemeContext'
 import { ToastProvider } from '@/context/ToastContext'
 import { UpgradeOfferProvider } from '@/context/UpgradeOfferContext'
 import { NetworkOfflineBanner } from '@/components/NetworkOfflineBanner'
@@ -14,15 +15,17 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <SentryErrorBoundary>
       <AuthProvider>
-        <PostHogBootstrap />
-        <ToastProvider>
-          <UpgradeOfferProvider>
-            <NetworkOfflineBanner />
-            {children}
-            <SupportFloatingButton />
-            <CookieBanner />
-          </UpgradeOfferProvider>
-        </ToastProvider>
+        <ColorThemeProvider>
+          <PostHogBootstrap />
+          <ToastProvider>
+            <UpgradeOfferProvider>
+              <NetworkOfflineBanner />
+              {children}
+              <SupportFloatingButton />
+              <CookieBanner />
+            </UpgradeOfferProvider>
+          </ToastProvider>
+        </ColorThemeProvider>
       </AuthProvider>
     </SentryErrorBoundary>
   )

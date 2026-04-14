@@ -48,10 +48,20 @@ type CreateBody = {
   step_kind: OnboardingStepKind
 }
 
+/** Supabase/PostgREST when `onboarding_steps` was never migrated to this project. */
+function looksLikeMissingOnboardingStepsTable(message: string): boolean {
+  const m = message.toLowerCase()
+  return (
+    m.includes('onboarding_steps') ||
+    (m.includes('could not find') && m.includes('schema cache'))
+  )
+}
+
 export default function AdminOnboardingPage() {
   const { showToast } = useToast()
   const [steps, setSteps] = useState<OnboardingStepRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [catalogError, setCatalogError] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -69,22 +79,23 @@ export default function AdminOnboardingPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
+    setCatalogError(null)
     try {
       const res = await fetch('/api/onboarding/steps')
       const json = (await res.json()) as { steps?: OnboardingStepRow[]; error?: string }
       if (!res.ok) {
-        showToast(json.error ?? 'Failed to load steps', 'error')
+        setCatalogError(json.error ?? 'Failed to load steps')
         setSteps([])
         return
       }
       setSteps(json.steps ?? [])
     } catch {
-      showToast('Could not reach the server', 'error')
+      setCatalogError('Could not reach the server')
       setSteps([])
     } finally {
       setLoading(false)
     }
-  }, [showToast])
+  }, [])
 
   useEffect(() => {
     void load()
@@ -159,7 +170,9 @@ export default function AdminOnboardingPage() {
       })
       const json = (await res.json()) as { error?: string }
       if (!res.ok) {
-        showToast(json.error ?? 'Save failed', 'error')
+        const msg = json.error ?? 'Save failed'
+        showToast(msg, 'error')
+        if (msg && looksLikeMissingOnboardingStepsTable(msg)) setCatalogError(msg)
         return
       }
       showToast(isEdit ? 'Step updated' : 'Step created', 'success')
@@ -191,7 +204,9 @@ export default function AdminOnboardingPage() {
     })
     const json = (await res.json()) as { error?: string }
     if (!res.ok) {
-      showToast(json.error ?? 'Reorder failed', 'error')
+      const msg = json.error ?? 'Reorder failed'
+      showToast(msg, 'error')
+      if (msg && looksLikeMissingOnboardingStepsTable(msg)) setCatalogError(msg)
       return
     }
     showToast('Order saved', 'success')
@@ -214,7 +229,9 @@ export default function AdminOnboardingPage() {
       })
       const json = (await res.json()) as { error?: string }
       if (!res.ok) {
-        showToast(json.error ?? 'Delete failed', 'error')
+        const msg = json.error ?? 'Delete failed'
+        showToast(msg, 'error')
+        if (msg && looksLikeMissingOnboardingStepsTable(msg)) setCatalogError(msg)
         return
       }
       showToast('Step deleted', 'success')
@@ -239,6 +256,49 @@ export default function AdminOnboardingPage() {
           <code className="text-slate-300">content</code> for a simple title + body + button.
         </p>
       </div>
+
+      {catalogError ? (
+        <Card
+          className={
+            looksLikeMissingOnboardingStepsTable(catalogError)
+              ? 'border-red-900/60 bg-red-950/30 p-6 text-sm text-red-200'
+              : 'border-amber-900/50 bg-amber-950/20 p-6 text-sm text-amber-100'
+          }
+        >
+          <p className="font-medium text-white">
+            {looksLikeMissingOnboardingStepsTable(catalogError)
+              ? 'Database: onboarding_steps is missing on this Supabase project'
+              : 'Could not load onboarding steps'}
+          </p>
+          <p className="mt-2 opacity-90">{catalogError}</p>
+          {looksLikeMissingOnboardingStepsTable(catalogError) ? (
+            <p className="mt-3 text-xs opacity-80">
+              Run the migration{' '}
+              <code className="rounded bg-black/30 px-1">supabase/migrations/20260419120000_onboarding_steps.sql</code>{' '}
+              on production (SQL Editor or <code className="rounded bg-black/30 px-1">supabase db push</code>), then
+              retry. Creates and edits will fail until the table exists.
+            </p>
+          ) : null}
+          <div className="mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="border-slate-500 text-slate-100 hover:bg-slate-800"
+              disabled={loading}
+              onClick={() => void load()}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                  Retrying…
+                </>
+              ) : (
+                'Retry steps load'
+              )}
+            </Button>
+          </div>
+        </Card>
+      ) : null}
 
       <Card className="border-amber-900/40 bg-amber-950/20 p-4 text-xs text-amber-100/90">
         <p className="font-medium text-amber-200">Description delimiters (why / commitment / wake)</p>
@@ -382,7 +442,13 @@ export default function AdminOnboardingPage() {
             Loading…
           </p>
         ) : steps.length === 0 ? (
-          <p className="text-sm text-slate-500">No rows. Run the migration seed or add a step above.</p>
+          <p className="text-sm text-slate-500">
+            {catalogError
+              ? looksLikeMissingOnboardingStepsTable(catalogError)
+                ? 'Fix the database issue above, then retry.'
+                : 'See the alert above, then retry.'
+              : 'No rows. Run the migration seed or add a step above.'}
+          </p>
         ) : (
           <ul className="space-y-2">
             {steps.map((s, idx) => (

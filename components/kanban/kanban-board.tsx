@@ -264,6 +264,10 @@ export function KanbanBoard({ data, setData }: Props) {
       destination.droppableId,
       source.index,
       destination.index,
+      {
+        visibleSourceColumnCards: cardsByColumn(source.droppableId),
+        visibleDestColumnCards: cardsByColumn(destination.droppableId),
+      },
     )
     if (r.error) {
       showToast(r.error, 'error')
@@ -289,6 +293,7 @@ export function KanbanBoard({ data, setData }: Props) {
       return true
     })
   }, [cards, filterPriority, filterCategory])
+  const filtersActive = filterPriority !== 'all' || filterCategory !== 'all'
 
   const cardsByColumn = useCallback(
     (colId: string) =>
@@ -443,7 +448,24 @@ export function KanbanBoard({ data, setData }: Props) {
         Archived cards: {archivedCount} (analytics)
       </p>
 
-      <DragDropContext onDragEnd={(r) => void onDragEnd(r)}>
+      {filtersActive ? (
+        <div className="mb-3 flex items-center gap-2 rounded-lg border border-amber-500 bg-amber-900/60 px-3 py-2 text-[13px] text-amber-100">
+          <span>⚠️</span>
+          <span>Drag to reorder is disabled while filters are active. Clear filters to enable drag.</span>
+          <button
+            type="button"
+            onClick={() => {
+              setFilterPriority('all')
+              setFilterCategory('all')
+            }}
+            className="ml-auto bg-transparent text-[12px] text-amber-400 underline"
+          >
+            Clear filters
+          </button>
+        </div>
+      ) : null}
+
+      <DragDropContext onDragEnd={filtersActive ? () => {} : (r) => void onDragEnd(r)}>
         <div
           className={cn(
             'flex flex-col gap-4 pb-4 md:flex-row md:overflow-x-auto',
@@ -524,17 +546,23 @@ export function KanbanBoard({ data, setData }: Props) {
                           <div
                             ref={dragProvided.innerRef}
                             {...dragProvided.draggableProps}
-                            {...dragProvided.dragHandleProps}
                             className={cn(
-                              'group relative rounded-md border border-border/80 border-l-4 bg-secondary/40 p-3 text-left transition-shadow',
+                              'group relative flex items-start gap-2 rounded-md border border-border/80 border-l-4 bg-secondary/40 p-3 text-left transition-shadow',
                               priorityBorder(c.priority),
                               snapshot.isDragging &&
                                 'z-50 scale-[1.02] shadow-lg ring-1 ring-[#F59E0B]/40',
                             )}
                           >
+                            <div
+                              {...dragProvided.dragHandleProps}
+                              className="select-none px-1 text-base leading-none text-slate-500"
+                              title="Drag to reorder"
+                            >
+                              ⠿
+                            </div>
                             <button
                               type="button"
-                              className="w-full text-left"
+                              className="flex-1 text-left"
                               onClick={() => setCardModal({ ...c })}
                             >
                               <div className="flex items-start justify-between gap-2 pr-14">

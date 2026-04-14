@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { differenceInCalendarDays, startOfDay } from 'date-fns'
+import { addDays, differenceInCalendarDays, startOfDay } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 
 function parseLocalDateKey(dateKey: string): Date {
@@ -19,6 +19,8 @@ export type ProgramEnrollment = {
   status: string
   completedDays: number[]
   lastActiveDate: string | null
+  isTestMode: boolean
+  testDayOverride: number | null
 }
 
 export function getPhaseFromDay(day: number): Phase {
@@ -76,10 +78,26 @@ export async function getEnrollment(userId: string): Promise<ProgramEnrollment |
 
     if (error || !data) return null
 
-    const actualDay = getDaysSinceStart(data.start_date as string)
+    const { data: userData } = await supabase
+      .from('users')
+      .select('test_mode_enabled, test_day_override')
+      .eq('id', userId)
+      .maybeSingle()
+
+    const isTestMode = userData?.test_mode_enabled === true
+    const rawOverride = userData?.test_day_override as number | null | undefined
+    const testDayOverride =
+      typeof rawOverride === 'number' && Number.isFinite(rawOverride) ? rawOverride : null
+
+    let actualDay = Math.min(getDaysSinceStart(data.start_date as string), 90)
+
+    if (isTestMode && testDayOverride != null) {
+      actualDay = Math.min(90, Math.max(1, Math.floor(testDayOverride)))
+    }
+
     const phase = getPhaseFromDay(actualDay)
 
-    if (actualDay !== data.current_day || phase !== data.phase) {
+    if ((actualDay !== data.current_day || phase !== data.phase) && !isTestMode) {
       const { error: updateError } = await supabase
         .from('program_enrollments')
         .update({
@@ -99,16 +117,24 @@ export async function getEnrollment(userId: string): Promise<ProgramEnrollment |
       id: data.id as string,
       userId: data.user_id as string,
       startDate: data.start_date as string,
-      currentDay: Math.min(actualDay, 90),
+      currentDay: actualDay,
       phase,
       status: (data.status as string) ?? 'active',
       completedDays: Array.isArray(data.completed_days) ? (data.completed_days as number[]) : [],
       lastActiveDate: (data.last_active_date as string | null) ?? null,
+      isTestMode,
+      testDayOverride,
     }
   } catch (err) {
     console.error('getEnrollment error:', err)
     return null
   }
+}
+
+/** Local midnight boundary when program day `currentDay + 1` becomes available. */
+export function getNextProgramDayUnlockAt(startDate: string, currentDay: number): Date {
+  const start = parseLocalDateKey(startDate)
+  return addDays(start, currentDay)
 }
 
 /** Server (service role) or browser client — upserts program_enrollments. */

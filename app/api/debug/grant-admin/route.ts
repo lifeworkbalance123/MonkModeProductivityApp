@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-service'
+import {
+  allowAdminDebugGrantInProduction,
+  debugApiNotFound,
+  isNodeProduction,
+} from '@/lib/debug-production-guard'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,11 +15,8 @@ export const dynamic = 'force-dynamic'
  * - `ALLOW_ADMIN_DEBUG_GRANT=1` on the server (e.g. Vercel) plus `SUPABASE_SERVICE_ROLE_KEY`.
  */
 export async function POST(request: Request) {
-  const allowed =
-    process.env.NODE_ENV === 'development' ||
-    process.env.ALLOW_ADMIN_DEBUG_GRANT === '1'
-  if (!allowed) {
-    return NextResponse.json({ error: 'Not allowed' }, { status: 403 })
+  if (isNodeProduction() && !allowAdminDebugGrantInProduction()) {
+    return debugApiNotFound()
   }
 
   let admin

@@ -3,11 +3,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
-import { useDataServiceContext } from '@/hooks/use-data-service-context'
-import { usePlan } from '@/hooks/usePlan'
-import { shouldSyncToCloud } from '@/lib/dataService'
+import { useToast } from '@/context/ToastContext'
 
 const OBT_LS_KEY = 'monk_one_big_task_v2'
+
+/** Checkbox state for API-backed rows (no `completed` column on `user_big_task`). */
+function completedStorageKey(userId: string, date: string) {
+  return `monk_obt_completed:${userId}:${date}`
+}
 
 type LocalOb = { date: string; text: string; completed: boolean }
 
@@ -41,19 +44,50 @@ function writeLocalOb(payload: LocalOb) {
   }
 }
 
+function readApiCompleted(userId: string, date: string): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return localStorage.getItem(completedStorageKey(userId, date)) === '1'
+  } catch {
+    return false
+  }
+}
+
+function writeApiCompleted(userId: string, date: string, done: boolean) {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(completedStorageKey(userId, date), done ? '1' : '0')
+  } catch {
+    /* quota */
+  }
+}
+
+function clearApiCompleted(userId: string, date: string) {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.removeItem(completedStorageKey(userId, date))
+  } catch {
+    /* ignore */
+  }
+}
+
 type OneBigTaskProps = {
-  /** Program day when shown from /today; omit on Goals for `day_number` = null. */
+  /** Program day when shown from /today (informational only for this flow). */
   dayNumber?: number | null
 }
 
-export default function OneBigTask({ dayNumber }: OneBigTaskProps) {
-  const ctx = useDataServiceContext()
-  const { isLoading: planLoading } = usePlan()
-  const syncCloud = !planLoading && shouldSyncToCloud(ctx)
+type ApiTaskRow = {
+  task_text: string
+  date: string
+  updated_at: string
+}
 
+export default function OneBigTask(_props: OneBigTaskProps) {
+  const { showToast } = useToast()
   const [task, setTask] = useState('')
   const [saved, setSaved] = useState('')
-  const [savedId, setSavedId] = useState<string | null>(null)
+  const [apiUserId, setApiUserId] = useState<string | null>(null)
+  const [useApi, setUseApi] = useState(false)
   const [completed, setCompleted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -64,36 +98,51 @@ export default function OneBigTask({ dayNumber }: OneBigTaskProps) {
   const loadTask = useCallback(async () => {
     setLoading(true)
     try {
-      if (syncCloud) {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-        if (!user) return
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const token = session?.access_token
+      const uid = session?.user?.id ?? null
 
-        const { data, error } = await supabase
-          .from('goals')
-          .select('id,title,completed')
-          .eq('user_id', user.id)
-          .eq('is_one_big_task', true)
-          .eq('date', today)
-          .maybeSingle()
+      if (token && uid) {
+        const res = await fetch(`/api/big-task?date=${encodeURIComponent(today)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const json = (await res.json()) as { task?: ApiTaskRow | null; error?: string }
 
-        if (error) {
-          console.error('OBT load:', error)
+        if (!res.ok) {
+          console.error('OBT load:', json.error)
+          if (res.status !== 401) {
+            showToast(json.error ?? 'Could not load One Big Task', 'error')
+          }
+          setUseApi(false)
+          setApiUserId(null)
+          const local = readLocalOb()
+          if (local && local.date === today) {
+            setSaved(local.text)
+            setCompleted(local.completed)
+          } else {
+            setSaved('')
+            setCompleted(false)
+          }
           return
         }
-        if (data) {
-          setSavedId(data.id as string)
-          setSaved((data.title as string) ?? '')
-          setCompleted(!!data.completed)
+
+        setUseApi(true)
+        setApiUserId(uid)
+        const row = json.task
+        if (row?.task_text) {
+          setSaved(row.task_text)
+          setCompleted(readApiCompleted(uid, today))
         } else {
-          setSavedId(null)
           setSaved('')
           setCompleted(false)
         }
         return
       }
 
+      setUseApi(false)
+      setApiUserId(null)
       const local = readLocalOb()
       if (local && local.date === today) {
         setSaved(local.text)
@@ -102,11 +151,10 @@ export default function OneBigTask({ dayNumber }: OneBigTaskProps) {
         setSaved('')
         setCompleted(false)
       }
-      setSavedId(null)
     } finally {
       setLoading(false)
     }
-  }, [syncCloud, today])
+  }, [today])
 
   useEffect(() => {
     void loadTask()
@@ -117,46 +165,36 @@ export default function OneBigTask({ dayNumber }: OneBigTaskProps) {
     if (!t) return
     setSaving(true)
     try {
-      if (syncCloud) {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-        if (!user) return
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const token = session?.access_token
+      const uid = session?.user?.id
 
-        const { error: delError } = await supabase
-          .from('goals')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('is_one_big_task', true)
-          .eq('date', today)
-
-        if (delError) {
-          console.error('OBT delete:', delError)
-          return
-        }
-
-        const id = crypto.randomUUID()
-        const { error: insError } = await supabase.from('goals').insert({
-          id,
-          user_id: user.id,
-          title: t,
-          is_one_big_task: true,
-          priority: 5,
-          completed: false,
-          type: 'daily',
-          date: today,
-          day_number: dayNumber ?? null,
+      if (token && uid) {
+        const res = await fetch('/api/big-task', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ task_text: t, date: today }),
         })
+        const json = (await res.json()) as { task?: ApiTaskRow; error?: string }
 
-        if (insError) {
-          console.error('OBT insert:', insError)
+        if (!res.ok) {
+          showToast(json.error ?? 'Could not save task', 'error')
           return
         }
 
-        setSavedId(id)
+        clearApiCompleted(uid, today)
+        setUseApi(true)
+        setApiUserId(uid)
         setSaved(t)
+        setCompleted(false)
         setTask('')
         setEditing(false)
+        showToast('One Big Task saved', 'success')
         return
       }
 
@@ -165,27 +203,21 @@ export default function OneBigTask({ dayNumber }: OneBigTaskProps) {
       setTask('')
       setEditing(false)
       setCompleted(false)
+      showToast('Saved on this device', 'success')
     } finally {
       setSaving(false)
     }
   }
 
   async function toggleComplete() {
-    if (syncCloud && savedId) {
-      const { error } = await supabase
-        .from('goals')
-        .update({ completed: !completed })
-        .eq('id', savedId)
-
-      if (error) {
-        console.error('OBT toggle:', error)
-        return
-      }
-      setCompleted((c) => !c)
+    if (useApi && apiUserId) {
+      const next = !completed
+      writeApiCompleted(apiUserId, today, next)
+      setCompleted(next)
       return
     }
 
-    if (!syncCloud && saved) {
+    if (!useApi && saved) {
       const next = !completed
       setCompleted(next)
       writeLocalOb({ date: today, text: saved, completed: next })

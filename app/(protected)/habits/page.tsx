@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/context-menu'
 import { EmptyState } from '@/components/EmptyState'
 import { ErrorBanner } from '@/components/ErrorBanner'
-import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Loader2, Pencil, Plus, Smile, Trash2 } from 'lucide-react'
 import { useMonkData } from '@/hooks/use-monk-data'
 import { usePlan } from '@/hooks/usePlan'
 import { FREE_HABIT_LIMIT } from '@/lib/plan-limits'
@@ -43,33 +43,12 @@ import { DEFAULT_STARTER_HABIT_NAMES } from '@/lib/default-habits'
 import type { Habit } from '@/lib/monk-types'
 import { deleteHabit, newHabitClientId, saveHabit } from '@/lib/dataService'
 import { captureEvent } from '@/lib/analytics'
-
-const HABIT_EMOJI_OPTIONS = [
-  '✅',
-  '🔥',
-  '💧',
-  '📚',
-  '🏃',
-  '🧘',
-  '💤',
-  '🥗',
-  '💪',
-  '🎯',
-  '📝',
-  '☀️',
-  '🌙',
-  '🙏',
-  '🎵',
-  '🧹',
-  '💼',
-  '🚶',
-  '🌱',
-  '⭐',
-  '❤️',
-  '🧠',
-  '⏰',
-  '🚫',
-]
+import {
+  HABIT_EMOJI_OPTIONS,
+  HABIT_ICON_GENERIC,
+  HABIT_ICON_ROUTINE,
+} from '@/lib/habit-icons'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 export default function HabitsPage() {
   const { openUpgrade } = useUpgradeOffer()
@@ -85,6 +64,8 @@ export default function HabitsPage() {
   } = useMonkData()
   const { isPro, isLoading: planLoading } = usePlan()
   const [draft, setDraft] = useState('')
+  const [draftIcon, setDraftIcon] = useState('')
+  const [iconPickerOpen, setIconPickerOpen] = useState(false)
 
   const [editOpen, setEditOpen] = useState(false)
   const [editHabitId, setEditHabitId] = useState<string | null>(null)
@@ -101,7 +82,7 @@ export default function HabitsPage() {
     const name = draft.trim()
     if (!name) return
     if (!planLoading && !isPro && data.habits.length >= FREE_HABIT_LIMIT) return
-    const habit = { id: newHabitClientId(dataContext), name, icon: '' }
+    const habit = { id: newHabitClientId(dataContext), name, icon: draftIcon.trim() }
     setData({
       ...data,
       habits: [...data.habits, habit],
@@ -113,13 +94,14 @@ export default function HabitsPage() {
       captureEvent('habit_added')
     }
     setDraft('')
+    setDraftIcon('')
   }
 
   function addDefaultHabits() {
-    const next = DEFAULT_STARTER_HABIT_NAMES.map((name) => ({
+    const next = DEFAULT_STARTER_HABIT_NAMES.map((name, i) => ({
       id: newHabitClientId(dataContext),
       name,
-      icon: '',
+      icon: HABIT_ICON_ROUTINE[i % HABIT_ICON_ROUTINE.length] ?? '',
     }))
     setData({
       ...data,
@@ -270,13 +252,83 @@ export default function HabitsPage() {
               className="min-h-[240px]"
             />
           ) : null}
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+            <Popover open={iconPickerOpen} onOpenChange={setIconPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10 w-11 shrink-0 border-border px-0 text-xl sm:h-auto"
+                  disabled={atHabitLimit}
+                  aria-label={draftIcon ? `Icon: ${draftIcon}` : 'Choose habit icon'}
+                  title="Choose icon"
+                >
+                  {draftIcon ? (
+                    <span aria-hidden>{draftIcon}</span>
+                  ) : (
+                    <Smile className="h-5 w-5 text-muted-foreground" aria-hidden />
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[min(100vw-2rem,20rem)] p-3" align="start">
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">Common habits</p>
+                <div className="mb-3 flex flex-wrap gap-1">
+                  {HABIT_ICON_ROUTINE.map((emoji) => (
+                    <Button
+                      key={emoji}
+                      type="button"
+                      variant={draftIcon === emoji ? 'secondary' : 'outline'}
+                      size="sm"
+                      className="h-9 w-9 p-0 text-lg"
+                      aria-label={`Use ${emoji}`}
+                      onClick={() => {
+                        setDraftIcon(emoji)
+                        setIconPickerOpen(false)
+                      }}
+                    >
+                      {emoji}
+                    </Button>
+                  ))}
+                </div>
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">Generic</p>
+                <div className="mb-2 flex flex-wrap gap-1">
+                  {HABIT_ICON_GENERIC.map((emoji) => (
+                    <Button
+                      key={emoji}
+                      type="button"
+                      variant={draftIcon === emoji ? 'secondary' : 'outline'}
+                      size="sm"
+                      className="h-9 w-9 p-0 text-lg"
+                      aria-label={`Use ${emoji}`}
+                      onClick={() => {
+                        setDraftIcon(emoji)
+                        setIconPickerOpen(false)
+                      }}
+                    >
+                      {emoji}
+                    </Button>
+                  ))}
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-full text-xs text-muted-foreground"
+                  onClick={() => {
+                    setDraftIcon('')
+                    setIconPickerOpen(false)
+                  }}
+                >
+                  No icon
+                </Button>
+              </PopoverContent>
+            </Popover>
             <Input
               ref={inputRef}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="New habit name"
-              className="flex-1"
+              className="min-w-0 flex-1"
               disabled={atHabitLimit}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -287,13 +339,17 @@ export default function HabitsPage() {
             />
             <Button
               type="button"
-              className="bg-accent text-accent-foreground hover:bg-accent/90 shrink-0"
+              className="bg-accent text-accent-foreground hover:bg-accent/90 shrink-0 sm:w-11"
               onClick={() => void addHabit()}
               disabled={atHabitLimit}
+              aria-label="Add habit"
             >
               <Plus className="w-4 h-4" />
             </Button>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Tap the smile to pick an icon before adding (optional). More icons are available when you edit a habit.
+          </p>
           {data.habits.length > 0 ? (
             <ul className="space-y-2">
               {data.habits.map((h, index) => (
