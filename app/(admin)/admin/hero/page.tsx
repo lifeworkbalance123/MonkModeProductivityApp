@@ -1,0 +1,616 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+
+type MediaType = 'youtube' | 'image' | 'video' | null
+const C = {
+  bg: 'var(--background)',
+  card: 'var(--card)',
+  fg: 'var(--foreground)',
+  mutedFg: 'var(--muted-foreground)',
+  border: 'var(--border)',
+  accent: 'var(--accent)',
+  accentFg: 'var(--accent-foreground)',
+  primary: 'var(--primary)',
+} as const
+
+function getYouTubeId(url: string) {
+  const patterns = [
+    /youtube\.com\/watch\?v=([^&\s]+)/,
+    /youtu\.be\/([^?\s]+)/,
+    /youtube\.com\/embed\/([^?\s]+)/,
+    /youtube\.com\/shorts\/([^?\s]+)/,
+  ]
+  for (const p of patterns) {
+    const match = url.match(p)
+    if (match) return match[1]
+  }
+  return null
+}
+
+export default function AdminHeroPage() {
+  const [currentType, setCurrentType] = useState<MediaType>(null)
+  const [currentUrl, setCurrentUrl] = useState('')
+  const [currentPath, setCurrentPath] = useState('')
+  const [selectedType, setSelectedType] = useState<MediaType>(null)
+  const [youtubeInput, setYoutubeInput] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
+  const [previewUrl, setPreviewUrl] = useState('')
+  const [loading, setLoading] = useState(true)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    async function load() {
+      const { data } = await supabase.from('site_settings').select('*').eq('key', 'hero_media').single()
+
+      if (data) {
+        setCurrentType((data.media_type as MediaType) ?? null)
+        setCurrentUrl((data.media_url as string | null) ?? '')
+        setCurrentPath((data.media_storage_path as string | null) ?? '')
+        setSelectedType((data.media_type as MediaType) ?? null)
+        setPreviewUrl((data.media_url as string | null) ?? '')
+        if (data.media_type === 'youtube') {
+          setYoutubeInput((data.media_url as string | null) ?? '')
+        }
+      }
+      setLoading(false)
+    }
+    void load()
+  }, [])
+
+  function handleYouTubeInput(url: string) {
+    setYoutubeInput(url)
+    setError('')
+    const id = getYouTubeId(url)
+    if (id || !url) {
+      setPreviewUrl(url)
+    }
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    setError('')
+
+    try {
+      const ext = file.name.split('.').pop() ?? 'bin'
+      const fileName = `hero-media-${Date.now()}.${ext}`
+      const storagePath = `hero/${fileName}`
+
+      if (currentPath) {
+        await supabase.storage.from('site-media').remove([currentPath])
+      }
+
+      const { error: uploadError } = await supabase.storage.from('site-media').upload(storagePath, file, {
+        upsert: true,
+        cacheControl: '3600',
+      })
+
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage.from('site-media').getPublicUrl(storagePath)
+      const publicUrl = urlData.publicUrl
+      setPreviewUrl(publicUrl)
+      setCurrentPath(storagePath)
+
+      const mediaType = file.type.startsWith('image/') ? 'image' : 'video'
+      setSelectedType(mediaType)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setError('Upload failed: ' + message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    setError('')
+    setSaved(false)
+
+    try {
+      let finalUrl = ''
+      let finalType: MediaType = null
+
+      if (selectedType === 'youtube') {
+        const id = getYouTubeId(youtubeInput)
+        if (!id && youtubeInput) {
+          setError('Invalid YouTube URL. Please check and try again.')
+          setSaving(false)
+          return
+        }
+        finalUrl = youtubeInput
+        finalType = youtubeInput ? 'youtube' : null
+      } else {
+        finalUrl = previewUrl
+        finalType = previewUrl ? selectedType : null
+      }
+
+      const { data: authData } = await supabase.auth.getUser()
+      const { error: saveError } = await supabase.from('site_settings').upsert(
+        {
+          key: 'hero_media',
+          value: 'Hero section media',
+          media_type: finalType,
+          media_url: finalUrl || null,
+          media_storage_path: currentPath || null,
+          updated_at: new Date().toISOString(),
+          updated_by: authData.user?.id ?? null,
+        },
+        { onConflict: 'key' },
+      )
+
+      if (saveError) throw saveError
+
+      setCurrentType(finalType)
+      setCurrentUrl(finalUrl)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 4000)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setError('Save failed: ' + message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleRemove() {
+    if (!window.confirm('Remove the hero media? The original static mockup will be shown instead.')) return
+
+    setSaving(true)
+
+    if (currentPath) {
+      await supabase.storage.from('site-media').remove([currentPath])
+    }
+
+    await supabase.from('site_settings').upsert(
+      {
+        key: 'hero_media',
+        value: 'Hero section media',
+        media_type: null,
+        media_url: null,
+        media_storage_path: null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'key' },
+    )
+
+    setCurrentType(null)
+    setCurrentUrl('')
+    setCurrentPath('')
+    setSelectedType(null)
+    setPreviewUrl('')
+    setYoutubeInput('')
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 3000)
+  }
+
+  const youtubeId = getYouTubeId(youtubeInput)
+
+  const typeButtonStyle = (type: MediaType | 'none') =>
+    ({
+      padding: '10px 20px',
+      borderRadius: '8px',
+      border: `1px solid ${selectedType === type || (type === 'none' && !selectedType) ? C.accent : C.border}`,
+      cursor: 'pointer',
+      fontSize: '14px',
+      fontWeight: '500' as const,
+      background:
+        selectedType === type || (type === 'none' && !selectedType)
+          ? 'color-mix(in srgb, var(--accent) 18%, transparent)'
+          : C.card,
+      color: selectedType === type || (type === 'none' && !selectedType) ? C.accent : C.mutedFg,
+      transition: 'all 0.15s',
+    }) as const
+
+  if (loading) {
+    return <div style={{ color: C.mutedFg, padding: '40px' }}>Loading...</div>
+  }
+
+  return (
+    <div style={{ maxWidth: '900px' }}>
+      <div style={{ marginBottom: '32px' }}>
+        <h1 style={{ color: C.fg, fontSize: '24px', fontWeight: '600', margin: '0 0 4px' }}>Hero Media</h1>
+        <p style={{ color: C.mutedFg, fontSize: '14px', margin: 0 }}>
+          Controls the media displayed in the right side of the landing page hero section. Changes are
+          live immediately.
+        </p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', alignItems: 'start' }}>
+        <div>
+          <div
+            style={{
+              background: C.card,
+              borderRadius: '12px',
+              padding: '16px 20px',
+              border: `1px solid ${C.border}`,
+              marginBottom: '20px',
+            }}
+          >
+            <p
+              style={{
+                color: C.mutedFg,
+                fontSize: '12px',
+                fontWeight: '500',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                margin: '0 0 8px',
+              }}
+            >
+              Currently showing
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '20px' }}>
+                {currentType === 'youtube'
+                  ? '▶'
+                  : currentType === 'image'
+                    ? '🖼️'
+                    : currentType === 'video'
+                      ? '🎬'
+                      : '📋'}
+              </span>
+              <div>
+                <p style={{ color: C.fg, fontSize: '14px', fontWeight: '500', margin: 0 }}>
+                  {currentType === 'youtube'
+                    ? 'YouTube video'
+                    : currentType === 'image'
+                      ? 'Custom image'
+                      : currentType === 'video'
+                        ? 'Custom video'
+                        : 'Default static mockup'}
+                </p>
+                {currentUrl ? (
+                  <a
+                    href={currentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      color: C.mutedFg,
+                      fontSize: '11px',
+                      fontFamily: 'monospace',
+                      textDecoration: 'none',
+                      display: 'block',
+                      marginTop: '2px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      maxWidth: '280px',
+                    }}
+                  >
+                    {currentUrl}
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <p style={{ color: C.mutedFg, fontSize: '13px', fontWeight: '500', margin: '0 0 12px' }}>
+            Choose media type
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '20px' }}>
+            <button
+              onClick={() => {
+                setSelectedType(null)
+                setPreviewUrl('')
+              }}
+              style={typeButtonStyle('none')}
+            >
+              📋 Default mockup
+            </button>
+            <button onClick={() => setSelectedType('youtube')} style={typeButtonStyle('youtube')}>
+              ▶ YouTube video
+            </button>
+            <button
+              onClick={() => {
+                setSelectedType('image')
+                if (fileInputRef.current) {
+                  fileInputRef.current.accept = 'image/png,image/jpeg,image/webp,image/gif'
+                  fileInputRef.current.click()
+                }
+              }}
+              style={typeButtonStyle('image')}
+            >
+              🖼️ Image (PNG/JPG)
+            </button>
+            <button
+              onClick={() => {
+                setSelectedType('video')
+                if (fileInputRef.current) {
+                  fileInputRef.current.accept = 'video/mp4,video/quicktime,video/webm'
+                  fileInputRef.current.click()
+                }
+              }}
+              style={typeButtonStyle('video')}
+            >
+              🎬 Video (MP4)
+            </button>
+          </div>
+
+          <input ref={fileInputRef} type="file" onChange={handleFileUpload} style={{ display: 'none' }} />
+
+          {selectedType === 'youtube' ? (
+            <div style={{ marginBottom: '20px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  color: C.mutedFg,
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  marginBottom: '8px',
+                }}
+              >
+                YouTube URL
+              </label>
+              <input
+                type="url"
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={youtubeInput}
+                onChange={(e) => handleYouTubeInput(e.target.value)}
+                style={{
+                  width: '100%',
+                  background: C.bg,
+                  border: `1px solid ${youtubeId ? C.primary : C.border}`,
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  color: C.fg,
+                  fontSize: '14px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+              {youtubeId ? (
+                <p style={{ color: C.primary, fontSize: '11px', margin: '6px 0 0' }}>✓ Valid YouTube link detected</p>
+              ) : youtubeInput ? (
+                <p style={{ color: '#EF4444', fontSize: '11px', margin: '6px 0 0' }}>✗ Could not detect YouTube ID</p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {uploading ? (
+            <div
+              style={{
+                background: C.card,
+                borderRadius: '8px',
+                padding: '12px 16px',
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+              }}
+            >
+              <div
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  border: `2px solid ${C.border}`,
+                  borderTop: `2px solid ${C.accent}`,
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  flexShrink: 0,
+                }}
+              />
+              <span style={{ color: C.mutedFg, fontSize: '13px' }}>Uploading to storage...</span>
+              <style>{`
+                @keyframes spin {
+                  to { transform: rotate(360deg); }
+                }
+              `}</style>
+            </div>
+          ) : null}
+
+          {!uploading && previewUrl && selectedType !== 'youtube' && selectedType !== null ? (
+            <div
+              style={{
+                background: C.card,
+                borderRadius: '8px',
+                padding: '10px 14px',
+                marginBottom: '16px',
+                border: `1px solid color-mix(in srgb, ${C.primary} 30%, transparent)`,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+              }}
+            >
+              <span style={{ color: C.primary, fontSize: '14px' }}>✓</span>
+              <span style={{ color: C.primary, fontSize: '13px' }}>
+                {selectedType === 'image' ? 'Image uploaded successfully' : 'Video uploaded successfully'}
+              </span>
+              <button
+                onClick={() => {
+                  setSelectedType(null)
+                  setPreviewUrl('')
+                  setCurrentPath('')
+                }}
+                style={{
+                  marginLeft: 'auto',
+                  background: 'transparent',
+                  border: 'none',
+                  color: C.mutedFg,
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                }}
+              >
+                ×
+              </button>
+            </div>
+          ) : null}
+
+          {error ? (
+            <div
+              style={{
+                background: '#450A0A',
+                border: '1px solid #EF4444',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                marginBottom: '16px',
+                color: '#FCA5A5',
+                fontSize: '13px',
+              }}
+            >
+              {error}
+            </div>
+          ) : null}
+
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={handleSave}
+              disabled={saving || uploading}
+              style={{
+                background: C.accent,
+                color: C.accentFg,
+                border: 'none',
+                borderRadius: '8px',
+                padding: '12px 28px',
+                fontSize: '14px',
+                fontWeight: '700',
+                cursor: saving || uploading ? 'wait' : 'pointer',
+                opacity: saving || uploading ? 0.7 : 1,
+              }}
+            >
+              {saving ? 'Saving...' : 'Save to landing page'}
+            </button>
+
+            {currentType ? (
+              <button
+                onClick={handleRemove}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid color-mix(in srgb, var(--destructive) 35%, transparent)',
+                  color: 'var(--destructive)',
+                  borderRadius: '8px',
+                  padding: '12px 16px',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                }}
+              >
+                Remove media
+              </button>
+            ) : null}
+
+            {saved ? (
+              <span style={{ color: C.primary, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                ✓ Live on landing page
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        <div>
+          <p style={{ color: C.mutedFg, fontSize: '13px', fontWeight: '500', margin: '0 0 12px' }}>
+            Preview
+            <span style={{ color: C.mutedFg, fontWeight: 400, marginLeft: '8px', fontSize: '12px' }}>
+              (what visitors will see)
+            </span>
+          </p>
+
+          <div
+            style={{
+              background: C.bg,
+              borderRadius: '16px',
+              overflow: 'hidden',
+              border: `1px solid ${C.border}`,
+              minHeight: '300px',
+            }}
+          >
+            {selectedType === 'youtube' && youtubeId ? (
+              <div style={{ position: 'relative', paddingBottom: '62.5%', height: 0, overflow: 'hidden' }}>
+                <iframe
+                  src={`https://www.youtube.com/embed/${youtubeId}?rel=0&modestbranding=1`}
+                  title="Preview"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    border: 'none',
+                  }}
+                />
+              </div>
+            ) : null}
+
+            {selectedType === 'image' && previewUrl ? (
+              <img
+                src={previewUrl}
+                alt="Preview"
+                style={{
+                  width: '100%',
+                  display: 'block',
+                  maxHeight: '400px',
+                  objectFit: 'cover',
+                }}
+              />
+            ) : null}
+
+            {selectedType === 'video' && previewUrl ? (
+              <video
+                autoPlay
+                muted
+                loop
+                playsInline
+                style={{
+                  width: '100%',
+                  display: 'block',
+                  maxHeight: '400px',
+                  objectFit: 'cover',
+                }}
+              >
+                <source src={previewUrl} type="video/mp4" />
+              </video>
+            ) : null}
+
+            {!selectedType || (selectedType === 'youtube' && !youtubeId) ? (
+              <div style={{ padding: '20px', opacity: 0.6 }}>
+                <div
+                  style={{
+                    background: '#1E293B',
+                    borderRadius: '10px',
+                    padding: '16px',
+                    display: 'flex',
+                    gap: '10px',
+                    marginBottom: '10px',
+                  }}
+                >
+                  <div style={{ background: '#F59E0B', borderRadius: '6px', padding: '10px 14px' }}>
+                    <p style={{ color: '#000', fontSize: '14px', fontWeight: '800', margin: 0 }}>34 Day</p>
+                    <p style={{ color: '#000', fontSize: '10px', margin: '2px 0 0' }}>Streak</p>
+                  </div>
+                  <div style={{ background: '#0F172A', borderRadius: '6px', padding: '10px 12px', flex: 1 }}>
+                    <p style={{ color: 'white', fontSize: '11px', fontWeight: '600', margin: '0 0 4px' }}>Habits</p>
+                    <p style={{ color: '#64748B', fontSize: '10px', margin: 0 }}>Exercise · Read · Plan</p>
+                  </div>
+                </div>
+                <p style={{ color: '#475569', fontSize: '12px', textAlign: 'center', margin: 0 }}>Default static mockup</p>
+              </div>
+            ) : null}
+          </div>
+
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'block',
+              textAlign: 'center',
+              marginTop: '12px',
+              color: C.accent,
+              fontSize: '13px',
+              textDecoration: 'none',
+            }}
+          >
+            View live landing page →
+          </a>
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import MarketingNav from '@/components/marketing/marketing-nav'
-import HeroVisual from '@/components/marketing/hero-visual'
+import HeroMedia from '@/components/landing/HeroMedia'
 
 const SocialProofBar = dynamic(() =>
   import('@/components/marketing/landing-sections').then((m) => m.SocialProofBar),
@@ -72,8 +72,8 @@ export default function Home() {
           </div>
           <p className="mt-4 text-sm text-muted-foreground">⭐⭐⭐⭐⭐ Loved by focused individuals worldwide</p>
         </div>
-        <div className="w-full flex-1">
-          <HeroVisual />
+        <div className="w-full flex-1 max-w-[560px]">
+          <HeroMedia />
         </div>
       </section>
 

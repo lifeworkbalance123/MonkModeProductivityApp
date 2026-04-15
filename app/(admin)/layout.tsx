@@ -4,11 +4,13 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { MonkCubedLogo } from '@/components/brand/MonkCubedLogo'
 
 const navLinks = [
   { label: 'Overview', href: '/admin' },
   { label: 'Users', href: '/admin/users' },
   { label: 'Content', href: '/admin/content' },
+  { label: 'Hero', href: '/admin/hero' },
   { label: 'Revenue', href: '/admin/revenue' },
   { label: 'Waitlist', href: '/admin/waitlist' },
   { label: 'Store Kit', href: '/admin/store-kit' },
@@ -175,7 +177,7 @@ export default function AdminShellLayout({
     return (
       <div
         style={{
-          background: '#0F172A',
+          background: 'var(--background)',
           minHeight: '100vh',
           display: 'flex',
           flexDirection: 'column',
@@ -189,15 +191,15 @@ export default function AdminShellLayout({
           style={{
             width: '40px',
             height: '40px',
-            border: '3px solid #334155',
-            borderTop: '3px solid #F59E0B',
+            border: '3px solid var(--border)',
+            borderTop: '3px solid var(--accent)',
             borderRadius: '50%',
             animation: 'spin 1s linear infinite',
           }}
         />
         <p
           style={{
-            color: '#64748B',
+            color: 'var(--muted-foreground)',
             fontSize: '14px',
           }}
         >
@@ -214,31 +216,31 @@ export default function AdminShellLayout({
 
   if (!allowed) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#0F172A] px-6 text-center text-sm text-slate-300">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center text-sm text-foreground">
         {blockReason === 'signed_out' ? (
           <>
             <p>Sign in is required for the admin area.</p>
-            <Link href="/auth" className="text-amber-400 underline hover:text-amber-300">
+            <Link href="/auth" className="text-accent underline hover:opacity-90">
               Go to sign in
             </Link>
           </>
         ) : (
           <>
             <p>This area is only available to admin accounts.</p>
-            <p className="max-w-md text-xs text-slate-500">
+            <p className="max-w-md text-xs text-muted-foreground">
               If you recently deployed, confirm your user has <code className="text-slate-400">is_admin = true</code>{' '}
               in Supabase (Table Editor or SQL) and that migrations defining{' '}
               <code className="text-slate-400">is_current_user_admin</code> have been applied.
             </p>
             {debugReason ? (
-              <p className="max-w-md rounded border border-slate-700 bg-slate-900/70 px-3 py-2 text-left text-[11px] text-slate-400">
+              <p className="max-w-md rounded border border-border bg-card/70 px-3 py-2 text-left text-[11px] text-muted-foreground">
                 Debug: {debugReason}
               </p>
             ) : null}
-            <p className="max-w-md rounded border border-slate-700 bg-slate-900/70 px-3 py-2 text-left text-[11px] text-slate-400">
+            <p className="max-w-md rounded border border-border bg-card/70 px-3 py-2 text-left text-[11px] text-muted-foreground">
               User: {debugUser.email ?? 'unknown'} {debugUser.id ? `(${debugUser.id})` : ''}
             </p>
-            <Link href="/dashboard" className="text-amber-400 underline hover:text-amber-300">
+            <Link href="/dashboard" className="text-accent underline hover:opacity-90">
               Back to app
             </Link>
           </>
@@ -248,14 +250,11 @@ export default function AdminShellLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[#0F172A] font-sans text-slate-200 antialiased">
-      <header className="sticky top-0 z-[100] flex h-14 items-center justify-between border-b border-slate-700 bg-[#1E293B] px-4 sm:px-6">
+    <div className="min-h-screen bg-background font-sans text-foreground antialiased">
+      <header className="sticky top-0 z-[100] flex h-14 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-4 overflow-x-auto">
           <div className="flex shrink-0 items-center gap-2">
-            <span className="text-base" aria-hidden>
-              🔥
-            </span>
-            <span className="text-sm font-semibold text-white">MONKMODE</span>
+            <MonkCubedLogo variant="onDark" className="text-base" />
             <span className="rounded bg-red-600 px-2 py-0.5 text-[10px] font-bold tracking-wide text-white">
               ADMIN
             </span>
@@ -272,8 +271,8 @@ export default function AdminShellLayout({
                   href={link.href}
                   className={`whitespace-nowrap rounded px-2 py-1 text-xs sm:text-[13px] ${
                     active
-                      ? 'bg-slate-700 text-white'
-                      : 'text-slate-400 hover:bg-slate-600/50 hover:text-white'
+                      ? 'bg-accent/20 text-foreground'
+                      : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
                   }`}
                 >
                   {link.label}
@@ -285,13 +284,13 @@ export default function AdminShellLayout({
         <div className="ml-2 flex shrink-0 items-center gap-2 sm:gap-4">
           <Link
             href="/dashboard"
-            className="text-xs text-slate-400 hover:text-white sm:text-[12px]"
+            className="text-xs text-muted-foreground hover:text-foreground sm:text-[12px]"
           >
             ← App
           </Link>
           <button
             type="button"
-            className="rounded-md border border-slate-600 px-2 py-1.5 text-xs text-slate-300 hover:bg-slate-700 sm:px-3"
+            className="rounded-md border border-border px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted sm:px-3"
             onClick={async () => {
               await supabase.auth.signOut()
               window.location.href = '/auth'
