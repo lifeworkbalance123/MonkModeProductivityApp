@@ -7,8 +7,6 @@ import MediaUploader, { type MediaType } from '@/components/admin/MediaUploader'
 
 type Tab = 'lessons' | 'onboarding' | 'habits' | 'training'
 
-const ONBOARDING_STEP_ORDER = ['welcome', 'why', 'commitment', 'setup', 'ready'] as const
-
 export default function AdminContentPage() {
   const [activeTab, setActiveTab] = useState<Tab>('lessons')
 
@@ -61,6 +59,70 @@ export default function AdminContentPage() {
   )
 }
 
+const MAX_PROGRAM_DAYS = 365
+
+function DebouncedYoutubeField({
+  moduleId,
+  initialUrl,
+  disabled,
+  showToast,
+  reload,
+}: {
+  moduleId: string
+  initialUrl: string
+  disabled?: boolean
+  showToast: (message: string, type?: 'info' | 'success' | 'error') => void
+  reload: () => void
+}) {
+  const [val, setVal] = useState(initialUrl)
+  useEffect(() => {
+    setVal(initialUrl)
+  }, [initialUrl])
+
+  useEffect(() => {
+    if (disabled) return
+    const t = setTimeout(() => {
+      if (val === initialUrl) return
+      void (async () => {
+        const { error } = await supabase
+          .from('training_modules')
+          .update({ youtube_url: val, updated_at: new Date().toISOString() })
+          .eq('id', moduleId)
+        if (error) {
+          showToast(error.message, 'error')
+          setVal(initialUrl)
+          return
+        }
+        reload()
+      })()
+    }, 650)
+    return () => clearTimeout(t)
+  }, [val, initialUrl, moduleId, disabled, showToast, reload])
+
+  return (
+    <input
+      type="url"
+      placeholder="Paste YouTube URL…"
+      value={val}
+      disabled={disabled}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => setVal(e.target.value)}
+      style={{
+        width: '100%',
+        maxWidth: '240px',
+        background: '#0F172A',
+        border: '1px solid #334155',
+        borderRadius: '6px',
+        padding: '6px 10px',
+        color: 'white',
+        fontSize: '11px',
+        outline: 'none',
+        boxSizing: 'border-box' as const,
+      }}
+    />
+  )
+}
+
 type LessonRow = {
   id?: string
   day_number: number
@@ -88,7 +150,8 @@ function LessonsEditor() {
   const [saved, setSaved] = useState(false)
   const [filterPhase, setFilterPhase] = useState('all')
   const [search, setSearch] = useState('')
-  const [maxDay, setMaxDay] = useState(60)
+  const [programLength, setProgramLength] = useState(60)
+  const [dayMutationLoading, setDayMutationLoading] = useState(false)
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSavedRef = useRef<string>('')
@@ -97,6 +160,12 @@ function LessonsEditor() {
   const loadLessons = useCallback(async () => {
     setLoading(true)
     const { data, error } = await supabase.from('lessons').select('*').order('day_number', { ascending: true })
+    const { data: settingsRow, error: settingsError } = await supabase
+      .from('cms_program_settings')
+      .select('program_length')
+      .eq('id', 1)
+      .maybeSingle()
+
     if (error) {
       showToast(error.message, 'error')
       setLessons([])
@@ -108,12 +177,101 @@ function LessonsEditor() {
       })
       setLessons(rows)
       const maxFromDb = rows.reduce((m, r) => Math.max(m, r.day_number), 0)
-      if (maxFromDb > 0) {
-        setMaxDay((prev) => Math.min(120, Math.max(prev, maxFromDb)))
+      const configured =
+        !settingsError && settingsRow && typeof (settingsRow as { program_length?: number }).program_length === 'number'
+          ? (settingsRow as { program_length: number }).program_length
+          : 60
+      let merged = Math.min(MAX_PROGRAM_DAYS, Math.max(1, configured, maxFromDb))
+      if (!settingsError && merged !== configured && maxFromDb > configured) {
+        const { error: syncErr } = await supabase
+          .from('cms_program_settings')
+          .upsert({ id: 1, program_length: merged, updated_at: new Date().toISOString() })
+        if (syncErr) {
+          console.warn('cms_program_settings sync:', syncErr.message)
+        }
       }
+      setProgramLength(merged)
     }
     setLoading(false)
   }, [showToast])
+
+  async function callProgramDaysApi(body: {
+    action: 'delete' | 'addOne' | 'move'
+    day?: number
+    direction?: 'up' | 'down'
+  }) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      showToast('You must be signed in as an admin.', 'error')
+      return null
+    }
+    const res = await fetch('/api/admin/program-days', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(body),
+    })
+    const json = (await res.json().catch(() => ({}))) as { error?: string; programLength?: number }
+    if (!res.ok) {
+      showToast(json.error || 'Request failed', 'error')
+      return null
+    }
+    return json
+  }
+
+  async function persistProgramLength(next: number) {
+    const clamped = Math.min(MAX_PROGRAM_DAYS, Math.max(1, Math.floor(next)))
+    const { error } = await supabase
+      .from('cms_program_settings')
+      .upsert({ id: 1, program_length: clamped, updated_at: new Date().toISOString() })
+    if (error) {
+      showToast(error.message, 'error')
+      return false
+    }
+    setProgramLength(clamped)
+    await loadLessons()
+    return true
+  }
+
+  async function handleDeleteDay(day: number) {
+    if (!window.confirm(`Delete Day ${day} and renumber later days? This cannot be undone.`)) return
+    setDayMutationLoading(true)
+    try {
+      const json = await callProgramDaysApi({ action: 'delete', day })
+      if (json?.programLength == null) return
+      setProgramLength(json.programLength)
+      await loadLessons()
+    } finally {
+      setDayMutationLoading(false)
+    }
+  }
+
+  async function handleAddOneDay() {
+    setDayMutationLoading(true)
+    try {
+      const json = await callProgramDaysApi({ action: 'addOne' })
+      if (json?.programLength == null) return
+      setProgramLength(json.programLength)
+      await loadLessons()
+    } finally {
+      setDayMutationLoading(false)
+    }
+  }
+
+  async function handleMoveDay(day: number, direction: 'up' | 'down') {
+    setDayMutationLoading(true)
+    try {
+      const json = await callProgramDaysApi({ action: 'move', day, direction })
+      if (!json) return
+      await loadLessons()
+    } finally {
+      setDayMutationLoading(false)
+    }
+  }
 
   useEffect(() => {
     void loadLessons()
@@ -287,7 +445,7 @@ function LessonsEditor() {
     })
   }
 
-  const allDays = Array.from({ length: maxDay }, (_, i) => i + 1)
+  const allDays = Array.from({ length: programLength }, (_, i) => i + 1)
 
   const lessonsMap: Record<string, { primary: LessonRow | null; bonus: LessonRow | null }> = {}
   lessons.forEach((l) => {
@@ -307,7 +465,7 @@ function LessonsEditor() {
     const primary = slot?.primary
     if (filterPhase === 'student' && day > 30) return false
     if (filterPhase === 'monk' && (day < 31 || day > 60)) return false
-    if (filterPhase === 'master' && (day < 61 || day > maxDay)) return false
+    if (filterPhase === 'master' && (day < 61 || day > programLength)) return false
     if (search.trim()) {
       const q = search.trim().toLowerCase()
       const inPrimary = !!(primary?.title && primary.title.toLowerCase().includes(q))
@@ -420,9 +578,9 @@ function LessonsEditor() {
                 onChange={(e) => setEditing({ ...editing, phase: e.target.value })}
                 style={{ ...inputStyle, cursor: 'pointer' }}
               >
-                <option value="student">Student (Days 1-30)</option>
-                <option value="monk">Monk (Days 31-60)</option>
-                <option value="master">Master (Days 61-90)</option>
+                <option value="student">Sprint (Days 1-30)</option>
+                <option value="monk">Transform (Days 31-60)</option>
+                <option value="master">Mastery (Days 61-90)</option>
               </select>
             </div>
             <div>
@@ -599,12 +757,12 @@ function LessonsEditor() {
           }}
         >
           <option value="all">All phases</option>
-          <option value="student">Student (1-30)</option>
-          <option value="monk">Monk (31-60)</option>
-          <option value="master">Master (61+)</option>
+          <option value="student">Sprint (1-30)</option>
+          <option value="monk">Transform (31-60)</option>
+          <option value="master">Mastery (61+)</option>
         </select>
         <span style={{ color: '#64748B', fontSize: '13px', marginLeft: 'auto' }}>
-          {lessons.filter((l) => !l.is_bonus).length}/{maxDay} days have content
+          {lessons.filter((l) => !l.is_bonus).length}/{programLength} days have content
         </span>
       </div>
 
@@ -650,11 +808,14 @@ function LessonsEditor() {
                 key={day}
                 role="button"
                 tabIndex={0}
-                onClick={() => openRowEditor()}
+                onClick={() => {
+                  if (dayMutationLoading) return
+                  openRowEditor()
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
-                    openRowEditor()
+                    if (!dayMutationLoading) openRowEditor()
                   }
                 }}
                 style={{
@@ -662,11 +823,12 @@ function LessonsEditor() {
                   borderRadius: '10px',
                   padding: '14px 16px',
                   border: `1px solid ${hasAny ? '#334155' : '#1E293B'}`,
-                  cursor: 'pointer',
+                  cursor: dayMutationLoading ? 'wait' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '12px',
                   transition: 'border-color 0.15s',
+                  opacity: dayMutationLoading ? 0.65 : 1,
                 }}
                 onMouseOver={(e) => {
                   e.currentTarget.style.borderColor = '#F59E0B'
@@ -710,7 +872,70 @@ function LessonsEditor() {
                     </p>
                   ) : null}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <button
+                      type="button"
+                      title="Move earlier (swap with previous day)"
+                      disabled={dayMutationLoading || day <= 1}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        void handleMoveDay(day, 'up')
+                      }}
+                      style={{
+                        background: '#0F172A',
+                        border: '1px solid #334155',
+                        color: day <= 1 ? '#334155' : '#94A3B8',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        lineHeight: 1,
+                        padding: '2px 6px',
+                        cursor: day <= 1 || dayMutationLoading ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      title="Move later (swap with next day)"
+                      disabled={dayMutationLoading || day >= programLength}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        void handleMoveDay(day, 'down')
+                      }}
+                      style={{
+                        background: '#0F172A',
+                        border: '1px solid #334155',
+                        color: day >= programLength ? '#334155' : '#94A3B8',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        lineHeight: 1,
+                        padding: '2px 6px',
+                        cursor: day >= programLength || dayMutationLoading ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      ↓
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    title="Delete this day and renumber"
+                    disabled={dayMutationLoading || programLength <= 1}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      void handleDeleteDay(day)
+                    }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: programLength <= 1 ? '#334155' : '#EF4444',
+                      fontSize: '14px',
+                      cursor: programLength <= 1 || dayMutationLoading ? 'not-allowed' : 'pointer',
+                      padding: '2px 4px',
+                    }}
+                  >
+                    🗑
+                  </button>
                   {hasContent && !hasBonusContent ? (
                     <button
                       type="button"
@@ -780,43 +1005,63 @@ function LessonsEditor() {
         }}
       >
         <p style={{ color: '#64748B', fontSize: '13px', marginBottom: '10px' }}>
-          Program length: {maxDay} days
-          {maxDay === 60 ? (
+          Program length: {programLength} days
+          {programLength === 60 ? (
             <span style={{ color: '#475569', marginLeft: '8px' }}>(Standard program)</span>
           ) : null}
-          {maxDay === 90 ? (
+          {programLength === 90 ? (
             <span style={{ color: '#8B5CF6', marginLeft: '8px' }}>(Master extension included)</span>
           ) : null}
         </p>
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          {maxDay < 90 ? (
+          <button
+            type="button"
+            disabled={dayMutationLoading || programLength >= MAX_PROGRAM_DAYS}
+            onClick={() => void handleAddOneDay()}
+            style={{
+              background: '#1E293B',
+              border: '1px solid #F59E0B',
+              color: '#F59E0B',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              cursor: dayMutationLoading || programLength >= MAX_PROGRAM_DAYS ? 'not-allowed' : 'pointer',
+              fontSize: '13px',
+            }}
+          >
+            + Add 1 day
+          </button>
+          {programLength < 90 ? (
             <button
               type="button"
-              onClick={() => setMaxDay(90)}
+              disabled={dayMutationLoading}
+              onClick={() => void persistProgramLength(Math.max(programLength, 90))}
               style={{
                 background: '#1E293B',
                 border: '1px solid #8B5CF6',
                 color: '#8B5CF6',
                 padding: '8px 16px',
                 borderRadius: '8px',
-                cursor: 'pointer',
+                cursor: dayMutationLoading ? 'wait' : 'pointer',
                 fontSize: '13px',
               }}
             >
               + Add Days 61-90 (Master Phase)
             </button>
           ) : null}
-          {maxDay < 120 ? (
+          {programLength < MAX_PROGRAM_DAYS ? (
             <button
               type="button"
-              onClick={() => setMaxDay((prev) => prev + 10)}
+              disabled={dayMutationLoading}
+              onClick={() =>
+                void persistProgramLength(Math.min(MAX_PROGRAM_DAYS, programLength + 10))
+              }
               style={{
                 background: '#1E293B',
                 border: '1px solid #334155',
                 color: '#94A3B8',
                 padding: '8px 16px',
                 borderRadius: '8px',
-                cursor: 'pointer',
+                cursor: dayMutationLoading ? 'wait' : 'pointer',
                 fontSize: '13px',
               }}
             >
@@ -835,6 +1080,7 @@ type OnboardingContentStep = {
   body: string
   cta_label: string
   highlight_text: string | null
+  display_order?: number
   media_type?: string | null
   media_url?: string | null
   media_storage_path?: string | null
@@ -847,6 +1093,7 @@ function onboardingStepSerialize(s: OnboardingContentStep) {
     body: s.body,
     cta_label: s.cta_label,
     highlight_text: s.highlight_text ?? '',
+    display_order: s.display_order ?? 0,
     media_type: s.media_type ?? null,
     media_url: s.media_url ?? '',
     media_storage_path: s.media_storage_path ?? '',
@@ -864,14 +1111,10 @@ function OnboardingEditor() {
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSavedRef = useRef<string>('')
   const onboardSessionKeyRef = useRef<string>('')
-
-  const STEP_LABELS: Record<string, string> = {
-    welcome: '1. Welcome screen',
-    why: '2. Why are you here?',
-    commitment: '3. The commitment',
-    setup: '4. Quick setup',
-    ready: '5. Ready to begin',
-  }
+  const [onboardingBusy, setOnboardingBusy] = useState(false)
+  const [showAddOnboarding, setShowAddOnboarding] = useState(false)
+  const [newOnbTitle, setNewOnbTitle] = useState('')
+  const [newOnbBody, setNewOnbBody] = useState('')
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.from('onboarding_content').select('*')
@@ -880,15 +1123,105 @@ function OnboardingEditor() {
       setSteps([])
     } else {
       const rows = (data || []) as OnboardingContentStep[]
-      rows.sort(
-        (a, b) =>
-          ONBOARDING_STEP_ORDER.indexOf(a.step_key as (typeof ONBOARDING_STEP_ORDER)[number]) -
-          ONBOARDING_STEP_ORDER.indexOf(b.step_key as (typeof ONBOARDING_STEP_ORDER)[number]),
-      )
+      rows.sort((a, b) => {
+        const ao = a.display_order ?? 0
+        const bo = b.display_order ?? 0
+        if (ao !== bo) return ao - bo
+        return a.step_key.localeCompare(b.step_key)
+      })
       setSteps(rows)
     }
     setLoading(false)
   }, [showToast])
+
+  async function persistOnboardingOrder(ordered: OnboardingContentStep[]) {
+    for (let i = 0; i < ordered.length; i++) {
+      const s = ordered[i]
+      const { error } = await supabase
+        .from('onboarding_content')
+        .update({
+          display_order: i + 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('step_key', s.step_key)
+      if (error) throw error
+    }
+  }
+
+  async function handleDeleteOnboardingStep(stepKey: string) {
+    if (steps.length <= 1) {
+      showToast('At least one onboarding step is required.', 'error')
+      return
+    }
+    if (!window.confirm('Delete this step? Users will no longer see it in onboarding.')) return
+    const prev = steps
+    setOnboardingBusy(true)
+    try {
+      const { error } = await supabase.from('onboarding_content').delete().eq('step_key', stepKey)
+      if (error) throw error
+      const next = prev.filter((s) => s.step_key !== stepKey)
+      await persistOnboardingOrder(next)
+      await load()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Delete failed', 'error')
+      setSteps(prev)
+    } finally {
+      setOnboardingBusy(false)
+    }
+  }
+
+  async function handleMoveOnboardingStep(index: number, dir: 'up' | 'down') {
+    const j = dir === 'up' ? index - 1 : index + 1
+    if (j < 0 || j >= steps.length) return
+    const prev = steps
+    const next = [...prev]
+    const t = next[index]
+    next[index] = next[j]
+    next[j] = t
+    setSteps(next)
+    setOnboardingBusy(true)
+    try {
+      await persistOnboardingOrder(next)
+      await load()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Reorder failed', 'error')
+      setSteps(prev)
+    } finally {
+      setOnboardingBusy(false)
+    }
+  }
+
+  async function handleAddOnboardingStep() {
+    if (!newOnbTitle.trim()) {
+      showToast('Title is required.', 'error')
+      return
+    }
+    setOnboardingBusy(true)
+    try {
+      const maxOrder = steps.reduce((m, s) => Math.max(m, s.display_order ?? 0), 0)
+      const step_key = `custom_${crypto.randomUUID().replace(/-/g, '')}`
+      const { error } = await supabase.from('onboarding_content').insert({
+        step_key,
+        heading: newOnbTitle.trim(),
+        body: newOnbBody.trim(),
+        cta_label: 'Next',
+        highlight_text: '',
+        display_order: maxOrder + 1,
+        media_type: null,
+        media_url: null,
+        media_storage_path: null,
+      })
+      if (error) throw error
+      setShowAddOnboarding(false)
+      setNewOnbTitle('')
+      setNewOnbBody('')
+      await load()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not add step', 'error')
+    } finally {
+      setOnboardingBusy(false)
+    }
+  }
 
   useEffect(() => {
     void load()
@@ -910,6 +1243,7 @@ function OnboardingEditor() {
           body: step.body,
           cta_label: step.cta_label,
           highlight_text: step.highlight_text || '',
+          display_order: step.display_order ?? 1,
           media_type: step.media_type || null,
           media_url: step.media_url || null,
           media_storage_path: step.media_storage_path || null,
@@ -997,6 +1331,7 @@ function OnboardingEditor() {
         body: editingStep.body,
         cta_label: editingStep.cta_label,
         highlight_text: editingStep.highlight_text || '',
+        display_order: editingStep.display_order ?? 1,
         media_type: editingStep.media_type || null,
         media_url: editingStep.media_url || null,
         media_storage_path: editingStep.media_storage_path || null,
@@ -1049,7 +1384,8 @@ function OnboardingEditor() {
           }}
         >
           <h2 style={{ color: 'white', fontSize: '18px', fontWeight: '600', margin: 0 }}>
-            Edit: {STEP_LABELS[editingStep.step_key] ?? editingStep.step_key}
+            Edit: Step{' '}
+            {(steps.findIndex((s) => s.step_key === editingStep.step_key) ?? 0) + 1}: {editingStep.heading || editingStep.step_key}
           </h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
@@ -1168,34 +1504,25 @@ function OnboardingEditor() {
   return (
     <div>
       <p style={{ color: '#64748B', fontSize: '14px', marginBottom: '20px' }}>
-        Click any step to edit. Changes apply for users loading /onboarding.
+        Reorder with arrows, delete steps, or add new ones. Click a row or &quot;Edit →&quot; to change copy and media.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {loading ? (
           <p style={{ color: '#64748B' }}>Loading...</p>
         ) : (
-          steps.map((step) => (
+          steps.map((step, index) => (
             <div
               key={step.step_key}
-              role="button"
-              tabIndex={0}
-              onClick={() => setEditingStep({ ...step })}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  setEditingStep({ ...step })
-                }
-              }}
               style={{
                 background: '#1E293B',
                 borderRadius: '10px',
-                padding: '16px 20px',
+                padding: '12px 16px',
                 border: '1px solid #334155',
-                cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
+                gap: '12px',
                 transition: 'border-color 0.15s',
+                opacity: onboardingBusy ? 0.7 : 1,
               }}
               onMouseOver={(e) => {
                 e.currentTarget.style.borderColor = '#F59E0B'
@@ -1204,29 +1531,216 @@ function OnboardingEditor() {
                 e.currentTarget.style.borderColor = '#334155'
               }}
             >
-              <div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flexShrink: 0 }}>
+                <button
+                  type="button"
+                  title="Move up"
+                  disabled={onboardingBusy || index === 0}
+                  onClick={() => void handleMoveOnboardingStep(index, 'up')}
+                  style={{
+                    background: '#0F172A',
+                    border: '1px solid #334155',
+                    color: index === 0 ? '#334155' : '#94A3B8',
+                    borderRadius: '4px',
+                    fontSize: '10px',
+                    padding: '2px 6px',
+                    cursor: index === 0 || onboardingBusy ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  title="Move down"
+                  disabled={onboardingBusy || index >= steps.length - 1}
+                  onClick={() => void handleMoveOnboardingStep(index, 'down')}
+                  style={{
+                    background: '#0F172A',
+                    border: '1px solid #334155',
+                    color: index >= steps.length - 1 ? '#334155' : '#94A3B8',
+                    borderRadius: '4px',
+                    fontSize: '10px',
+                    padding: '2px 6px',
+                    cursor: index >= steps.length - 1 || onboardingBusy ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  ↓
+                </button>
+              </div>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => !onboardingBusy && setEditingStep({ ...step })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    if (!onboardingBusy) setEditingStep({ ...step })
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  cursor: onboardingBusy ? 'wait' : 'pointer',
+                  minWidth: 0,
+                }}
+              >
                 <p style={{ color: 'white', fontSize: '14px', fontWeight: '500', margin: '0 0 4px' }}>
-                  {STEP_LABELS[step.step_key] ?? step.step_key}
+                  {index + 1}. {step.heading || 'Untitled step'}
                 </p>
                 <p
                   style={{
                     color: '#64748B',
                     fontSize: '12px',
                     margin: 0,
-                    maxWidth: '500px',
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                   }}
                 >
-                  {step.heading}
+                  {(step.body || '').slice(0, 120)}
+                  {(step.body || '').length > 120 ? '…' : ''}
                 </p>
               </div>
-              <span style={{ color: '#F59E0B', fontSize: '13px' }}>Edit →</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (!onboardingBusy) setEditingStep({ ...step })
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#F59E0B',
+                  fontSize: '13px',
+                  cursor: onboardingBusy ? 'not-allowed' : 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                Edit →
+              </button>
+              <button
+                type="button"
+                title="Delete step"
+                disabled={onboardingBusy || steps.length <= 1}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  void handleDeleteOnboardingStep(step.step_key)
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: steps.length <= 1 ? '#334155' : '#EF4444',
+                  fontSize: '16px',
+                  cursor: steps.length <= 1 || onboardingBusy ? 'not-allowed' : 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                🗑
+              </button>
             </div>
           ))
         )}
       </div>
+
+      <button
+        type="button"
+        disabled={onboardingBusy}
+        onClick={() => setShowAddOnboarding(true)}
+        style={{
+          marginTop: '16px',
+          background: '#1E293B',
+          border: '1px solid #F59E0B',
+          color: '#F59E0B',
+          padding: '10px 18px',
+          borderRadius: '8px',
+          cursor: onboardingBusy ? 'wait' : 'pointer',
+          fontSize: '13px',
+          fontWeight: '600',
+        }}
+      >
+        + Add new step
+      </button>
+
+      {showAddOnboarding ? (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+            padding: '20px',
+          }}
+          role="presentation"
+          onClick={() => !onboardingBusy && setShowAddOnboarding(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              background: '#1E293B',
+              borderRadius: '12px',
+              padding: '24px',
+              maxWidth: '440px',
+              width: '100%',
+              border: '1px solid #334155',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ color: 'white', margin: '0 0 16px', fontSize: '18px' }}>New onboarding step</h3>
+            <label style={{ ...labelStyle, marginTop: 0 }}>Step title</label>
+            <input
+              type="text"
+              value={newOnbTitle}
+              onChange={(e) => setNewOnbTitle(e.target.value)}
+              placeholder="e.g. Meet your coach"
+              style={{ ...inputStyle, marginBottom: '14px' }}
+            />
+            <label style={labelStyle}>Description (body)</label>
+            <textarea
+              rows={5}
+              value={newOnbBody}
+              onChange={(e) => setNewOnbBody(e.target.value)}
+              placeholder="Longer text shown on this step…"
+              style={{ ...inputStyle, resize: 'vertical', marginBottom: '20px', lineHeight: 1.6 }}
+            />
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                disabled={onboardingBusy}
+                onClick={() => setShowAddOnboarding(false)}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid #334155',
+                  color: '#94A3B8',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={onboardingBusy}
+                onClick={() => void handleAddOnboardingStep()}
+                style={{
+                  background: '#F59E0B',
+                  color: '#000',
+                  border: 'none',
+                  padding: '8px 18px',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  cursor: onboardingBusy ? 'wait' : 'pointer',
+                }}
+              >
+                Add step
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -1246,6 +1760,8 @@ type TrainingModuleAdmin = {
   published: boolean
 }
 
+const TRAINING_CATEGORIES = ['Foundations', 'Focus', 'Planning', 'Habits', 'Deep Work', 'Mindset', 'Routine', 'Physical', 'Other'] as const
+
 function TrainingVideosEditor() {
   const { showToast } = useToast()
   const [modules, setModules] = useState<TrainingModuleAdmin[]>([])
@@ -1253,12 +1769,20 @@ function TrainingVideosEditor() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [trainingBusy, setTrainingBusy] = useState(false)
+  const [showAddTraining, setShowAddTraining] = useState(false)
+  const [newVidTitle, setNewVidTitle] = useState('')
+  const [newVidCategory, setNewVidCategory] = useState<string>(TRAINING_CATEGORIES[0])
+  const [newVidDuration, setNewVidDuration] = useState('15 min')
+  const [newVidPro, setNewVidPro] = useState(false)
+  const [newVidUrl, setNewVidUrl] = useState('')
+  const [trainingRowsFromDb, setTrainingRowsFromDb] = useState(false)
 
   const fallbackFromConfig: TrainingModuleAdmin[] = [
     {
       id: 'monk-mode-explained',
-      title: 'Monk Mode Explained',
-      description: 'What monk mode is, why it works, and how to apply it to your daily life starting today.',
+      title: 'Transform explained',
+      description: 'What the Transform path is, why it works, and how to apply it to daily life starting today.',
       youtube_url: '',
       duration: '15 min',
       type: 'video',
@@ -1353,11 +1877,7 @@ function TrainingVideosEditor() {
     },
   ]
 
-  useEffect(() => {
-    void loadModules()
-  }, [])
-
-  async function loadModules() {
+  const loadModules = useCallback(async () => {
     setLoading(true)
     const { data, error } = await supabase
       .from('training_modules')
@@ -1365,12 +1885,110 @@ function TrainingVideosEditor() {
       .order('display_order', { ascending: true })
     if (error) {
       showToast(error.message, 'error')
+      setTrainingRowsFromDb(false)
       setModules(fallbackFromConfig)
     } else {
       const rows = (data as TrainingModuleAdmin[] | null) ?? []
-      setModules(rows.length > 0 ? rows : fallbackFromConfig)
+      if (rows.length > 0) {
+        setTrainingRowsFromDb(true)
+        setModules(rows)
+      } else {
+        setTrainingRowsFromDb(false)
+        setModules(fallbackFromConfig)
+      }
     }
     setLoading(false)
+  }, [showToast])
+
+  useEffect(() => {
+    void loadModules()
+  }, [loadModules])
+
+  async function persistTrainingOrder(ordered: TrainingModuleAdmin[]) {
+    for (let i = 0; i < ordered.length; i++) {
+      const m = ordered[i]
+      const { error } = await supabase
+        .from('training_modules')
+        .update({
+          display_order: i + 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', m.id)
+      if (error) throw error
+    }
+  }
+
+  async function handleDeleteTrainingModule(id: string) {
+    if (!window.confirm('Delete this training video from the catalog?')) return
+    const prev = modules
+    setTrainingBusy(true)
+    try {
+      const { error } = await supabase.from('training_modules').delete().eq('id', id)
+      if (error) throw error
+      await loadModules()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Delete failed', 'error')
+      setModules(prev)
+    } finally {
+      setTrainingBusy(false)
+    }
+  }
+
+  async function handleMoveTrainingModule(index: number, dir: 'up' | 'down') {
+    const j = dir === 'up' ? index - 1 : index + 1
+    if (j < 0 || j >= modules.length) return
+    const prev = modules
+    const next = [...prev]
+    const tmp = next[index]
+    next[index] = next[j]
+    next[j] = tmp
+    setModules(next)
+    setTrainingBusy(true)
+    try {
+      await persistTrainingOrder(next)
+      await loadModules()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Reorder failed', 'error')
+      setModules(prev)
+    } finally {
+      setTrainingBusy(false)
+    }
+  }
+
+  async function handleAddTrainingModule() {
+    if (!newVidTitle.trim()) {
+      showToast('Title is required.', 'error')
+      return
+    }
+    setTrainingBusy(true)
+    try {
+      const maxOrder = modules.reduce((m, r) => Math.max(m, r.display_order ?? 0), 0)
+      const id = `vid-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+      const { error } = await supabase.from('training_modules').insert({
+        id,
+        title: newVidTitle.trim(),
+        description: '',
+        youtube_url: newVidUrl.trim(),
+        duration: newVidDuration.trim() || '15 min',
+        type: 'video',
+        is_pro: newVidPro,
+        category: newVidCategory,
+        display_order: maxOrder + 1,
+        published: true,
+      })
+      if (error) throw error
+      setShowAddTraining(false)
+      setNewVidTitle('')
+      setNewVidUrl('')
+      setNewVidDuration('15 min')
+      setNewVidPro(false)
+      setNewVidCategory(TRAINING_CATEGORIES[0])
+      await loadModules()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not add video', 'error')
+    } finally {
+      setTrainingBusy(false)
+    }
   }
 
   async function saveModule() {
@@ -1526,7 +2144,7 @@ function TrainingVideosEditor() {
                 onChange={(e) => setEditing({ ...editing, category: e.target.value })}
                 style={{ ...inputStyle, cursor: 'pointer' }}
               >
-                {['Foundations', 'Focus', 'Planning', 'Habits', 'Mindset', 'Routine', 'Physical', 'Other'].map((c) => (
+                {TRAINING_CATEGORIES.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
@@ -1586,30 +2204,35 @@ function TrainingVideosEditor() {
   return (
     <div>
       <p style={{ color: '#64748B', fontSize: '14px', margin: '0 0 20px', lineHeight: '1.6' }}>
-        Click any module to add or update its YouTube URL. Changes are live immediately — no code changes needed.
+        Reorder with arrows, delete videos, or add new ones. Paste a YouTube URL in the field — it saves automatically after you
+        pause typing. Click the row (except controls) for full edit.
       </p>
+      {!trainingRowsFromDb ? (
+        <p style={{ color: '#F59E0B', fontSize: '12px', marginBottom: '12px' }}>
+          Showing offline defaults — connect the database to enable add / delete / reorder and URL sync.
+        </p>
+      ) : null}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {loading ? (
           <p style={{ color: '#64748B' }}>Loading modules...</p>
         ) : (
-          modules.map((module) => {
+          modules.map((module, index) => {
             const hasVideo = !!module.youtube_url
             const videoId = getYouTubeId(module.youtube_url)
             return (
               <div
                 key={module.id}
-                onClick={() => setEditing({ ...module })}
                 style={{
                   background: '#1E293B',
                   borderRadius: '10px',
-                  padding: '14px 16px',
+                  padding: '12px 14px',
                   border: `1px solid ${hasVideo ? '#334155' : '#EF444422'}`,
-                  cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '14px',
+                  gap: '12px',
                   transition: 'border-color 0.15s',
+                  opacity: trainingBusy ? 0.7 : 1,
                 }}
                 onMouseOver={(e) => {
                   ;(e.currentTarget as HTMLElement).style.borderColor = '#F59E0B'
@@ -1618,36 +2241,101 @@ function TrainingVideosEditor() {
                   ;(e.currentTarget as HTMLElement).style.borderColor = hasVideo ? '#334155' : '#EF444422'
                 }}
               >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    title="Move up"
+                    disabled={trainingBusy || !trainingRowsFromDb || index === 0}
+                    onClick={() => void handleMoveTrainingModule(index, 'up')}
+                    style={{
+                      background: '#0F172A',
+                      border: '1px solid #334155',
+                      color: index === 0 ? '#334155' : '#94A3B8',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      padding: '2px 6px',
+                      cursor: index === 0 || trainingBusy || !trainingRowsFromDb ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    title="Move down"
+                    disabled={trainingBusy || !trainingRowsFromDb || index >= modules.length - 1}
+                    onClick={() => void handleMoveTrainingModule(index, 'down')}
+                    style={{
+                      background: '#0F172A',
+                      border: '1px solid #334155',
+                      color: index >= modules.length - 1 ? '#334155' : '#94A3B8',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      padding: '2px 6px',
+                      cursor: index >= modules.length - 1 || trainingBusy || !trainingRowsFromDb ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    ↓
+                  </button>
+                </div>
                 <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => !trainingBusy && setEditing({ ...module })}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      if (!trainingBusy) setEditing({ ...module })
+                    }
+                  }}
                   style={{
-                    width: '64px',
-                    height: '40px',
-                    borderRadius: '6px',
-                    overflow: 'hidden',
-                    flexShrink: 0,
-                    background: '#0F172A',
+                    cursor: trainingBusy ? 'wait' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
+                    gap: '14px',
+                    flex: 1,
+                    minWidth: 0,
                   }}
                 >
-                  {videoId ? (
-                    <img
-                      src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
-                      alt={module.title}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <span style={{ fontSize: '20px' }}>🎬</span>
-                  )}
+                  <div
+                    style={{
+                      width: '64px',
+                      height: '40px',
+                      borderRadius: '6px',
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                      background: '#0F172A',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {videoId ? (
+                      <img
+                        src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
+                        alt={module.title}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: '20px' }}>🎬</span>
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ color: 'white', fontSize: '14px', fontWeight: '500', margin: '0 0 3px' }}>{module.title}</p>
+                    <p style={{ color: '#64748B', fontSize: '12px', margin: 0 }}>
+                      {module.category} · {module.duration} · {module.is_pro ? 'Pro' : 'Free'} ·{' '}
+                      {module.published ? 'Published' : 'Draft'}
+                    </p>
+                  </div>
                 </div>
 
-                <div style={{ flex: 1 }}>
-                  <p style={{ color: 'white', fontSize: '14px', fontWeight: '500', margin: '0 0 3px' }}>{module.title}</p>
-                  <p style={{ color: '#64748B', fontSize: '12px', margin: 0 }}>
-                    {module.category} · {module.duration} · {module.is_pro ? 'Pro' : 'Free'} ·{' '}
-                    {module.published ? 'Published' : 'Draft'}
-                  </p>
+                <div style={{ flexShrink: 0, width: 'min(260px, 32vw)' }}>
+                  <DebouncedYoutubeField
+                    moduleId={module.id}
+                    initialUrl={module.youtube_url ?? ''}
+                    disabled={!trainingRowsFromDb || trainingBusy}
+                    showToast={showToast}
+                    reload={loadModules}
+                  />
                 </div>
 
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -1677,11 +2365,155 @@ function TrainingVideosEditor() {
                     </span>
                   )}
                 </div>
+
+                <button
+                  type="button"
+                  title="Delete video"
+                  disabled={trainingBusy || !trainingRowsFromDb}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    void handleDeleteTrainingModule(module.id)
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: !trainingRowsFromDb ? '#334155' : '#EF4444',
+                    fontSize: '16px',
+                    cursor: !trainingRowsFromDb || trainingBusy ? 'not-allowed' : 'pointer',
+                    flexShrink: 0,
+                  }}
+                >
+                  ✕
+                </button>
               </div>
             )
           })
         )}
       </div>
+
+      <button
+        type="button"
+        disabled={trainingBusy || !trainingRowsFromDb}
+        onClick={() => setShowAddTraining(true)}
+        style={{
+          marginTop: '16px',
+          background: '#1E293B',
+          border: '1px solid #F59E0B',
+          color: '#F59E0B',
+          padding: '10px 18px',
+          borderRadius: '8px',
+          cursor: trainingBusy || !trainingRowsFromDb ? 'not-allowed' : 'pointer',
+          fontSize: '13px',
+          fontWeight: '600',
+        }}
+      >
+        + Add new video
+      </button>
+
+      {showAddTraining ? (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+            padding: '20px',
+          }}
+          role="presentation"
+          onClick={() => !trainingBusy && setShowAddTraining(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              background: '#1E293B',
+              borderRadius: '12px',
+              padding: '24px',
+              maxWidth: '480px',
+              width: '100%',
+              border: '1px solid #334155',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ color: 'white', margin: '0 0 16px', fontSize: '18px' }}>New training video</h3>
+            <label style={labelStyle}>Title</label>
+            <input
+              type="text"
+              value={newVidTitle}
+              onChange={(e) => setNewVidTitle(e.target.value)}
+              style={{ ...inputStyle, marginBottom: '12px' }}
+            />
+            <label style={labelStyle}>Category</label>
+            <select
+              value={newVidCategory}
+              onChange={(e) => setNewVidCategory(e.target.value)}
+              style={{ ...inputStyle, marginBottom: '12px', cursor: 'pointer' }}
+            >
+              {TRAINING_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <label style={labelStyle}>Duration</label>
+            <input
+              type="text"
+              value={newVidDuration}
+              onChange={(e) => setNewVidDuration(e.target.value)}
+              placeholder="e.g. 20 min"
+              style={{ ...inputStyle, marginBottom: '12px' }}
+            />
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#CBD5E1', fontSize: '14px', marginBottom: '12px' }}>
+              <input type="checkbox" checked={newVidPro} onChange={(e) => setNewVidPro(e.target.checked)} style={{ cursor: 'pointer' }} />
+              Pro only
+            </label>
+            <label style={labelStyle}>YouTube URL</label>
+            <input
+              type="url"
+              value={newVidUrl}
+              onChange={(e) => setNewVidUrl(e.target.value)}
+              placeholder="https://www.youtube.com/watch?v=..."
+              style={{ ...inputStyle, marginBottom: '20px' }}
+            />
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                disabled={trainingBusy}
+                onClick={() => setShowAddTraining(false)}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid #334155',
+                  color: '#94A3B8',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={trainingBusy}
+                onClick={() => void handleAddTrainingModule()}
+                style={{
+                  background: '#F59E0B',
+                  color: '#000',
+                  border: 'none',
+                  padding: '8px 18px',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  cursor: trainingBusy ? 'wait' : 'pointer',
+                }}
+              >
+                Add video
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
