@@ -617,7 +617,7 @@ export function DashboardPreview() {
                   )}
                   {goals.length >= 5 && (
                     <p className="text-xs text-muted-foreground pl-6 mt-1 italic">
-                      Monk Mode: Focus on 5 or fewer goals
+                      Focus on five or fewer goals
                     </p>
                   )}
                 </div>

@@ -45,8 +45,9 @@ import { deleteHabit, newHabitClientId, saveHabit } from '@/lib/dataService'
 import { captureEvent } from '@/lib/analytics'
 import {
   HABIT_EMOJI_OPTIONS,
-  HABIT_ICON_GENERIC,
-  HABIT_ICON_ROUTINE,
+  HABIT_ICON_PICKER_LIBRARY,
+  getHabitDisplayIcon,
+  suggestHabitIconFromName,
 } from '@/lib/habit-icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
@@ -82,7 +83,9 @@ export default function HabitsPage() {
     const name = draft.trim()
     if (!name) return
     if (!planLoading && !isPro && data.habits.length >= FREE_HABIT_LIMIT) return
-    const habit = { id: newHabitClientId(dataContext), name, icon: draftIcon.trim() }
+    const icon =
+      draftIcon.trim() || suggestHabitIconFromName(name) || ''
+    const habit = { id: newHabitClientId(dataContext), name, icon }
     setData({
       ...data,
       habits: [...data.habits, habit],
@@ -101,7 +104,10 @@ export default function HabitsPage() {
     const next = DEFAULT_STARTER_HABIT_NAMES.map((name, i) => ({
       id: newHabitClientId(dataContext),
       name,
-      icon: HABIT_ICON_ROUTINE[i % HABIT_ICON_ROUTINE.length] ?? '',
+      icon:
+        suggestHabitIconFromName(name) ??
+        HABIT_ICON_PICKER_LIBRARY[i % HABIT_ICON_PICKER_LIBRARY.length] ??
+        '',
     }))
     setData({
       ...data,
@@ -134,7 +140,8 @@ export default function HabitsPage() {
   const openEdit = useCallback((h: Habit) => {
     setEditHabitId(h.id)
     setEditName(h.name)
-    setEditIcon(h.icon ?? '')
+    const stored = (h.icon ?? '').trim()
+    setEditIcon(stored || suggestHabitIconFromName(h.name) || '')
     setEditOpen(true)
   }, [])
 
@@ -271,28 +278,11 @@ export default function HabitsPage() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[min(100vw-2rem,20rem)] p-3" align="start">
-                <p className="mb-1.5 text-xs font-medium text-muted-foreground">Common habits</p>
-                <div className="mb-3 flex flex-wrap gap-1">
-                  {HABIT_ICON_ROUTINE.map((emoji) => (
-                    <Button
-                      key={emoji}
-                      type="button"
-                      variant={draftIcon === emoji ? 'secondary' : 'outline'}
-                      size="sm"
-                      className="h-9 w-9 p-0 text-lg"
-                      aria-label={`Use ${emoji}`}
-                      onClick={() => {
-                        setDraftIcon(emoji)
-                        setIconPickerOpen(false)
-                      }}
-                    >
-                      {emoji}
-                    </Button>
-                  ))}
-                </div>
-                <p className="mb-1.5 text-xs font-medium text-muted-foreground">Generic</p>
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+                  Choose an icon (optional)
+                </p>
                 <div className="mb-2 flex flex-wrap gap-1">
-                  {HABIT_ICON_GENERIC.map((emoji) => (
+                  {HABIT_ICON_PICKER_LIBRARY.map((emoji) => (
                     <Button
                       key={emoji}
                       type="button"
@@ -348,20 +338,26 @@ export default function HabitsPage() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Tap the smile to pick an icon before adding (optional). More icons are available when you edit a habit.
+            Tap the smile to pick an icon before adding (optional). More icons appear in Edit.
           </p>
           {data.habits.length > 0 ? (
             <ul className="space-y-2">
-              {data.habits.map((h, index) => (
+              {data.habits.map((h, index) => {
+                const displayIcon = getHabitDisplayIcon(h)
+                return (
                 <li key={h.id}>
                   <ContextMenu>
                     <ContextMenuTrigger asChild>
                       <div className="flex items-center gap-2 border border-border rounded-lg p-2 select-none">
                         <span
-                          className="text-lg w-8 text-center shrink-0"
+                          className="flex h-8 w-8 shrink-0 items-center justify-center text-lg leading-none"
                           aria-hidden
                         >
-                          {h.icon?.trim() ? h.icon : '·'}
+                          {displayIcon ? (
+                            displayIcon
+                          ) : (
+                            <Smile className="h-5 w-5 text-muted-foreground opacity-60" />
+                          )}
                         </span>
                         <span className="flex-1 text-sm truncate px-1">
                           {h.name}
@@ -414,7 +410,8 @@ export default function HabitsPage() {
                     </ContextMenuContent>
                   </ContextMenu>
                 </li>
-              ))}
+                )
+              })}
             </ul>
           ) : null}
         </Card>
@@ -444,31 +441,52 @@ export default function HabitsPage() {
                 Icon / emoji
               </span>
               <p className="text-xs text-muted-foreground">
-                Tap one to set, or leave empty.
+                Tap one to set, or choose None. Quick picks match the add-habit library.
               </p>
-              <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1">
-                <Button
-                  type="button"
-                  variant={editIcon.trim() === '' ? 'secondary' : 'outline'}
-                  size="sm"
-                  className="h-9 px-2 text-xs"
-                  onClick={() => setEditIcon('')}
-                >
-                  None
-                </Button>
-                {HABIT_EMOJI_OPTIONS.map((emoji) => (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Quick picks</p>
+                <div className="flex flex-wrap gap-1.5">
                   <Button
-                    key={emoji}
                     type="button"
-                    variant={editIcon === emoji ? 'secondary' : 'outline'}
+                    variant={editIcon.trim() === '' ? 'secondary' : 'outline'}
                     size="sm"
-                    className="h-9 w-9 p-0 text-lg"
-                    aria-label={`Use ${emoji}`}
-                    onClick={() => setEditIcon(emoji)}
+                    className="h-9 px-2 text-xs"
+                    onClick={() => setEditIcon('')}
                   >
-                    {emoji}
+                    None
                   </Button>
-                ))}
+                  {HABIT_ICON_PICKER_LIBRARY.map((emoji) => (
+                    <Button
+                      key={emoji}
+                      type="button"
+                      variant={editIcon === emoji ? 'secondary' : 'outline'}
+                      size="sm"
+                      className="h-9 w-9 p-0 text-lg"
+                      aria-label={`Use ${emoji}`}
+                      onClick={() => setEditIcon(emoji)}
+                    >
+                      {emoji}
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-xs font-medium text-muted-foreground pt-1">More</p>
+                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1">
+                  {HABIT_EMOJI_OPTIONS.filter(
+                    (e) => !(HABIT_ICON_PICKER_LIBRARY as readonly string[]).includes(e),
+                  ).map((emoji) => (
+                    <Button
+                      key={emoji}
+                      type="button"
+                      variant={editIcon === emoji ? 'secondary' : 'outline'}
+                      size="sm"
+                      className="h-9 w-9 p-0 text-lg"
+                      aria-label={`Use ${emoji}`}
+                      onClick={() => setEditIcon(emoji)}
+                    >
+                      {emoji}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

@@ -72,15 +72,15 @@ export default function AdminWaitlistPage() {
     <div>
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Waitlist</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-2xl font-semibold text-foreground">Waitlist</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {rows.length} row{rows.length === 1 ? '' : 's'} loaded
           </p>
         </div>
         <button
           type="button"
           onClick={() => void downloadCsv()}
-          className="self-start rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-200 hover:bg-slate-700"
+          className="self-start rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted"
         >
           Download CSV
         </button>
@@ -90,18 +90,18 @@ export default function AdminWaitlistPage() {
         <p className="mb-4 text-sm text-red-400">{error}</p>
       ) : null}
 
-      <div className="overflow-hidden rounded-xl border border-slate-700 bg-[#1E293B]">
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
         {loading ? (
-          <div className="p-10 text-center text-slate-500">Loading…</div>
+          <div className="p-10 text-center text-muted-foreground">Loading…</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[13px]">
               <thead>
-                <tr className="border-b border-slate-600">
+                <tr className="border-b border-border">
                   {['Email', 'Source', 'Notified', 'Signed up'].map((h) => (
                     <th
                       key={h}
-                      className="px-5 py-3 text-left text-xs font-medium text-slate-500"
+                      className="px-5 py-3 text-left text-xs font-medium text-muted-foreground"
                     >
                       {h}
                     </th>
@@ -110,15 +110,15 @@ export default function AdminWaitlistPage() {
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.email} className="border-b border-slate-900">
-                    <td className="px-5 py-3 text-slate-300">{r.email}</td>
-                    <td className="px-5 py-3 text-slate-500">
+                  <tr key={r.email} className="border-b border-border">
+                    <td className="px-5 py-3 text-muted-foreground">{r.email}</td>
+                    <td className="px-5 py-3 text-muted-foreground">
                       {r.source ?? '—'}
                     </td>
-                    <td className="px-5 py-3 text-slate-500">
+                    <td className="px-5 py-3 text-muted-foreground">
                       {r.notified ? 'Yes' : 'No'}
                     </td>
-                    <td className="px-5 py-3 text-xs text-slate-500">
+                    <td className="px-5 py-3 text-xs text-muted-foreground">
                       {new Date(r.created_at).toLocaleString()}
                     </td>
                   </tr>

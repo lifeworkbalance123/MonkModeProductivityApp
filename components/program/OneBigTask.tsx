@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/context/ToastContext'
+import { PU } from '@/lib/program-ui-tokens'
 
 const OBT_LS_KEY = 'monk_one_big_task_v2'
 
@@ -229,20 +230,20 @@ export default function OneBigTask(_props: OneBigTaskProps) {
   return (
     <div
       style={{
-        background: '#1E293B',
+        background: PU.card,
         borderRadius: '16px',
         padding: '20px',
-        border: '1px solid #F59E0B44',
+        border: `1px solid color-mix(in srgb, ${PU.primary} 28%, transparent)`,
         marginBottom: '16px',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
         <span style={{ fontSize: '20px' }}>🎯</span>
         <div>
-          <h3 style={{ color: 'white', fontSize: '15px', fontWeight: '600', margin: '0 0 2px' }}>
+          <h3 style={{ color: PU.fg, fontSize: '15px', fontWeight: '600', margin: '0 0 2px' }}>
             One Big Task
           </h3>
-          <p style={{ color: '#64748B', fontSize: '12px', margin: 0 }}>
+          <p style={{ color: PU.mutedFg, fontSize: '12px', margin: 0 }}>
             If you only did ONE thing today…
           </p>
         </div>
@@ -257,14 +258,14 @@ export default function OneBigTask(_props: OneBigTaskProps) {
               width: '28px',
               height: '28px',
               borderRadius: '50%',
-              border: `2px solid ${completed ? '#F59E0B' : '#334155'}`,
-              background: completed ? '#F59E0B' : 'transparent',
+              border: `2px solid ${completed ? PU.primary : PU.border}`,
+              background: completed ? PU.primary : 'transparent',
               cursor: 'pointer',
               flexShrink: 0,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: completed ? '#000' : 'transparent',
+              color: completed ? PU.primaryFg : 'transparent',
               fontSize: '14px',
             }}
             aria-label={completed ? 'Mark incomplete' : 'Mark complete'}
@@ -273,7 +274,7 @@ export default function OneBigTask(_props: OneBigTaskProps) {
           </button>
           <span
             style={{
-              color: completed ? '#64748B' : 'white',
+              color: completed ? PU.mutedFg : PU.fg,
               fontSize: '16px',
               fontWeight: '500',
               textDecoration: completed ? 'line-through' : 'none',
@@ -291,7 +292,7 @@ export default function OneBigTask(_props: OneBigTaskProps) {
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#64748B',
+              color: PU.mutedFg,
               cursor: 'pointer',
               fontSize: '12px',
               padding: '4px 8px',
@@ -313,11 +314,11 @@ export default function OneBigTask(_props: OneBigTaskProps) {
             autoFocus={editing}
             style={{
               width: '100%',
-              background: '#0F172A',
-              border: '1px solid #F59E0B44',
+              background: PU.bg,
+              border: `1px solid color-mix(in srgb, ${PU.primary} 28%, transparent)`,
               borderRadius: '10px',
               padding: '12px 16px',
-              color: 'white',
+              color: PU.fg,
               fontSize: '15px',
               outline: 'none',
               boxSizing: 'border-box',
@@ -331,8 +332,8 @@ export default function OneBigTask(_props: OneBigTaskProps) {
               disabled={!task.trim() || saving}
               style={{
                 flex: 1,
-                background: task.trim() ? '#F59E0B' : '#334155',
-                color: task.trim() ? '#000' : '#64748B',
+                background: task.trim() ? PU.primary : PU.muted,
+                color: task.trim() ? PU.primaryFg : PU.mutedFg,
                 border: 'none',
                 borderRadius: '8px',
                 padding: '10px',
@@ -351,9 +352,9 @@ export default function OneBigTask(_props: OneBigTaskProps) {
                   setTask('')
                 }}
                 style={{
-                  background: '#1E293B',
-                  border: '1px solid #334155',
-                  color: '#64748B',
+                  background: PU.card,
+                  border: `1px solid ${PU.border}`,
+                  color: PU.mutedFg,
                   borderRadius: '8px',
                   padding: '10px 14px',
                   cursor: 'pointer',

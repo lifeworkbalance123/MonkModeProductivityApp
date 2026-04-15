@@ -355,7 +355,7 @@ export default function SettingsPage() {
                   <Button
                     type="button"
                     size="sm"
-                    className="bg-[#F59E0B] font-semibold text-[#111827] hover:bg-[#F59E0B]/90"
+                    className="bg-accent font-semibold text-accent-foreground hover:bg-accent/90"
                     onClick={() => window.location.assign('/upgrade')}
                   >
                     Upgrade to Pro
@@ -378,14 +378,14 @@ export default function SettingsPage() {
                 </p>
                 <div className="h-2 rounded-full bg-secondary">
                   <div
-                    className="h-2 rounded-full bg-[#F59E0B]"
+                    className="h-2 rounded-full bg-accent"
                     style={{ width: `${Math.max(5, Math.min(100, ((14 - trialDaysLeft) / 14) * 100))}%` }}
                   />
                 </div>
                 <Button
                   type="button"
                   size="sm"
-                  className="bg-[#F59E0B] font-semibold text-[#111827] hover:bg-[#F59E0B]/90"
+                  className="bg-accent font-semibold text-accent-foreground hover:bg-accent/90"
                   onClick={() => window.location.assign('/upgrade')}
                 >
                   Upgrade now to keep Pro
@@ -410,14 +410,14 @@ export default function SettingsPage() {
                 <p className="text-sm text-muted-foreground">
                   Next billing date: {nextBill ?? 'Pending sync'} · Amount: $9.99
                 </p>
-                <div className="rounded-md border border-[#F59E0B]/30 bg-[#F59E0B]/10 p-3 text-sm">
-                  <p className="text-amber-100">
+                <div className="rounded-md border border-accent/30 bg-accent/10 p-3 text-sm">
+                  <p className="text-foreground">
                     Switch to annual and save $59.89/year →
                   </p>
                   <Button
                     type="button"
                     size="sm"
-                    className="mt-2 bg-[#F59E0B] font-semibold text-[#111827] hover:bg-[#F59E0B]/90"
+                    className="mt-2 bg-accent font-semibold text-accent-foreground hover:bg-accent/90"
                     onClick={() => void switchToAnnual()}
                     disabled={switchBusy}
                   >

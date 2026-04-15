@@ -1,5 +1,12 @@
 'use client'
 
+import { useMemo } from 'react'
+import { PU } from '@/lib/program-ui-tokens'
+import {
+  trainingAccentFromCategory,
+  trainingOnAccentForeground,
+  trainingThumbnailBackdrop,
+} from '@/lib/training-palette'
 import { type TrainingModule, getYouTubeThumbnail } from '@/lib/trainingContent'
 
 type TrainingCardProps = {
@@ -12,6 +19,9 @@ type TrainingCardProps = {
 export default function TrainingCard({ module, isPro, onPlay, onLockedClick }: TrainingCardProps) {
   const isLocked = module.isPro && !isPro
   const thumbnail = module.thumbnail || getYouTubeThumbnail(module.youtubeUrl)
+  const accent = useMemo(() => trainingAccentFromCategory(module.category), [module.category])
+  const onAccent = trainingOnAccentForeground(accent)
+  const defaultBorder = PU.border
 
   return (
     <div
@@ -35,11 +45,11 @@ export default function TrainingCard({ module, isPro, onPlay, onLockedClick }: T
         }
       }}
       style={{
-        background: '#1E293B',
+        background: PU.card,
         borderRadius: '12px',
-        border: '1px solid #334155',
+        border: `1px solid ${defaultBorder}`,
         overflow: 'hidden',
-        cursor: isLocked ? 'pointer' : 'pointer',
+        cursor: 'pointer',
         opacity: isLocked ? 0.7 : 1,
         transition: 'transform 0.15s, border-color 0.15s',
         position: 'relative',
@@ -47,19 +57,19 @@ export default function TrainingCard({ module, isPro, onPlay, onLockedClick }: T
       onMouseOver={(e) => {
         if (!isLocked) {
           e.currentTarget.style.transform = 'translateY(-2px)'
-          e.currentTarget.style.borderColor = '#F59E0B'
+          e.currentTarget.style.borderColor = accent
         }
       }}
       onMouseOut={(e) => {
         e.currentTarget.style.transform = 'translateY(0)'
-        e.currentTarget.style.borderColor = '#334155'
+        e.currentTarget.style.borderColor = defaultBorder
       }}
     >
       <div
         style={{
           position: 'relative',
           paddingBottom: '56.25%',
-          background: '#0F172A',
+          background: PU.bg,
           overflow: 'hidden',
         }}
       >
@@ -82,7 +92,7 @@ export default function TrainingCard({ module, isPro, onPlay, onLockedClick }: T
             style={{
               position: 'absolute',
               inset: 0,
-              background: 'linear-gradient(135deg, #1E293B, #0F172A)',
+              background: trainingThumbnailBackdrop(accent),
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -114,7 +124,8 @@ export default function TrainingCard({ module, isPro, onPlay, onLockedClick }: T
               style={{
                 width: '48px',
                 height: '48px',
-                background: '#F59E0B',
+                background: accent,
+                color: onAccent,
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
@@ -143,8 +154,8 @@ export default function TrainingCard({ module, isPro, onPlay, onLockedClick }: T
             <span style={{ fontSize: '28px' }}>🔒</span>
             <span
               style={{
-                background: '#F59E0B',
-                color: '#000',
+                background: PU.primary,
+                color: PU.primaryFg,
                 fontSize: '11px',
                 fontWeight: '700',
                 padding: '3px 10px',
@@ -183,8 +194,8 @@ export default function TrainingCard({ module, isPro, onPlay, onLockedClick }: T
         >
           <span
             style={{
-              background: '#F59E0B22',
-              color: '#F59E0B',
+              background: `color-mix(in srgb, ${accent} 22%, transparent)`,
+              color: accent,
               fontSize: '10px',
               fontWeight: '500',
               padding: '2px 8px',
@@ -196,13 +207,13 @@ export default function TrainingCard({ module, isPro, onPlay, onLockedClick }: T
             {module.category}
           </span>
           {module.isPro && !isPro ? (
-            <span style={{ color: '#64748B', fontSize: '11px' }}>Pro only</span>
+            <span style={{ color: PU.mutedFg, fontSize: '11px' }}>Pro only</span>
           ) : null}
         </div>
 
         <h3
           style={{
-            color: isLocked ? '#64748B' : 'white',
+            color: isLocked ? PU.mutedFg : PU.fg,
             fontSize: '14px',
             fontWeight: '500',
             margin: '0 0 6px',
@@ -214,7 +225,7 @@ export default function TrainingCard({ module, isPro, onPlay, onLockedClick }: T
 
         <p
           style={{
-            color: '#64748B',
+            color: PU.mutedFg,
             fontSize: '12px',
             margin: 0,
             lineHeight: '1.5',

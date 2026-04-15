@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import type { DailyLesson as DailyLessonType } from '@/lib/lessonContent'
 import { markDayComplete } from '@/lib/programUtils'
 import LessonMedia from '@/components/program/LessonMedia'
+import { PU } from '@/lib/program-ui-tokens'
 
 type DailyLessonProps = {
   dayNumber: number
@@ -104,18 +105,18 @@ export default function DailyLesson({
   return (
     <div
       style={{
-        background: '#1E293B',
+        background: PU.card,
         borderRadius: '16px',
-        border: '1px solid #334155',
+        border: `1px solid ${PU.border}`,
         overflow: 'hidden',
         marginBottom: '24px',
       }}
     >
       <div
         style={{
-          background: '#0F172A',
+          background: PU.bg,
           padding: '16px 20px',
-          borderBottom: '1px solid #334155',
+          borderBottom: `1px solid ${PU.border}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -124,8 +125,8 @@ export default function DailyLesson({
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <span
             style={{
-              background: '#F59E0B',
-              color: '#000',
+              background: PU.primary,
+              color: PU.primaryFg,
               fontSize: '11px',
               fontWeight: '700',
               padding: '3px 10px',
@@ -137,8 +138,8 @@ export default function DailyLesson({
           {readOnly ? (
             <span
               style={{
-                background: '#334155',
-                color: '#94A3B8',
+                background: PU.muted,
+                color: PU.mutedFg,
                 fontSize: '10px',
                 fontWeight: '600',
                 padding: '3px 8px',
@@ -150,7 +151,7 @@ export default function DailyLesson({
           ) : null}
           <span
             style={{
-              color: '#64748B',
+              color: PU.mutedFg,
               fontSize: '12px',
               textTransform: 'capitalize',
             }}
@@ -160,12 +161,13 @@ export default function DailyLesson({
           {lesson.isBonus ? (
             <span
               style={{
-                background: '#4C1D95',
-                color: '#C4B5FD',
+                background: `color-mix(in srgb, ${PU.chart2} 35%, ${PU.card})`,
+                color: PU.fg,
                 fontSize: '10px',
                 fontWeight: '600',
                 padding: '3px 8px',
                 borderRadius: '4px',
+                border: `1px solid color-mix(in srgb, ${PU.chart2} 50%, transparent)`,
               }}
             >
               ✨ Bonus
@@ -173,18 +175,18 @@ export default function DailyLesson({
           ) : null}
         </div>
         {loading ? (
-          <span style={{ color: '#64748B', fontSize: '12px' }} aria-busy="true">
+          <span style={{ color: PU.mutedFg, fontSize: '12px' }} aria-busy="true">
             Checking…
           </span>
         ) : completed || readOnly ? (
-          <span style={{ color: '#10B981', fontSize: '13px', fontWeight: '500' }}>✓ Completed</span>
+          <span style={{ color: PU.success, fontSize: '13px', fontWeight: '500' }}>✓ Completed</span>
         ) : null}
       </div>
 
       <div style={{ padding: '20px' }}>
         <h2
           style={{
-            color: 'white',
+            color: PU.fg,
             fontSize: '20px',
             fontWeight: '600',
             margin: '0 0 16px',
@@ -203,7 +205,7 @@ export default function DailyLesson({
         >
           <p
             style={{
-              color: '#94A3B8',
+              color: PU.mutedFg,
               fontSize: '15px',
               lineHeight: '1.8',
               margin: 0,
@@ -220,7 +222,7 @@ export default function DailyLesson({
                 left: 0,
                 right: 0,
                 height: '60px',
-                background: 'linear-gradient(transparent, #1E293B)',
+                background: `linear-gradient(transparent, ${PU.card})`,
               }}
             />
           ) : null}
@@ -232,7 +234,7 @@ export default function DailyLesson({
           style={{
             background: 'transparent',
             border: 'none',
-            color: '#F59E0B',
+            color: PU.primary,
             fontSize: '13px',
             cursor: 'pointer',
             padding: '8px 0',
@@ -246,16 +248,16 @@ export default function DailyLesson({
 
         <div
           style={{
-            background: '#0F172A',
+            background: PU.bg,
             borderRadius: '10px',
             padding: '16px',
             marginTop: '16px',
-            border: '1px solid #334155',
+            border: `1px solid ${PU.border}`,
           }}
         >
           <p
             style={{
-              color: '#64748B',
+              color: PU.mutedFg,
               fontSize: '11px',
               fontWeight: '500',
               textTransform: 'uppercase',
@@ -265,7 +267,7 @@ export default function DailyLesson({
           >
             Today&apos;s action
           </p>
-          <p style={{ color: '#CBD5E1', fontSize: '15px', margin: '0 0 16px', lineHeight: '1.6' }}>
+          <p style={{ color: PU.fg, fontSize: '15px', margin: '0 0 16px', lineHeight: '1.6' }}>
             {lesson.action}
           </p>
 
@@ -276,8 +278,8 @@ export default function DailyLesson({
               disabled={completing}
               style={{
                 width: '100%',
-                background: '#F59E0B',
-                color: '#000',
+                background: PU.primary,
+                color: PU.primaryFg,
                 border: 'none',
                 borderRadius: '10px',
                 padding: '14px',
@@ -298,11 +300,12 @@ export default function DailyLesson({
           ) : (
             <div
               style={{
-                background: '#065F46',
+                background: `color-mix(in srgb, ${PU.success} 18%, ${PU.bg})`,
                 borderRadius: '10px',
                 padding: '14px',
                 textAlign: 'center',
-                color: '#10B981',
+                border: `1px solid color-mix(in srgb, ${PU.success} 45%, transparent)`,
+                color: PU.success,
                 fontSize: '15px',
                 fontWeight: '600',
                 opacity: readOnly ? 0.85 : 1,
@@ -316,12 +319,12 @@ export default function DailyLesson({
         {showTip && lesson.tip ? (
           <div
             style={{
-              background: '#1E3A2F',
-              border: '1px solid #10B981',
+              background: `color-mix(in srgb, ${PU.success} 12%, ${PU.card})`,
+              border: `1px solid color-mix(in srgb, ${PU.success} 40%, transparent)`,
               borderRadius: '10px',
               padding: '14px',
               marginTop: '12px',
-              color: '#6EE7B7',
+              color: PU.fg,
               fontSize: '14px',
               lineHeight: '1.6',
               transition: 'opacity 0.3s ease',

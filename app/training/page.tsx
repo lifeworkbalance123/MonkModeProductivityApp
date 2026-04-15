@@ -64,6 +64,12 @@ import {
   type TrainingModule,
 } from '@/lib/trainingContent'
 import {
+  TRAINING_MODE_COLORS,
+  trainingAccentFromPersonalCategory,
+  trainingOnAccentForeground,
+  trainingThumbnailBackdrop,
+} from '@/lib/training-palette'
+import {
   BookOpen,
   Clock,
   FileText,
@@ -124,15 +130,30 @@ function TrainingModuleCard(props: {
     : props.typeLabel === 'video'
       ? 'Video'
       : 'Article'
+  const accent = props.personalCategory
+    ? trainingAccentFromPersonalCategory(props.personalCategory)
+    : props.typeLabel === 'video'
+      ? TRAINING_MODE_COLORS.sprint
+      : TRAINING_MODE_COLORS.transform
+  const onAccentFg = trainingOnAccentForeground(accent)
   return (
-    <Card className="overflow-hidden group transition-all hover:border-accent/50 relative">
+    <Card
+      className="overflow-hidden group transition-all border border-border relative hover:border-[color:var(--training-accent)]"
+      style={{ ['--training-accent' as string]: accent }}
+    >
       {props.actions ? (
         <div className="absolute top-2 right-2 z-10 flex gap-1">{props.actions}</div>
       ) : null}
-      <div className="aspect-video relative overflow-hidden bg-gradient-to-br from-amber-500/45 via-amber-600/30 to-amber-950/40">
+      <div
+        className="aspect-video relative overflow-hidden"
+        style={{ background: trainingThumbnailBackdrop(accent) }}
+      >
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-14 h-14 rounded-full bg-accent/90 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
-            <Play className="w-6 h-6 text-accent-foreground ml-0.5" />
+          <div
+            className="w-14 h-14 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg"
+            style={{ backgroundColor: `color-mix(in srgb, ${accent} 88%, transparent)` }}
+          >
+            <Play className="w-6 h-6 ml-0.5" style={{ color: onAccentFg }} />
           </div>
         </div>
         {!props.personalCategory ? (
@@ -153,7 +174,7 @@ function TrainingModuleCard(props: {
       <div className="p-4 space-y-3">
         <h3
           className={cn(
-            'font-semibold group-hover:text-accent transition-colors',
+            'font-semibold transition-colors group-hover:text-[color:var(--training-accent)]',
             props.actions && 'pr-14',
           )}
         >
@@ -472,8 +493,8 @@ export default function TrainingPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 space-y-16">
         <section className="space-y-8">
           <div className="text-center space-y-1 max-w-2xl mx-auto">
-            <h1 className="text-2xl sm:text-3xl font-semibold">MonkMode Training</h1>
-            <p className="text-sm text-muted-foreground">Curated by the MonkMode team</p>
+            <h1 className="text-2xl sm:text-3xl font-semibold">monkcubed training</h1>
+            <p className="text-sm text-muted-foreground">Curated by the monkcubed team</p>
             <p className="text-xs text-muted-foreground">
               <Link href="/videos" className="text-accent underline-offset-4 hover:underline">
                 Video library
@@ -560,7 +581,9 @@ export default function TrainingPage() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {personal.map((r) => (
+              {personal.map((r) => {
+                const personalAccent = trainingAccentFromPersonalCategory(r.category)
+                return (
                 <TrainingModuleCard
                   key={r.id}
                   title={r.title}
@@ -593,14 +616,19 @@ export default function TrainingPage() {
                   }
                   footer={
                     <Button
-                      className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+                      className="w-full hover:opacity-90"
+                      style={{
+                        backgroundColor: personalAccent,
+                        color: trainingOnAccentForeground(personalAccent),
+                      }}
                       onClick={() => openPersonalViewer(r)}
                     >
                       {r.category === 'Video' ? 'Watch now' : 'Open'}
                     </Button>
                   }
                 />
-              ))}
+                )
+              })}
             </div>
           )}
         </section>

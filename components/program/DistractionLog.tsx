@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { PU } from '@/lib/program-ui-tokens'
 
 export type DistractionCategory =
   | 'general'
@@ -103,10 +104,10 @@ export default function DistractionLog({ dayNumber }: { dayNumber: number }) {
   return (
     <div
       style={{
-        background: '#1E293B',
+        background: PU.card,
         borderRadius: '12px',
         padding: '16px 20px',
-        border: '1px solid #334155',
+        border: `1px solid ${PU.border}`,
         marginBottom: '16px',
       }}
     >
@@ -119,19 +120,19 @@ export default function DistractionLog({ dayNumber }: { dayNumber: number }) {
         }}
       >
         <div>
-          <h3 style={{ color: 'white', fontSize: '15px', fontWeight: '500', margin: '0 0 2px' }}>
+          <h3 style={{ color: PU.fg, fontSize: '15px', fontWeight: '500', margin: '0 0 2px' }}>
             Distraction Log
           </h3>
-          <p style={{ color: '#64748B', fontSize: '12px', margin: 0 }}>Today: {todayCount} logged</p>
+          <p style={{ color: PU.mutedFg, fontSize: '12px', margin: 0 }}>Today: {todayCount} logged</p>
         </div>
 
         <button
           type="button"
           onClick={() => setShowInput((s) => !s)}
           style={{
-            background: '#EF4444',
+            background: PU.destructive,
             border: 'none',
-            color: 'white',
+            color: 'var(--destructive-foreground)',
             width: '40px',
             height: '40px',
             borderRadius: '10px',
@@ -151,13 +152,13 @@ export default function DistractionLog({ dayNumber }: { dayNumber: number }) {
       {showInput ? (
         <div
           style={{
-            background: '#0F172A',
+            background: PU.bg,
             borderRadius: '10px',
             padding: '14px',
             marginBottom: '12px',
           }}
         >
-          <p style={{ color: '#94A3B8', fontSize: '13px', margin: '0 0 10px' }}>What distracted you?</p>
+          <p style={{ color: PU.mutedFg, fontSize: '13px', margin: '0 0 10px' }}>What distracted you?</p>
 
           <div
             style={{
@@ -173,9 +174,9 @@ export default function DistractionLog({ dayNumber }: { dayNumber: number }) {
                 type="button"
                 onClick={() => setCategory(cat.value)}
                 style={{
-                  background: category === cat.value ? '#F59E0B' : '#1E293B',
-                  color: category === cat.value ? '#000' : '#94A3B8',
-                  border: '1px solid #334155',
+                  background: category === cat.value ? PU.primary : PU.card,
+                  color: category === cat.value ? PU.primaryFg : PU.mutedFg,
+                  border: `1px solid ${PU.border}`,
                   padding: '4px 10px',
                   borderRadius: '6px',
                   cursor: 'pointer',
@@ -197,11 +198,11 @@ export default function DistractionLog({ dayNumber }: { dayNumber: number }) {
             }}
             style={{
               width: '100%',
-              background: '#1E293B',
-              border: '1px solid #334155',
+              background: PU.card,
+              border: `1px solid ${PU.border}`,
               borderRadius: '8px',
               padding: '10px 12px',
-              color: 'white',
+              color: PU.fg,
               fontSize: '14px',
               outline: 'none',
               boxSizing: 'border-box',
@@ -216,8 +217,8 @@ export default function DistractionLog({ dayNumber }: { dayNumber: number }) {
               disabled={logging}
               style={{
                 flex: 1,
-                background: '#EF4444',
-                color: 'white',
+                background: PU.destructive,
+                color: 'var(--destructive-foreground)',
                 border: 'none',
                 borderRadius: '8px',
                 padding: '10px',
@@ -235,9 +236,9 @@ export default function DistractionLog({ dayNumber }: { dayNumber: number }) {
                 setTrigger('')
               }}
               style={{
-                background: '#1E293B',
-                color: '#64748B',
-                border: '1px solid #334155',
+                background: PU.card,
+                color: PU.mutedFg,
+                border: `1px solid ${PU.border}`,
                 borderRadius: '8px',
                 padding: '10px 14px',
                 cursor: 'pointer',
@@ -260,13 +261,13 @@ export default function DistractionLog({ dayNumber }: { dayNumber: number }) {
                   width: '10px',
                   height: '10px',
                   borderRadius: '2px',
-                  background: '#EF4444',
+                  background: PU.destructive,
                   opacity: 0.7,
                 }}
               />
             ))}
             {todayCount > 20 ? (
-              <span style={{ color: '#EF4444', fontSize: '11px' }}>+{todayCount - 20} more</span>
+              <span style={{ color: PU.destructive, fontSize: '11px' }}>+{todayCount - 20} more</span>
             ) : null}
           </div>
 
@@ -276,7 +277,7 @@ export default function DistractionLog({ dayNumber }: { dayNumber: number }) {
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#64748B',
+              color: PU.mutedFg,
               fontSize: '12px',
               cursor: 'pointer',
               padding: 0,
@@ -294,21 +295,21 @@ export default function DistractionLog({ dayNumber }: { dayNumber: number }) {
                     display: 'flex',
                     gap: '8px',
                     padding: '6px 0',
-                    borderBottom: '1px solid #1E293B',
+                    borderBottom: `1px solid ${PU.border}`,
                     fontSize: '12px',
                   }}
                 >
-                  <span style={{ color: '#64748B' }}>
+                  <span style={{ color: PU.mutedFg }}>
                     {new Date(log.logged_at).toLocaleTimeString('en-AU', {
                       hour: '2-digit',
                       minute: '2-digit',
                     })}
                   </span>
-                  <span style={{ color: '#94A3B8', textTransform: 'capitalize' }}>
+                  <span style={{ color: PU.mutedFg, textTransform: 'capitalize' }}>
                     {log.category ?? 'general'}
                   </span>
                   {log.trigger_text ? (
-                    <span style={{ color: '#64748B', fontStyle: 'italic' }}>— {log.trigger_text}</span>
+                    <span style={{ color: PU.mutedFg, fontStyle: 'italic' }}>— {log.trigger_text}</span>
                   ) : null}
                 </div>
               ))}

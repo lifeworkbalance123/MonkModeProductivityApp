@@ -60,17 +60,17 @@ export default function AdminAnnouncementsPage() {
 
   return (
     <div className="max-w-xl">
-      <h1 className="text-2xl font-semibold text-white">Announcements</h1>
-      <p className="mt-2 text-sm text-slate-500">
-        Global banner text (single row <code className="text-slate-400">id=1</code>).
+      <h1 className="text-2xl font-semibold text-foreground">Announcements</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Global banner text (single row <code className="text-muted-foreground">id=1</code>).
       </p>
 
       {loadError ? (
         <p className="mt-4 text-sm text-red-400">{loadError}</p>
       ) : null}
 
-      <div className="mt-8 rounded-xl border border-slate-700 bg-[#1E293B] p-6">
-        <label className="mb-2 block text-[13px] text-slate-400">
+      <div className="mt-8 rounded-xl border border-border bg-card p-6">
+        <label className="mb-2 block text-[13px] text-muted-foreground">
           Announcement message
         </label>
         <textarea
@@ -78,7 +78,7 @@ export default function AdminAnnouncementsPage() {
           onChange={(e) => setBodyText(e.target.value)}
           placeholder="e.g. New feature: Deep Work is live."
           rows={4}
-          className="box-border w-full resize-y rounded-lg border border-slate-600 bg-[#0F172A] p-3 text-sm text-white outline-none placeholder:text-slate-600"
+          className="box-border w-full resize-y rounded-lg border border-border bg-background p-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
         />
 
         <label className="mt-4 flex cursor-pointer items-center gap-2.5">
@@ -88,7 +88,7 @@ export default function AdminAnnouncementsPage() {
             onChange={(e) => setActive(e.target.checked)}
             className="cursor-pointer"
           />
-          <span className="text-sm text-slate-300">
+          <span className="text-sm text-muted-foreground">
             Show this announcement to all signed-in users
           </span>
         </label>
@@ -98,7 +98,7 @@ export default function AdminAnnouncementsPage() {
             type="button"
             disabled={saving}
             onClick={() => void saveAnnouncement()}
-            className="rounded-lg bg-amber-500 px-6 py-2.5 text-sm font-medium text-black hover:bg-amber-400 disabled:cursor-wait disabled:opacity-60"
+            className="rounded-lg bg-accent px-6 py-2.5 text-sm font-medium text-accent-foreground hover:bg-accent/90 disabled:cursor-wait disabled:opacity-60"
           >
             {saving ? 'Saving…' : 'Save announcement'}
           </button>
@@ -110,8 +110,8 @@ export default function AdminAnnouncementsPage() {
 
       {bodyText ? (
         <div className="mt-8">
-          <p className="mb-2 text-[13px] text-slate-500">Preview</p>
-          <div className="rounded-lg border border-amber-600 bg-amber-950/40 px-4 py-3 text-sm text-amber-100">
+          <p className="mb-2 text-[13px] text-muted-foreground">Preview</p>
+          <div className="rounded-lg border border-accent/60 bg-accent/15 px-4 py-3 text-sm text-foreground">
             📢 {bodyText}
           </div>
         </div>

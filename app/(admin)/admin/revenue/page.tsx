@@ -46,17 +46,17 @@ export default function AdminRevenuePage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-white">Revenue</h1>
-      <p className="mt-2 text-sm text-slate-500">
+      <h1 className="text-2xl font-semibold text-foreground">Revenue</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
         Indicative numbers from plan counts (not Stripe cash). See{' '}
-        <Link href="/admin" className="text-amber-400 underline">
+        <Link href="/admin" className="text-accent underline">
           Overview
         </Link>{' '}
         for signups and waitlist.
       </p>
 
       {loading ? (
-        <p className="mt-8 text-slate-500">Loading…</p>
+        <p className="mt-8 text-muted-foreground">Loading…</p>
       ) : (
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Stat
@@ -100,10 +100,10 @@ function Stat({
   hint: string
 }) {
   return (
-    <div className="rounded-xl border border-slate-700 bg-[#1E293B] p-5">
-      <div className="text-2xl font-semibold text-amber-400">{value}</div>
-      <div className="mt-1 text-sm text-slate-300">{label}</div>
-      <p className="mt-2 text-xs text-slate-500">{hint}</p>
+    <div className="rounded-xl border border-border bg-card p-5">
+      <div className="text-2xl font-semibold text-accent">{value}</div>
+      <div className="mt-1 text-sm text-foreground">{label}</div>
+      <p className="mt-2 text-xs text-muted-foreground">{hint}</p>
     </div>
   )
 }

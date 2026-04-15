@@ -177,10 +177,10 @@ function TestModePanel() {
   return (
     <div
       style={{
-        background: '#1E293B',
+        background: 'var(--card)',
         borderRadius: '12px',
         padding: '20px 24px',
-        border: '2px solid #F59E0B44',
+        border: '2px solid color-mix(in srgb, var(--accent) 30%, transparent)',
         marginBottom: '32px',
       }}
     >
@@ -194,10 +194,10 @@ function TestModePanel() {
       >
         <span style={{ fontSize: '20px' }}>🧪</span>
         <div>
-          <h3 style={{ color: 'white', fontSize: '16px', fontWeight: '600', margin: '0 0 2px' }}>
+          <h3 style={{ color: 'var(--foreground)', fontSize: '16px', fontWeight: '600', margin: '0 0 2px' }}>
             Test Mode — Your Account
           </h3>
-          <p style={{ color: '#64748B', fontSize: '12px', margin: 0 }}>
+          <p style={{ color: 'var(--muted-foreground)', fontSize: '12px', margin: 0 }}>
             Override your program day to test any lesson without waiting. Only affects your account.
           </p>
         </div>
@@ -205,8 +205,8 @@ function TestModePanel() {
           <span
             style={{
               marginLeft: 'auto',
-              background: '#F59E0B',
-              color: '#000',
+              background: 'var(--accent)',
+              color: 'var(--accent-foreground)',
               fontSize: '11px',
               fontWeight: '700',
               padding: '4px 10px',
@@ -226,19 +226,19 @@ function TestModePanel() {
           marginBottom: '16px',
         }}
       >
-        <div style={{ background: '#0F172A', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
-          <p style={{ color: '#64748B', fontSize: '11px', margin: '0 0 4px' }}>Real day</p>
-          <p style={{ color: 'white', fontSize: '20px', fontWeight: '700', margin: 0 }}>{realDay}</p>
+        <div style={{ background: 'var(--background)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', margin: '0 0 4px' }}>Real day</p>
+          <p style={{ color: 'var(--foreground)', fontSize: '20px', fontWeight: '700', margin: 0 }}>{realDay}</p>
         </div>
-        <div style={{ background: '#0F172A', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
-          <p style={{ color: '#64748B', fontSize: '11px', margin: '0 0 4px' }}>Test day</p>
-          <p style={{ color: testMode ? '#F59E0B' : '#334155', fontSize: '20px', fontWeight: '700', margin: 0 }}>
+        <div style={{ background: 'var(--background)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', margin: '0 0 4px' }}>Test day</p>
+          <p style={{ color: testMode ? 'var(--accent)' : 'var(--muted-foreground)', fontSize: '20px', fontWeight: '700', margin: 0 }}>
             {testMode ? testDay : '—'}
           </p>
         </div>
-        <div style={{ background: '#0F172A', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
-          <p style={{ color: '#64748B', fontSize: '11px', margin: '0 0 4px' }}>Status</p>
-          <p style={{ color: testMode ? '#F59E0B' : '#10B981', fontSize: '13px', fontWeight: '600', margin: 0 }}>
+        <div style={{ background: 'var(--background)', borderRadius: '8px', padding: '12px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', margin: '0 0 4px' }}>Status</p>
+          <p style={{ color: testMode ? 'var(--accent)' : '#10B981', fontSize: '13px', fontWeight: '600', margin: 0 }}>
             {testMode ? 'Override' : 'Normal'}
           </p>
         </div>
@@ -259,7 +259,7 @@ function TestModePanel() {
             alignItems: 'center',
             gap: '8px',
             cursor: 'pointer',
-            color: '#CBD5E1',
+            color: 'var(--foreground)',
             fontSize: '14px',
           }}
         >
@@ -277,7 +277,7 @@ function TestModePanel() {
         </label>
 
         <div>
-          <p style={{ color: '#64748B', fontSize: '11px', margin: '0 0 4px' }}>Jump to day</p>
+          <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', margin: '0 0 4px' }}>Jump to day</p>
           <input
             type="number"
             min={1}
@@ -287,11 +287,11 @@ function TestModePanel() {
               setTestDay(Math.min(60, Math.max(1, Number.parseInt(e.target.value, 10) || 1)))
             }
             style={{
-              background: '#0F172A',
-              border: '1px solid #334155',
+              background: 'var(--background)',
+              border: '1px solid var(--border)',
               borderRadius: '8px',
               padding: '8px 12px',
-              color: 'white',
+              color: 'var(--foreground)',
               fontSize: '14px',
               width: '80px',
               outline: 'none',
@@ -304,8 +304,8 @@ function TestModePanel() {
           onClick={() => void saveTestMode()}
           disabled={saving}
           style={{
-            background: '#F59E0B',
-            color: '#000',
+            background: 'var(--accent)',
+            color: 'var(--accent-foreground)',
             border: 'none',
             borderRadius: '8px',
             padding: '9px 20px',
@@ -322,9 +322,9 @@ function TestModePanel() {
           onClick={() => void advanceOneDay()}
           disabled={saving || testDay >= 60}
           style={{
-            background: '#1E293B',
-            color: '#94A3B8',
-            border: '1px solid #334155',
+            background: 'var(--card)',
+            color: 'var(--muted-foreground)',
+            border: '1px solid var(--border)',
             borderRadius: '8px',
             padding: '9px 16px',
             cursor: saving || testDay >= 60 ? 'not-allowed' : 'pointer',
@@ -363,7 +363,7 @@ function TestModePanel() {
       {message ? (
         <div
           style={{
-            background: '#0F172A',
+            background: 'var(--background)',
             borderRadius: '8px',
             padding: '10px 14px',
             color: message.startsWith('✅') ? '#10B981' : '#F87171',
@@ -379,28 +379,28 @@ function TestModePanel() {
         style={{
           marginTop: '12px',
           padding: '12px',
-          background: '#0F172A',
+          background: 'var(--background)',
           borderRadius: '8px',
-          border: '1px solid #1E293B',
+          border: '1px solid var(--border)',
         }}
       >
-        <p style={{ color: '#475569', fontSize: '12px', margin: '0 0 6px', fontWeight: '500' }}>How to use:</p>
-        <p style={{ color: '#475569', fontSize: '12px', margin: '0 0 4px', lineHeight: '1.6' }}>
+        <p style={{ color: 'var(--muted-foreground)', fontSize: '12px', margin: '0 0 6px', fontWeight: '500' }}>How to use:</p>
+        <p style={{ color: 'var(--muted-foreground)', fontSize: '12px', margin: '0 0 4px', lineHeight: '1.6' }}>
           1. Tick &quot;Enable test mode&quot;
         </p>
-        <p style={{ color: '#475569', fontSize: '12px', margin: '0 0 4px', lineHeight: '1.6' }}>
+        <p style={{ color: 'var(--muted-foreground)', fontSize: '12px', margin: '0 0 4px', lineHeight: '1.6' }}>
           2. Type a day number (1-60) in &quot;Jump to day&quot;
         </p>
-        <p style={{ color: '#475569', fontSize: '12px', margin: '0 0 4px', lineHeight: '1.6' }}>
+        <p style={{ color: 'var(--muted-foreground)', fontSize: '12px', margin: '0 0 4px', lineHeight: '1.6' }}>
           3. Click Apply
         </p>
-        <p style={{ color: '#475569', fontSize: '12px', margin: '0 0 4px', lineHeight: '1.6' }}>
+        <p style={{ color: 'var(--muted-foreground)', fontSize: '12px', margin: '0 0 4px', lineHeight: '1.6' }}>
           4. Go to /today — you will see that day&apos;s lesson
         </p>
-        <p style={{ color: '#475569', fontSize: '12px', margin: '0 0 4px', lineHeight: '1.6' }}>
+        <p style={{ color: 'var(--muted-foreground)', fontSize: '12px', margin: '0 0 4px', lineHeight: '1.6' }}>
           5. Use +1 Day to step through lessons one at a time
         </p>
-        <p style={{ color: '#475569', fontSize: '12px', margin: 0, lineHeight: '1.6' }}>
+        <p style={{ color: 'var(--muted-foreground)', fontSize: '12px', margin: 0, lineHeight: '1.6' }}>
           6. Turn off test mode when done — real day progression resumes
         </p>
       </div>
@@ -520,8 +520,8 @@ export default function AdminUsersPage() {
     <div>
       <TestModePanel />
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-white">Users</h1>
-        <p className="mt-1 text-sm text-slate-500">{users.length} total users</p>
+        <h1 className="text-2xl font-semibold text-foreground">Users</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{users.length} total users</p>
       </div>
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
@@ -530,12 +530,12 @@ export default function AdminUsersPage() {
           placeholder="Search by email…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-xs rounded-lg border border-slate-600 bg-[#1E293B] px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 sm:max-w-sm"
+          className="w-full max-w-xs rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground sm:max-w-sm"
         />
         <select
           value={filterPlan}
           onChange={(e) => setFilterPlan(e.target.value)}
-          className="rounded-lg border border-slate-600 bg-[#1E293B] px-3 py-2 text-sm text-white"
+          className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground"
         >
           <option value="all">All plans</option>
           <option value="trial">Trial</option>
@@ -552,19 +552,19 @@ export default function AdminUsersPage() {
         ) : null}
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-700 bg-[#1E293B]">
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
         {loading ? (
-          <div className="p-10 text-center text-slate-500">Loading users…</div>
+          <div className="p-10 text-center text-muted-foreground">Loading users…</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[13px]">
               <thead>
-                <tr className="border-b border-slate-600">
+                <tr className="border-b border-border">
                   {['Email', 'Plan', 'Trial ends', 'Signed up', 'Actions'].map(
                     (h) => (
                       <th
                         key={h}
-                        className="px-5 py-3.5 text-left text-xs font-medium text-slate-500"
+                        className="px-5 py-3.5 text-left text-xs font-medium text-muted-foreground"
                       >
                         {h}
                       </th>
@@ -574,8 +574,8 @@ export default function AdminUsersPage() {
               </thead>
               <tbody>
                 {filtered.map((user) => (
-                  <tr key={user.id} className="border-b border-slate-900">
-                    <td className="px-5 py-3.5 text-slate-300">
+                  <tr key={user.id} className="border-b border-border">
+                    <td className="px-5 py-3.5 text-muted-foreground">
                       {user.email ?? '—'}
                       {user.is_admin ? (
                         <span className="ml-2 rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-medium text-white">
@@ -586,12 +586,12 @@ export default function AdminUsersPage() {
                     <td className="px-5 py-3.5">
                       <PlanBadge plan={user.plan} />
                     </td>
-                    <td className="px-5 py-3.5 text-xs text-slate-500">
+                    <td className="px-5 py-3.5 text-xs text-muted-foreground">
                       {user.trial_end_date
                         ? new Date(user.trial_end_date).toLocaleDateString('en-AU')
                         : '—'}
                     </td>
-                    <td className="px-5 py-3.5 text-xs text-slate-500">
+                    <td className="px-5 py-3.5 text-xs text-muted-foreground">
                       {user.created_at
                         ? new Date(user.created_at).toLocaleDateString('en-AU')
                         : '—'}
@@ -600,7 +600,7 @@ export default function AdminUsersPage() {
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
-                          className="rounded-md border border-slate-600 px-2.5 py-1 text-[11px] text-slate-300 hover:bg-slate-700 disabled:opacity-50"
+                          className="rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:bg-muted disabled:opacity-50"
                           disabled={updatingUser === user.id}
                           onClick={() =>
                             void toggleProAccess(user.id, user.plan)
@@ -617,7 +617,7 @@ export default function AdminUsersPage() {
                         </button>
                         <button
                           type="button"
-                          className="rounded-md border border-slate-600 px-2.5 py-1 text-[11px] text-slate-300 hover:bg-slate-700 disabled:opacity-50"
+                          className="rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:bg-muted disabled:opacity-50"
                           disabled={updatingUser === user.id}
                           onClick={() => void extendTrial(user.id)}
                         >

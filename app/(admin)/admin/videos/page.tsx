@@ -202,10 +202,10 @@ export default function AdminVideosPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <div>
-        <h1 className="text-xl font-semibold text-white">Training videos (catalog)</h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <h1 className="text-xl font-semibold text-foreground">Training videos (catalog)</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Entries appear on the public{' '}
-          <Link href="/videos" className="text-amber-400 underline hover:text-amber-300">
+          <Link href="/videos" className="text-accent underline hover:opacity-90">
             /videos
           </Link>{' '}
           page. Use a YouTube watch or youtu.be URL for embed playback.
@@ -217,7 +217,7 @@ export default function AdminVideosPage() {
           className={
             looksLikeMissingTrainingVideosTable(catalogError)
               ? 'border-red-900/60 bg-red-950/30 p-6 text-sm text-red-200'
-              : 'border-amber-900/50 bg-amber-950/20 p-6 text-sm text-amber-100'
+              : 'border-accent/50 bg-accent/15 p-6 text-sm text-foreground'
           }
         >
           <p className="font-medium text-white">
@@ -238,7 +238,7 @@ export default function AdminVideosPage() {
             <Button
               type="button"
               variant="outline"
-              className="border-slate-500 text-slate-100 hover:bg-slate-800"
+              className="border-border text-muted-foreground hover:bg-muted"
               disabled={loading}
               onClick={() => void load()}
             >
@@ -255,38 +255,38 @@ export default function AdminVideosPage() {
         </Card>
       ) : null}
 
-      <Card className="border-slate-700 bg-slate-900/40 p-6">
-        <h2 className="mb-4 text-sm font-medium text-slate-200">
+      <Card className="border-border bg-card p-6">
+        <h2 className="mb-4 text-sm font-medium text-foreground">
           {editingId ? 'Edit video' : 'Add video'}
         </h2>
         <form className="space-y-4" onSubmit={(e) => void submit(e)}>
           <div className="space-y-2">
-            <Label htmlFor="ob-title" className="text-slate-300">
+            <Label htmlFor="ob-title" className="text-muted-foreground">
               Title
             </Label>
             <Input
               id="ob-title"
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              className="border-slate-600 bg-slate-950 text-white"
+              className="border-border bg-background text-foreground"
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="ob-url" className="text-slate-300">
+            <Label htmlFor="ob-url" className="text-muted-foreground">
               Video URL (YouTube or direct link)
             </Label>
             <Input
               id="ob-url"
               value={form.video_url}
               onChange={(e) => setForm((f) => ({ ...f, video_url: e.target.value }))}
-              className="border-slate-600 bg-slate-950 text-white"
+              className="border-border bg-background text-foreground"
               placeholder="https://www.youtube.com/watch?v=…"
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="ob-desc" className="text-slate-300">
+            <Label htmlFor="ob-desc" className="text-muted-foreground">
               Description
             </Label>
             <Textarea
@@ -294,23 +294,23 @@ export default function AdminVideosPage() {
               rows={3}
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              className="resize-y border-slate-600 bg-slate-950 text-white"
+              className="resize-y border-border bg-background text-foreground"
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="ob-cat" className="text-slate-300">
+              <Label htmlFor="ob-cat" className="text-muted-foreground">
                 Category
               </Label>
               <Input
                 id="ob-cat"
                 value={form.category}
                 onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                className="border-slate-600 bg-slate-950 text-white"
+                className="border-border bg-background text-foreground"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="ob-sort" className="text-slate-300">
+              <Label htmlFor="ob-sort" className="text-muted-foreground">
                 Sort order (lower first)
               </Label>
               <Input
@@ -318,7 +318,7 @@ export default function AdminVideosPage() {
                 type="number"
                 value={form.sort_order}
                 onChange={(e) => setForm((f) => ({ ...f, sort_order: e.target.value }))}
-                className="border-slate-600 bg-slate-950 text-white"
+                className="border-border bg-background text-foreground"
               />
             </div>
           </div>
@@ -326,7 +326,7 @@ export default function AdminVideosPage() {
             <Button
               type="submit"
               disabled={saving}
-              className="bg-amber-500 font-semibold text-slate-950 hover:bg-amber-400"
+              className="bg-accent font-semibold text-accent-foreground hover:bg-accent/90"
             >
               {saving ? (
                 <>
@@ -343,7 +343,7 @@ export default function AdminVideosPage() {
               )}
             </Button>
             {editingId ? (
-              <Button type="button" variant="outline" className="border-slate-600" onClick={cancelEdit}>
+              <Button type="button" variant="outline" className="border-border" onClick={cancelEdit}>
                 Cancel edit
               </Button>
             ) : null}
@@ -352,25 +352,25 @@ export default function AdminVideosPage() {
       </Card>
 
       <div>
-        <h2 className="mb-3 text-sm font-medium text-slate-200">Catalog ({videos.length})</h2>
+        <h2 className="mb-3 text-sm font-medium text-foreground">Catalog ({videos.length})</h2>
         {loading ? (
-          <p className="flex items-center gap-2 text-sm text-slate-400">
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
             Loading…
           </p>
         ) : videos.length === 0 ? (
-          <p className="text-sm text-slate-500">No rows yet. Add one above.</p>
+          <p className="text-sm text-muted-foreground">No rows yet. Add one above.</p>
         ) : (
           <ul className="space-y-2">
             {videos.map((v) => (
               <li
                 key={v.id}
-                className="flex flex-col gap-2 rounded-lg border border-slate-700 bg-slate-900/50 p-4 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-lg border border-border bg-card/80 p-4 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
-                  <p className="font-medium text-white">{v.title}</p>
-                  <p className="truncate text-xs text-slate-500">{v.video_url}</p>
-                  <p className="text-xs text-slate-400">
+                  <p className="font-medium text-foreground">{v.title}</p>
+                  <p className="truncate text-xs text-muted-foreground">{v.video_url}</p>
+                  <p className="text-xs text-muted-foreground">
                     {v.category} · order {v.sort_order}
                   </p>
                 </div>
@@ -379,7 +379,7 @@ export default function AdminVideosPage() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="border-slate-600"
+                    className="border-border"
                     onClick={() => startEdit(v)}
                   >
                     <Pencil className="mr-1 h-3.5 w-3.5" aria-hidden />
@@ -403,15 +403,15 @@ export default function AdminVideosPage() {
       </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <AlertDialogContent className="border-slate-700 bg-slate-900 text-slate-100">
+        <AlertDialogContent className="border-border bg-card text-foreground">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this video?</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
+            <AlertDialogDescription className="text-muted-foreground">
               This removes it from the public catalog. It cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-600 bg-transparent">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-border bg-transparent">Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 text-white hover:bg-red-500"
               disabled={deleting}

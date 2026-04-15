@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { PU } from '@/lib/program-ui-tokens'
 
 export const ENERGY_TIME_SLOTS = [
   '06:00',
@@ -47,17 +48,17 @@ function getCurrentTimeSlot(): EnergyTimeSlot {
 }
 
 function getEnergyColor(rating: number): string {
-  if (rating >= 8) return '#10B981'
-  if (rating >= 5) return '#F59E0B'
-  return '#EF4444'
+  if (rating >= 8) return PU.success
+  if (rating >= 5) return PU.primary
+  return PU.destructive
 }
 
 function getEnergyLabel(rating: number): string {
-  if (rating >= 9) return 'Peak 🔥'
-  if (rating >= 7) return 'High ⚡'
-  if (rating >= 5) return 'Medium 😐'
-  if (rating >= 3) return 'Low 😴'
-  return 'Drained 💀'
+  if (rating >= 9) return 'Peak'
+  if (rating >= 7) return 'High'
+  if (rating >= 5) return 'Medium'
+  if (rating >= 3) return 'Low'
+  return 'Drained'
 }
 
 function dedupeLatestBySlot(rows: EnergyLogRow[]): EnergyLogRow[] {
@@ -162,10 +163,10 @@ export default function EnergyLog({ dayNumber }: { dayNumber: number }) {
   return (
     <div
       style={{
-        background: '#1E293B',
+        background: PU.card,
         borderRadius: '12px',
         padding: '16px 20px',
-        border: '1px solid #334155',
+        border: `1px solid ${PU.border}`,
         marginBottom: '16px',
       }}
     >
@@ -178,7 +179,7 @@ export default function EnergyLog({ dayNumber }: { dayNumber: number }) {
         }}
       >
         <div>
-          <h3 style={{ color: 'white', fontSize: '15px', fontWeight: '500', margin: '0 0 2px' }}>
+          <h3 style={{ color: PU.fg, fontSize: '15px', fontWeight: '500', margin: '0 0 2px' }}>
             Energy Log
           </h3>
           {avgRating !== null ? (
@@ -186,7 +187,7 @@ export default function EnergyLog({ dayNumber }: { dayNumber: number }) {
               Today avg: {avgRating}/10 — {getEnergyLabel(avgRating)}
             </p>
           ) : (
-            <p style={{ color: '#64748B', fontSize: '12px', margin: 0 }}>No readings yet today</p>
+            <p style={{ color: PU.mutedFg, fontSize: '12px', margin: 0 }}>No readings yet today</p>
           )}
         </div>
 
@@ -194,9 +195,9 @@ export default function EnergyLog({ dayNumber }: { dayNumber: number }) {
           type="button"
           onClick={() => setShowForm((s) => !s)}
           style={{
-            background: '#10B981',
+            background: PU.success,
             border: 'none',
-            color: 'white',
+            color: PU.primaryFg,
             padding: '8px 14px',
             borderRadius: '8px',
             cursor: 'pointer',
@@ -228,7 +229,7 @@ export default function EnergyLog({ dayNumber }: { dayNumber: number }) {
                 style={{
                   flex: 1,
                   height: `${Math.max(4, height)}px`,
-                  background: log ? getEnergyColor(log.rating) : '#1E293B',
+                  background: log ? getEnergyColor(log.rating) : PU.muted,
                   borderRadius: '3px',
                   transition: 'height 0.3s',
                 }}
@@ -239,8 +240,8 @@ export default function EnergyLog({ dayNumber }: { dayNumber: number }) {
       ) : null}
 
       {showForm ? (
-        <div style={{ background: '#0F172A', borderRadius: '10px', padding: '14px' }}>
-          <p style={{ color: '#94A3B8', fontSize: '12px', margin: '0 0 8px' }}>Time slot</p>
+        <div style={{ background: PU.bg, borderRadius: '10px', padding: '14px' }}>
+          <p style={{ color: PU.mutedFg, fontSize: '12px', margin: '0 0 8px' }}>Time slot</p>
           <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '12px' }}>
             {ENERGY_TIME_SLOTS.map((slot) => (
               <button
@@ -248,9 +249,9 @@ export default function EnergyLog({ dayNumber }: { dayNumber: number }) {
                 type="button"
                 onClick={() => setSelectedSlot(slot)}
                 style={{
-                  background: selectedSlot === slot ? '#F59E0B' : '#1E293B',
-                  color: selectedSlot === slot ? '#000' : '#94A3B8',
-                  border: '1px solid #334155',
+                  background: selectedSlot === slot ? PU.primary : PU.card,
+                  color: selectedSlot === slot ? PU.primaryFg : PU.mutedFg,
+                  border: `1px solid ${PU.border}`,
                   padding: '4px 8px',
                   borderRadius: '6px',
                   cursor: 'pointer',
@@ -262,7 +263,7 @@ export default function EnergyLog({ dayNumber }: { dayNumber: number }) {
             ))}
           </div>
 
-          <p style={{ color: '#94A3B8', fontSize: '12px', margin: '0 0 8px' }}>Energy rating (1–10)</p>
+          <p style={{ color: PU.mutedFg, fontSize: '12px', margin: '0 0 8px' }}>Energy rating (1–10)</p>
           <div style={{ display: 'flex', gap: '4px', marginBottom: '12px' }}>
             {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
               <button
@@ -271,9 +272,9 @@ export default function EnergyLog({ dayNumber }: { dayNumber: number }) {
                 onClick={() => setSelectedRating(n)}
                 style={{
                   flex: 1,
-                  background: selectedRating === n ? getEnergyColor(n) : '#1E293B',
-                  color: selectedRating === n ? '#000' : '#94A3B8',
-                  border: '1px solid #334155',
+                  background: selectedRating === n ? getEnergyColor(n) : PU.card,
+                  color: selectedRating === n ? PU.primaryFg : PU.mutedFg,
+                  border: `1px solid ${PU.border}`,
                   padding: '8px 0',
                   borderRadius: '6px',
                   cursor: 'pointer',
@@ -306,11 +307,11 @@ export default function EnergyLog({ dayNumber }: { dayNumber: number }) {
             onChange={(e) => setNotes(e.target.value)}
             style={{
               width: '100%',
-              background: '#1E293B',
-              border: '1px solid #334155',
+              background: PU.card,
+              border: `1px solid ${PU.border}`,
               borderRadius: '8px',
               padding: '10px 12px',
-              color: 'white',
+              color: PU.fg,
               fontSize: '14px',
               outline: 'none',
               boxSizing: 'border-box',
@@ -324,8 +325,8 @@ export default function EnergyLog({ dayNumber }: { dayNumber: number }) {
             disabled={selectedRating == null || saving}
             style={{
               width: '100%',
-              background: selectedRating != null ? '#10B981' : '#334155',
-              color: selectedRating != null ? 'white' : '#64748B',
+              background: selectedRating != null ? PU.success : PU.muted,
+              color: selectedRating != null ? PU.primaryFg : PU.mutedFg,
               border: 'none',
               borderRadius: '8px',
               padding: '10px',

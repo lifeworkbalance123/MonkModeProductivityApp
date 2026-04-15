@@ -84,8 +84,8 @@ export function FeaturesSection() {
     <section id="features" className="py-24 bg-background scroll-mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-balance">
-            Everything you need to enter Monk Mode
+          <h2 className="text-3xl sm:text-4xl font-semibold mb-4 text-balance">
+            Everything you need for structured depth
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-pretty">
             A complete productivity system designed for deep focus, intentional living, and continuous self-improvement.

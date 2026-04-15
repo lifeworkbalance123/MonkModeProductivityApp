@@ -1,11 +1,11 @@
 {
-  "name": "Monk Mode",
-  "short_name": "Monk Mode",
-  "description": "Deep focus productivity — habits, planner, and daily command center.",
+  "name": "monk³ – Monk Cubed",
+  "short_name": "monk³",
+  "description": "Discipline to the third power. Three modes. One practice. Sprint. Transform. Mastery.",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#111827",
-  "theme_color": "#A8B400",
+  "background_color": "#121212",
+  "theme_color": "#D4AF37",
   "icons": [
     {
       "src": "/icon.svg",

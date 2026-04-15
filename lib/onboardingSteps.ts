@@ -12,7 +12,16 @@ export type OnboardingStepRow = {
 }
 
 /** Which UI template to render (beyond generic title/description/video). */
-export type OnboardingStepKind = 'welcome' | 'why' | 'commitment' | 'wake' | 'ready' | 'content'
+export type OnboardingStepKind =
+  | 'welcome'
+  | 'why'
+  | 'commitment'
+  | 'wake'
+  | 'ready'
+  | 'content'
+  | 'goal_choice'
+  | 'conditional'
+  | 'environment'
 
 export function isOnboardingStepKind(v: string): v is OnboardingStepKind {
   return (
@@ -21,58 +30,60 @@ export function isOnboardingStepKind(v: string): v is OnboardingStepKind {
     v === 'commitment' ||
     v === 'wake' ||
     v === 'ready' ||
-    v === 'content'
+    v === 'content' ||
+    v === 'goal_choice' ||
+    v === 'conditional' ||
+    v === 'environment'
   )
 }
 
-/** Shipped default when the table has no rows (same flow as legacy hardcoded UI). */
+/** Shipped default when CMS has no rows (monkcubed onboarding script). */
 export const DEFAULT_ONBOARDING_STEPS: Omit<
   OnboardingStepRow,
   'id' | 'created_at' | 'updated_at'
 >[] = [
   {
     step_order: 0,
-    title: 'Welcome to the 60-Day Monk Mode Program',
+    title: 'monkcubed',
     description:
-      'Over the next 60 days you will build the habits, focus, and discipline of a monk.\n\nEach day takes 5–10 minutes. The results last a lifetime.',
+      'monk³ = discipline × discipline × discipline. Three ways to train.\n\nWelcome to monkcubed. Discipline to the third power.',
     video_url: null,
-    action_label: "Let's go →",
+    action_label: 'Choose your path',
     step_kind: 'welcome',
   },
   {
     step_order: 1,
-    title: 'Before we start — why are you here?',
+    title: 'What is your primary goal?',
     description:
-      'Most people who start a program like this quit by Day 5. The ones who finish have one thing in common: they know WHY they started. You don\'t need to tell us. But you need to know it.\n\n---CARD---\nAsk yourself:\n"Who do I want to be in 60 days? What would change in my life if I had the focus and discipline of a monk?"',
+      'Sprint (21–60 days): complete a project.\nTransform (60 days): holistic habit change.\nMastery (90+ days): advanced discipline.',
     video_url: null,
-    action_label: 'I know my why →',
-    step_kind: 'why',
+    action_label: 'Continue',
+    step_kind: 'goal_choice',
   },
   {
     step_order: 2,
-    title: 'The commitment',
-    description:
-      'This program works if you show up every day — even on the days you don\'t feel like it. Especially those days.\n\nThe commitment is simple: one lesson, one action, every day for 60 days.\n\n---CHECK---\nI commit to showing up every day for 60 days. I will complete the daily lesson and action — even on hard days.',
+    title: 'Your focus',
+    description: '',
     video_url: null,
-    action_label: 'I commit →',
-    step_kind: 'commitment',
+    action_label: 'Continue',
+    step_kind: 'conditional',
   },
   {
     step_order: 3,
-    title: 'Quick setup',
+    title: 'Small frictions. Big results.',
     description:
-      'One question to personalise your program.\n\n---WAKE---\nWhat time do you wake up?\n\n---HABITS---\nWe\'ll pre-load these starter habits for you:\n🛏️ Make bed\n📵 No phone first hour\n📓 Morning journal\n🚿 Cold shower\n💪 Exercise\n📚 Read 20 minutes\n\nYou can edit these anytime in the Habits section.',
+      'Set up your environment.\n\n---ENV---\nPhone charges outside bedroom.\nDeleted 3 distracting apps.\nTold one person about monkcubed.',
     video_url: null,
-    action_label: 'Looks good →',
-    step_kind: 'wake',
+    action_label: 'Continue',
+    step_kind: 'environment',
   },
   {
     step_order: 4,
-    title: "You're ready.",
+    title: 'Your journey begins tomorrow.',
     description:
-      'Day 1 begins now. Your first lesson is waiting.\n\nRemember: the goal is not to be perfect. The goal is to show up every single day.',
+      'Starter habits will appear in Habits after you begin. You can edit them anytime.',
     video_url: null,
-    action_label: 'Begin Day 1 →',
+    action_label: 'Lock in',
     step_kind: 'ready',
   },
 ]
@@ -125,4 +136,18 @@ export function parseWakeDescription(description: string | null): {
   const wakeLabel = wakeLines[0]?.trim() || 'What time do you wake up?'
   const habitsBlock = (wakeSection[1] ?? '').trim()
   return { intro, wakeLabel, habitsBlock }
+}
+
+export function parseEnvironmentDescription(description: string | null): {
+  intro: string
+  items: string[]
+} {
+  if (!description) return { intro: '', items: [] }
+  const [before, after] = description.split('---ENV---')
+  const intro = (before ?? '').trim()
+  const items = (after ?? '')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+  return { intro, items }
 }

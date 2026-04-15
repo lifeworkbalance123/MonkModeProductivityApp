@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
+import { PU } from '@/lib/program-ui-tokens'
+import { trainingAccentFromCategory } from '@/lib/training-palette'
 import { getYouTubeId } from '@/lib/trainingContent'
 
 type VideoModalProps = {
@@ -23,6 +25,7 @@ export default function VideoModal({
   category,
 }: VideoModalProps) {
   const videoId = getYouTubeId(youtubeUrl)
+  const accent = useMemo(() => trainingAccentFromCategory(category), [category])
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -57,11 +60,11 @@ export default function VideoModal({
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: '#1E293B',
+          background: PU.card,
           borderRadius: '16px',
           width: '100%',
           maxWidth: '800px',
-          border: '1px solid #334155',
+          border: `1px solid ${PU.border}`,
           overflow: 'hidden',
         }}
       >
@@ -71,7 +74,7 @@ export default function VideoModal({
             alignItems: 'flex-start',
             justifyContent: 'space-between',
             padding: '20px 24px',
-            borderBottom: '1px solid #334155',
+            borderBottom: `1px solid ${PU.border}`,
           }}
         >
           <div>
@@ -85,8 +88,8 @@ export default function VideoModal({
             >
               <span
                 style={{
-                  background: '#F59E0B22',
-                  color: '#F59E0B',
+                  background: `color-mix(in srgb, ${accent} 22%, transparent)`,
+                  color: accent,
                   fontSize: '11px',
                   padding: '2px 8px',
                   borderRadius: '4px',
@@ -95,17 +98,17 @@ export default function VideoModal({
               >
                 {category}
               </span>
-              <span style={{ color: '#64748B', fontSize: '12px' }}>{duration}</span>
+              <span style={{ color: PU.mutedFg, fontSize: '12px' }}>{duration}</span>
             </div>
-            <h2 style={{ color: 'white', fontSize: '18px', fontWeight: '600', margin: 0 }}>{title}</h2>
+            <h2 style={{ color: PU.fg, fontSize: '18px', fontWeight: '600', margin: 0 }}>{title}</h2>
           </div>
           <button
             type="button"
             onClick={onClose}
             style={{
-              background: '#334155',
+              background: PU.muted,
               border: 'none',
-              color: '#94A3B8',
+              color: PU.mutedFg,
               width: '32px',
               height: '32px',
               borderRadius: '8px',
@@ -150,12 +153,12 @@ export default function VideoModal({
         ) : (
           <div
             style={{
-              background: '#0F172A',
+              background: PU.bg,
               height: '300px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#64748B',
+              color: PU.mutedFg,
               fontSize: '14px',
             }}
           >
@@ -164,8 +167,10 @@ export default function VideoModal({
         )}
 
         {description ? (
-          <div style={{ padding: '20px 24px', borderTop: '1px solid #334155' }}>
-            <p style={{ color: '#94A3B8', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>{description}</p>
+          <div style={{ padding: '20px 24px', borderTop: `1px solid ${PU.border}` }}>
+            <p style={{ color: PU.mutedFg, fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
+              {description}
+            </p>
           </div>
         ) : null}
       </div>

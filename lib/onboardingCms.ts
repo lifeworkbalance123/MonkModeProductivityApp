@@ -7,6 +7,7 @@ export type OnboardingContentRow = {
   body: string
   cta_label: string
   highlight_text: string | null
+  display_order?: number
   updated_at: string
 }
 
@@ -37,12 +38,19 @@ function defaultStepForKind(kind: OnboardingStepRow['step_kind']): Omit<Onboardi
   return { ...d }
 }
 
-/** Build wizard rows from CMS + habits; merges defaults when a step_key row is missing. */
-export function buildOnboardingStepsFromCms(
-  contentRows: OnboardingContentRow[],
+function DEFAULT_HABITS_FALLBACK_LINES(): string[] {
+  return ['🛏️ Make bed', '📵 No phone first hour', '📓 Morning journal', '🚿 Cold shower', '💪 Exercise', '📚 Read 20 minutes']
+}
+
+function isKnownCmsKey(key: string): key is OnboardingStepKey {
+  return (CMS_STEP_KEYS as readonly string[]).includes(key)
+}
+
+function rowToWizardStep(
+  row: OnboardingContentRow,
+  stepOrder: number,
   habits: OnboardingHabitRow[],
-): OnboardingStepRow[] {
-  const map = Object.fromEntries(contentRows.map((r) => [r.step_key, r])) as Record<string, OnboardingContentRow>
+): OnboardingStepRow {
   const t = new Date().toISOString()
   const habitLines =
     habits.length > 0
@@ -52,78 +60,123 @@ export function buildOnboardingStepsFromCms(
           .map((h) => `${h.icon} ${h.name}`)
       : DEFAULT_HABITS_FALLBACK_LINES()
 
-  return CMS_STEP_KEYS.map((key, i) => {
-    const row = map[key]
-    const step_kind: OnboardingStepRow['step_kind'] =
-      key === 'setup' ? 'wake' : key === 'ready' ? 'ready' : key === 'welcome' ? 'welcome' : key === 'why' ? 'why' : 'commitment'
-    const base = defaultStepForKind(step_kind)
-
-    if (!row) {
-      return {
-        id: `cms-${key}`,
-        step_order: i,
-        title: base.title,
-        description: base.description ?? '',
-        video_url: base.video_url ?? null,
-        action_label: base.action_label,
-        step_kind,
-        created_at: t,
-        updated_at: t,
-      }
-    }
-
-    const heading = row.heading?.trim() || base.title
-    const body = (row.body ?? '').trim()
-    const cta = row.cta_label?.trim() || base.action_label
-    const highlight = (row.highlight_text ?? '').trim()
-
-    let description = base.description ?? ''
-    if (key === 'welcome') {
-      description = body || (base.description ?? '')
-    } else if (key === 'why') {
-      const cardBody = highlight || parseWhyFallbackFromDefault(base.description ?? '')
-      description = `${body}\n\n---CARD---\nAsk yourself:\n${cardBody}`
-    } else if (key === 'commitment') {
-      const pledge = highlight || parsePledgeFallback(base.description ?? '')
-      description = `${body}\n\n---CHECK---\n${pledge}`
-    } else if (key === 'setup') {
-      const habitsBlock = [
-        "We'll pre-load these starter habits for you:",
-        ...habitLines,
-        '',
-        'You can edit these anytime in the Habits section.',
-      ].join('\n')
-      description = `${body}\n\n---WAKE---\nWhat time do you wake up?\n\n---HABITS---\n${habitsBlock}`
-    } else if (key === 'ready') {
-      description = body || (base.description ?? '')
-    }
-
+  if (!isKnownCmsKey(row.step_key)) {
     return {
-      id: `cms-${key}`,
-      step_order: i,
-      title: heading,
-      description,
+      id: `cms-${row.step_key}`,
+      step_order: stepOrder,
+      title: row.heading?.trim() || 'Step',
+      description: (row.body ?? '').trim(),
       video_url: null,
-      action_label: cta,
-      step_kind,
+      action_label: row.cta_label?.trim() || 'Next',
+      step_kind: 'content',
       created_at: t,
       updated_at: row.updated_at ?? t,
     }
+  }
+
+  const key = row.step_key
+  const step_kind: OnboardingStepRow['step_kind'] =
+    key === 'setup'
+      ? 'environment'
+      : key === 'ready'
+        ? 'ready'
+        : key === 'welcome'
+          ? 'welcome'
+          : key === 'why'
+            ? 'goal_choice'
+            : key === 'commitment'
+              ? 'conditional'
+              : 'commitment'
+  const base = defaultStepForKind(step_kind)
+
+  const heading = row.heading?.trim() || base.title
+  const body = (row.body ?? '').trim()
+  const cta = row.cta_label?.trim() || base.action_label
+  const highlight = (row.highlight_text ?? '').trim()
+
+  let description = base.description ?? ''
+  if (key === 'welcome') {
+    description = body || (base.description ?? '')
+  } else if (key === 'why') {
+    description = body || (base.description ?? '')
+    if (highlight) {
+      description = description ? `${description}\n\n${highlight}` : highlight
+    }
+  } else if (key === 'commitment') {
+    description = body || (base.description ?? '')
+    if (highlight) {
+      description = description ? `${description}\n\n${highlight}` : highlight
+    }
+  } else if (key === 'setup') {
+    const envDefault = base.description ?? ''
+    description = body || envDefault
+    if (highlight) {
+      description = `${description}\n\n---ENV---\n${highlight}`
+    }
+  } else if (key === 'ready') {
+    const habitsBlock = [
+      "We'll pre-load these starter habits for you:",
+      ...habitLines,
+      '',
+      'You can edit these anytime in the Habits section.',
+    ].join('\n')
+    const core = body || (base.description ?? '')
+    description = `${core}\n\n---WAKE---\nWhat time do you start your day?\n\n---HABITS---\n${habitsBlock}`
+  }
+
+  return {
+    id: `cms-${key}`,
+    step_order: stepOrder,
+    title: heading,
+    description,
+    video_url: null,
+    action_label: cta,
+    step_kind,
+    created_at: t,
+    updated_at: row.updated_at ?? t,
+  }
+}
+
+/** Legacy: when CMS has no rows, show the five default wizard steps (defaults merged in UI). */
+function buildDefaultsFromEmptyCms(habits: OnboardingHabitRow[]): OnboardingStepRow[] {
+  const map = {} as Record<string, OnboardingContentRow>
+  const t = new Date().toISOString()
+  return CMS_STEP_KEYS.map((key, i) => {
+    const row =
+      map[key] ??
+      ({
+        id: '',
+        step_key: key,
+        heading: '',
+        body: '',
+        cta_label: '',
+        highlight_text: '',
+        display_order: i + 1,
+        updated_at: t,
+      } as OnboardingContentRow)
+    return rowToWizardStep(row, i, habits)
   })
 }
 
-function DEFAULT_HABITS_FALLBACK_LINES(): string[] {
-  return ['🛏️ Make bed', '📵 No phone first hour', '📓 Morning journal', '🚿 Cold shower', '💪 Exercise', '📚 Read 20 minutes']
-}
+/**
+ * Build wizard rows from CMS + habits.
+ * When `contentRows` is non-empty, order follows `display_order` and only those rows appear.
+ * When empty, returns the original five-step default flow.
+ */
+export function buildOnboardingStepsFromCms(
+  contentRows: OnboardingContentRow[],
+  habits: OnboardingHabitRow[],
+): OnboardingStepRow[] {
+  if (!contentRows.length) {
+    return buildDefaultsFromEmptyCms(habits)
+  }
 
-function parseWhyFallbackFromDefault(desc: string): string {
-  const parts = desc.split('---CARD---')
-  const rest = (parts[1] ?? '').trim()
-  const lines = rest.split('\n')
-  return lines.slice(1).join('\n').trim() || rest
-}
+  const sorted = [...contentRows].sort((a, b) => {
+    const ao = a.display_order ?? 0
+    const bo = b.display_order ?? 0
+    if (ao !== bo) return ao - bo
+    return a.step_key.localeCompare(b.step_key)
+  })
 
-function parsePledgeFallback(desc: string): string {
-  const parts = desc.split('---CHECK---')
-  return (parts[1] ?? '').trim() || desc
+  return sorted.map((row, i) => rowToWizardStep(row, i, habits))
 }

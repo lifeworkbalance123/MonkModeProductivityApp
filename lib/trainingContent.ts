@@ -1,5 +1,5 @@
 /**
- * Admin-curated MonkMode training catalog.
+ * Admin-curated monkcubed training catalog.
  * Edit this file to add, remove, or update modules (ship via deploy / repo).
  */
 
@@ -18,9 +18,9 @@ export type TrainingModule = {
 export const adminTrainingModules: TrainingModule[] = [
   {
     id: 'monk-mode-explained',
-    title: 'Monk Mode Explained',
+    title: 'Transform explained',
     description:
-      'What monk mode is, why it works, ' +
+      'What the Transform path is, why it works, ' +
       'and how to apply it to your daily ' +
       'life starting today.',
     youtubeUrl: 'https://www.youtube.com/watch?v=REPLACE_WITH_REAL_ID',

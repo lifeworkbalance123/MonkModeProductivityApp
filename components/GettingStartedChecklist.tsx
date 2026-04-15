@@ -75,7 +75,7 @@ export function GettingStartedChecklist({ data }: { data: MonkData }) {
   if (!visible) return null
 
   return (
-    <Card className="mb-6 border-[#F59E0B]/35 bg-[#F59E0B]/[0.08] p-4 sm:p-5">
+    <Card className="mb-6 border-primary/35 bg-primary/[0.08] p-4 sm:p-5">
       <h2 className="text-lg font-semibold text-foreground">
         Welcome to MonkMode 🔥
       </h2>

@@ -16,6 +16,7 @@ import {
   getPublishedLessonsForDayAsync,
   type DailyLesson as DailyLessonData,
 } from '@/lib/lessonContent'
+import { PU } from '@/lib/program-ui-tokens'
 
 export default function TodayPage() {
   const { enrollment, loading, enrolled, refresh } = useProgram()
@@ -106,8 +107,8 @@ export default function TodayPage() {
             {enrollment.isTestMode ? (
               <div
                 style={{
-                  background: '#78350F',
-                  border: '1px solid #F59E0B',
+                  background: `color-mix(in srgb, ${PU.primary} 14%, ${PU.card})`,
+                  border: `1px solid color-mix(in srgb, ${PU.primary} 45%, transparent)`,
                   borderRadius: '10px',
                   padding: '10px 16px',
                   marginBottom: '16px',
@@ -120,7 +121,7 @@ export default function TodayPage() {
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '16px' }}>🧪</span>
-                  <span style={{ color: '#FEF3C7', fontSize: '13px', fontWeight: '500' }}>
+                  <span style={{ color: PU.fg, fontSize: '13px', fontWeight: '500' }}>
                     Test mode active — viewing Day {enrollment.currentDay} (real calendar day not used for
                     gating)
                   </span>
@@ -128,7 +129,7 @@ export default function TodayPage() {
                 <Link
                   href="/admin/users"
                   style={{
-                    color: '#F59E0B',
+                    color: PU.primary,
                     fontSize: '12px',
                     textDecoration: 'none',
                   }}
@@ -147,10 +148,10 @@ export default function TodayPage() {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   marginBottom: '16px',
-                  background: '#1E293B',
+                  background: PU.card,
                   borderRadius: '10px',
                   padding: '10px 16px',
-                  border: '1px solid #334155',
+                  border: `1px solid ${PU.border}`,
                 }}
               >
                 <button
@@ -160,7 +161,7 @@ export default function TodayPage() {
                   style={{
                     background: 'transparent',
                     border: 'none',
-                    color: canGoBack ? '#F59E0B' : '#334155',
+                    color: canGoBack ? PU.primary : PU.muted,
                     cursor: canGoBack ? 'pointer' : 'not-allowed',
                     fontSize: '13px',
                     padding: '4px 8px',
@@ -172,7 +173,7 @@ export default function TodayPage() {
                 <div style={{ textAlign: 'center' }}>
                   <span
                     style={{
-                      color: viewingDay ? '#64748B' : 'white',
+                      color: viewingDay ? PU.mutedFg : PU.fg,
                       fontSize: '14px',
                       fontWeight: '500',
                     }}
@@ -187,7 +188,7 @@ export default function TodayPage() {
                         display: 'block',
                         background: 'transparent',
                         border: 'none',
-                        color: '#F59E0B',
+                        color: PU.primary,
                         cursor: 'pointer',
                         fontSize: '12px',
                         margin: '2px auto 0',
@@ -210,7 +211,7 @@ export default function TodayPage() {
                   style={{
                     background: 'transparent',
                     border: 'none',
-                    color: canGoForward ? '#F59E0B' : '#334155',
+                    color: canGoForward ? PU.primary : PU.muted,
                     cursor: canGoForward ? 'pointer' : 'not-allowed',
                     fontSize: '13px',
                     padding: '4px 8px',
@@ -249,8 +250,8 @@ export default function TodayPage() {
                         cursor: 'pointer',
                         fontSize: '13px',
                         fontWeight: '500',
-                        background: activeTab === 'primary' ? '#F59E0B' : '#1E293B',
-                        color: activeTab === 'primary' ? '#000' : '#94A3B8',
+                        background: activeTab === 'primary' ? PU.primary : PU.muted,
+                        color: activeTab === 'primary' ? PU.primaryFg : PU.mutedFg,
                       }}
                     >
                       Today&apos;s Lesson
@@ -262,12 +263,15 @@ export default function TodayPage() {
                         flex: 1,
                         padding: '10px',
                         borderRadius: '8px',
-                        border: '1px solid #7C3AED',
+                        border: `1px solid color-mix(in srgb, ${PU.chart2} 55%, transparent)`,
                         cursor: 'pointer',
                         fontSize: '13px',
                         fontWeight: '500',
-                        background: activeTab === 'bonus' ? '#7C3AED' : 'transparent',
-                        color: activeTab === 'bonus' ? 'white' : '#8B5CF6',
+                        background:
+                          activeTab === 'bonus'
+                            ? `color-mix(in srgb, ${PU.chart2} 85%, ${PU.card})`
+                            : 'transparent',
+                        color: activeTab === 'bonus' ? PU.fg : PU.chart2,
                       }}
                     >
                       ✨ Bonus Lesson

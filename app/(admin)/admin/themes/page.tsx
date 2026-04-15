@@ -64,7 +64,7 @@ export default function AdminThemesPage() {
 
   if (loading && !personas.length) {
     return (
-      <div className="flex items-center gap-2 text-slate-400">
+      <div className="flex items-center gap-2 text-muted-foreground">
         <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
         Loading themes…
       </div>
@@ -87,31 +87,31 @@ export default function AdminThemesPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <div>
-        <h1 className="text-xl font-semibold text-white">Theme personas</h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <h1 className="text-xl font-semibold text-foreground">Theme personas</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Edit the display name and description for each fixed palette. Colors are defined in code (
-          <code className="text-slate-300">app/globals.css</code>), not in the database.
+          <code className="text-foreground">app/globals.css</code>), not in the database.
         </p>
       </div>
 
       {!draft ? null : (
         <div className="space-y-6">
           {THEME_IDS.map((id) => (
-            <Card key={id} className="border-slate-700 bg-slate-900/40 p-5">
+            <Card key={id} className="border-border bg-card p-5">
               <div className="mb-4 flex items-center gap-3">
                 <div
-                  className="h-10 w-10 shrink-0 rounded-full border border-slate-600"
+                  className="h-10 w-10 shrink-0 rounded-full border border-border"
                   style={{ backgroundColor: THEME_ACCENT_SWATCH[id] }}
                   aria-hidden
                 />
                 <div>
-                  <p className="font-mono text-xs text-slate-500">id (read-only)</p>
-                  <p className="font-medium text-white">{id}</p>
+                  <p className="font-mono text-xs text-muted-foreground">id (read-only)</p>
+                  <p className="font-medium text-foreground">{id}</p>
                 </div>
               </div>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor={`name-${id}`} className="text-slate-300">
+                  <Label htmlFor={`name-${id}`} className="text-muted-foreground">
                     Display name
                   </Label>
                   <Input
@@ -122,11 +122,11 @@ export default function AdminThemesPage() {
                         prev ? { ...prev, [id]: { ...prev[id], display_name: e.target.value } } : prev,
                       )
                     }
-                    className="border-slate-600 bg-slate-950 text-white"
+                    className="border-border bg-background text-foreground"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor={`desc-${id}`} className="text-slate-300">
+                  <Label htmlFor={`desc-${id}`} className="text-muted-foreground">
                     Description
                   </Label>
                   <Textarea
@@ -138,12 +138,12 @@ export default function AdminThemesPage() {
                         prev ? { ...prev, [id]: { ...prev[id], description: e.target.value } } : prev,
                       )
                     }
-                    className="resize-y border-slate-600 bg-slate-950 text-white"
+                    className="resize-y border-border bg-background text-foreground"
                   />
                 </div>
                 <Button
                   type="button"
-                  className="bg-amber-500 font-semibold text-slate-950 hover:bg-amber-400"
+                  className="bg-accent font-semibold text-accent-foreground hover:bg-accent/90"
                   disabled={saving !== null}
                   onClick={() => void save(id)}
                 >

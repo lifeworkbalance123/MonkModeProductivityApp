@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { PU } from '@/lib/program-ui-tokens'
 
 export const REVIEW_DAYS = [7, 14, 21, 28, 35, 42, 49, 56] as const
 
@@ -107,20 +108,20 @@ export default function WeeklyReview({ dayNumber }: { dayNumber: number }) {
     return (
       <div
         style={{
-          background: '#1E293B',
+          background: PU.card,
           borderRadius: '12px',
           padding: '16px 20px',
-          border: '1px solid #10B98144',
+          border: `1px solid color-mix(in srgb, ${PU.success} 35%, transparent)`,
           marginBottom: '16px',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span style={{ fontSize: '20px' }}>✅</span>
           <div>
-            <p style={{ color: 'white', fontWeight: '500', margin: '0 0 2px', fontSize: '14px' }}>
+            <p style={{ color: PU.fg, fontWeight: '500', margin: '0 0 2px', fontSize: '14px' }}>
               Week {weekNumber} Review Complete
             </p>
-            <p style={{ color: '#64748B', fontSize: '12px', margin: 0 }}>
+            <p style={{ color: PU.mutedFg, fontSize: '12px', margin: 0 }}>
               Your one change: &ldquo;{oneChange}&rdquo;
             </p>
           </div>
@@ -131,11 +132,11 @@ export default function WeeklyReview({ dayNumber }: { dayNumber: number }) {
 
   const textareaStyle = {
     width: '100%',
-    background: '#0F172A',
-    border: '1px solid #334155',
+    background: PU.bg,
+    border: `1px solid ${PU.border}`,
     borderRadius: '8px',
     padding: '10px 12px',
-    color: 'white',
+    color: PU.fg,
     fontSize: '14px',
     outline: 'none',
     resize: 'vertical' as const,
@@ -148,20 +149,20 @@ export default function WeeklyReview({ dayNumber }: { dayNumber: number }) {
   return (
     <div
       style={{
-        background: '#1E293B',
+        background: PU.card,
         borderRadius: '16px',
         padding: '20px',
-        border: '1px solid #8B5CF644',
+        border: `1px solid color-mix(in srgb, ${PU.chart2} 35%, transparent)`,
         marginBottom: '24px',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
         <span style={{ fontSize: '24px' }}>🔍</span>
         <div>
-          <h2 style={{ color: 'white', fontSize: '18px', fontWeight: '600', margin: '0 0 2px' }}>
+          <h2 style={{ color: PU.fg, fontSize: '18px', fontWeight: '600', margin: '0 0 2px' }}>
             Week {weekNumber} Review
           </h2>
-          <p style={{ color: '#8B5CF6', fontSize: '13px', margin: 0 }}>
+          <p style={{ color: PU.chart2, fontSize: '13px', margin: 0 }}>
             Take 5 minutes to reflect before moving to {nextWeek}
           </p>
         </div>
@@ -171,7 +172,7 @@ export default function WeeklyReview({ dayNumber }: { dayNumber: number }) {
         <label
           style={{
             display: 'block',
-            color: '#10B981',
+            color: PU.success,
             fontSize: '13px',
             fontWeight: '600',
             marginBottom: '8px',
@@ -192,7 +193,7 @@ export default function WeeklyReview({ dayNumber }: { dayNumber: number }) {
         <label
           style={{
             display: 'block',
-            color: '#EF4444',
+            color: PU.destructive,
             fontSize: '13px',
             fontWeight: '600',
             marginBottom: '8px',
@@ -213,7 +214,7 @@ export default function WeeklyReview({ dayNumber }: { dayNumber: number }) {
         <label
           style={{
             display: 'block',
-            color: '#F59E0B',
+            color: PU.primary,
             fontSize: '13px',
             fontWeight: '600',
             marginBottom: '8px',
@@ -236,8 +237,8 @@ export default function WeeklyReview({ dayNumber }: { dayNumber: number }) {
         disabled={saving || !canSubmit}
         style={{
           width: '100%',
-          background: canSubmit ? '#8B5CF6' : '#334155',
-          color: canSubmit ? 'white' : '#64748B',
+          background: canSubmit ? PU.primary : PU.muted,
+          color: canSubmit ? PU.primaryFg : PU.mutedFg,
           border: 'none',
           borderRadius: '10px',
           padding: '13px',

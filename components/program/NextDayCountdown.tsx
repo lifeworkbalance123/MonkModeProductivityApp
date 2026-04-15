@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { getNextProgramDayUnlockAt } from '@/lib/programUtils'
+import { PU } from '@/lib/program-ui-tokens'
 
 type Props = {
   startDate: string
@@ -43,27 +44,27 @@ export default function NextDayCountdown({ startDate, currentDay }: Props) {
     return (
       <div
         style={{
-          background: '#1E293B',
+          background: PU.card,
           borderRadius: '12px',
           padding: '20px',
           textAlign: 'center',
-          border: '1px solid #F59E0B44',
+          border: `1px solid color-mix(in srgb, ${PU.primary} 28%, transparent)`,
           marginTop: '16px',
         }}
       >
-        <span style={{ fontSize: '32px' }}>🔥</span>
+        <span style={{ fontSize: '32px' }}>·</span>
         <p
           style={{
-            color: 'white',
+            color: PU.fg,
             fontWeight: '600',
             margin: '8px 0 4px',
           }}
         >
-          Program complete!
+          Program complete.
         </p>
         <p
           style={{
-            color: '#64748B',
+            color: PU.mutedFg,
             fontSize: '13px',
             margin: 0,
           }}
@@ -77,17 +78,17 @@ export default function NextDayCountdown({ startDate, currentDay }: Props) {
   return (
     <div
       style={{
-        background: '#1E293B',
+        background: PU.card,
         borderRadius: '12px',
         padding: '20px',
         textAlign: 'center',
-        border: '1px solid #334155',
+        border: `1px solid ${PU.border}`,
         marginTop: '16px',
       }}
     >
       <p
         style={{
-          color: '#64748B',
+          color: PU.mutedFg,
           fontSize: '12px',
           fontWeight: '500',
           textTransform: 'uppercase',
@@ -99,7 +100,7 @@ export default function NextDayCountdown({ startDate, currentDay }: Props) {
       </p>
       <p
         style={{
-          color: hoursLeft < 2 ? '#F59E0B' : 'white',
+          color: hoursLeft < 2 ? PU.primary : PU.fg,
           fontSize: '32px',
           fontWeight: '700',
           fontFamily: 'monospace',
@@ -111,7 +112,7 @@ export default function NextDayCountdown({ startDate, currentDay }: Props) {
       </p>
       <p
         style={{
-          color: '#475569',
+          color: PU.mutedFg,
           fontSize: '12px',
           margin: 0,
         }}

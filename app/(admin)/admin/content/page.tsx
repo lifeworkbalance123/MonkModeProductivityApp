@@ -22,16 +22,16 @@ export default function AdminContentPage() {
       cursor: 'pointer',
       fontSize: '13px',
       fontWeight: '500' as const,
-      background: activeTab === tab ? '#F59E0B' : '#1E293B',
-      color: activeTab === tab ? '#000' : '#94A3B8',
+      background: activeTab === tab ? 'var(--accent)' : 'var(--card)',
+      color: activeTab === tab ? 'var(--accent-foreground)' : 'var(--muted-foreground)',
       transition: 'all 0.15s',
     }) as const
 
   return (
     <div>
       <div style={{ marginBottom: '28px' }}>
-        <h1 style={{ color: 'white', fontSize: '24px', fontWeight: '600', margin: '0 0 4px' }}>Content Manager</h1>
-        <p style={{ color: '#64748B', fontSize: '14px', margin: 0 }}>
+        <h1 style={{ color: 'var(--foreground)', fontSize: '24px', fontWeight: '600', margin: '0 0 4px' }}>Content Manager</h1>
+        <p style={{ color: 'var(--muted-foreground)', fontSize: '14px', margin: 0 }}>
           Edit lessons, onboarding steps, and default habits without touching any code.
         </p>
       </div>
@@ -110,11 +110,11 @@ function DebouncedYoutubeField({
       style={{
         width: '100%',
         maxWidth: '240px',
-        background: '#0F172A',
-        border: '1px solid #334155',
+        background: 'var(--background)',
+        border: '1px solid var(--border)',
         borderRadius: '6px',
         padding: '6px 10px',
-        color: 'white',
+        color: 'var(--foreground)',
         fontSize: '11px',
         outline: 'none',
         boxSizing: 'border-box' as const,
@@ -477,11 +477,11 @@ function LessonsEditor() {
 
   const inputStyle = {
     width: '100%',
-    background: '#0F172A',
-    border: '1px solid #334155',
+    background: 'var(--background)',
+    border: '1px solid var(--border)',
     borderRadius: '8px',
     padding: '10px 14px',
-    color: 'white',
+    color: 'var(--foreground)',
     fontSize: '14px',
     outline: 'none',
     boxSizing: 'border-box' as const,
@@ -489,7 +489,7 @@ function LessonsEditor() {
 
   const labelStyle = {
     display: 'block',
-    color: '#94A3B8',
+    color: 'var(--muted-foreground)',
     fontSize: '12px',
     fontWeight: '500' as const,
     marginBottom: '6px',
@@ -509,17 +509,17 @@ function LessonsEditor() {
           }}
         >
           <div>
-            <h2 style={{ color: 'white', fontSize: '18px', fontWeight: '600', margin: '0 0 4px' }}>
+            <h2 style={{ color: 'var(--foreground)', fontSize: '18px', fontWeight: '600', margin: '0 0 4px' }}>
               Day {editing.day_number} — {editing.title || 'New lesson'}
             </h2>
-            <p style={{ color: '#64748B', fontSize: '13px', margin: 0, textTransform: 'capitalize' }}>
+            <p style={{ color: 'var(--muted-foreground)', fontSize: '13px', margin: 0, textTransform: 'capitalize' }}>
               {editing.phase} phase · {editing.category}
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
               {autoSaveStatus === 'saving' ? (
-                <span style={{ color: '#64748B' }}>⏳ Auto-saving...</span>
+                <span style={{ color: 'var(--muted-foreground)' }}>⏳ Auto-saving...</span>
               ) : null}
               {autoSaveStatus === 'saved' ? (
                 <span style={{ color: '#10B981' }}>✓ Auto-saved</span>
@@ -528,16 +528,16 @@ function LessonsEditor() {
                 <span style={{ color: '#EF4444' }}>✗ Auto-save failed</span>
               ) : null}
               {autoSaveStatus === 'idle' && editing ? (
-                <span style={{ color: '#475569' }}>Auto-saves on tab switch</span>
+                <span style={{ color: 'var(--muted-foreground)' }}>Auto-saves on tab switch</span>
               ) : null}
             </div>
             <button
               type="button"
               onClick={() => setEditing(null)}
               style={{
-                background: '#1E293B',
-                border: '1px solid #334155',
-                color: '#94A3B8',
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                color: 'var(--muted-foreground)',
                 padding: '8px 16px',
                 borderRadius: '8px',
                 cursor: 'pointer',
@@ -549,7 +549,7 @@ function LessonsEditor() {
           </div>
         </div>
 
-        <div style={{ background: '#1E293B', borderRadius: '12px', padding: '24px', border: '1px solid #334155' }}>
+        <div style={{ background: 'var(--card)', borderRadius: '12px', padding: '24px', border: '1px solid var(--border)' }}>
           {editing.is_bonus ? (
             <div
               style={{
@@ -1352,11 +1352,11 @@ function OnboardingEditor() {
 
   const inputStyle = {
     width: '100%',
-    background: '#0F172A',
-    border: '1px solid #334155',
+    background: 'var(--background)',
+    border: '1px solid var(--border)',
     borderRadius: '8px',
     padding: '10px 14px',
-    color: 'white',
+    color: 'var(--foreground)',
     fontSize: '14px',
     outline: 'none',
     boxSizing: 'border-box' as const,
@@ -1364,7 +1364,7 @@ function OnboardingEditor() {
 
   const labelStyle = {
     display: 'block',
-    color: '#94A3B8',
+    color: 'var(--muted-foreground)',
     fontSize: '12px',
     fontWeight: '500' as const,
     marginBottom: '6px',
@@ -1383,14 +1383,14 @@ function OnboardingEditor() {
             gap: '12px',
           }}
         >
-          <h2 style={{ color: 'white', fontSize: '18px', fontWeight: '600', margin: 0 }}>
+          <h2 style={{ color: 'var(--foreground)', fontSize: '18px', fontWeight: '600', margin: 0 }}>
             Edit: Step{' '}
             {(steps.findIndex((s) => s.step_key === editingStep.step_key) ?? 0) + 1}: {editingStep.heading || editingStep.step_key}
           </h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
               {autoSaveStatus === 'saving' ? (
-                <span style={{ color: '#64748B' }}>⏳ Auto-saving...</span>
+                <span style={{ color: 'var(--muted-foreground)' }}>⏳ Auto-saving...</span>
               ) : null}
               {autoSaveStatus === 'saved' ? (
                 <span style={{ color: '#10B981' }}>✓ Auto-saved</span>
@@ -1399,16 +1399,16 @@ function OnboardingEditor() {
                 <span style={{ color: '#EF4444' }}>✗ Auto-save failed</span>
               ) : null}
               {autoSaveStatus === 'idle' && editingStep ? (
-                <span style={{ color: '#475569' }}>Auto-saves on tab switch</span>
+                <span style={{ color: 'var(--muted-foreground)' }}>Auto-saves on tab switch</span>
               ) : null}
             </div>
             <button
               type="button"
               onClick={() => setEditingStep(null)}
               style={{
-                background: '#1E293B',
-                border: '1px solid #334155',
-                color: '#94A3B8',
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                color: 'var(--muted-foreground)',
                 padding: '8px 16px',
                 borderRadius: '8px',
                 cursor: 'pointer',
@@ -1420,7 +1420,7 @@ function OnboardingEditor() {
           </div>
         </div>
 
-        <div style={{ background: '#1E293B', borderRadius: '12px', padding: '24px', border: '1px solid #334155' }}>
+        <div style={{ background: 'var(--card)', borderRadius: '12px', padding: '24px', border: '1px solid var(--border)' }}>
           <div style={{ marginBottom: '16px' }}>
             <label style={labelStyle}>Heading</label>
             <input

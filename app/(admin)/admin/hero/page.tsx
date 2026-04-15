@@ -572,7 +572,7 @@ export default function AdminHeroPage() {
               <div style={{ padding: '20px', opacity: 0.6 }}>
                 <div
                   style={{
-                    background: '#1E293B',
+                    background: 'var(--card)',
                     borderRadius: '10px',
                     padding: '16px',
                     display: 'flex',
@@ -580,16 +580,16 @@ export default function AdminHeroPage() {
                     marginBottom: '10px',
                   }}
                 >
-                  <div style={{ background: '#F59E0B', borderRadius: '6px', padding: '10px 14px' }}>
-                    <p style={{ color: '#000', fontSize: '14px', fontWeight: '800', margin: 0 }}>34 Day</p>
-                    <p style={{ color: '#000', fontSize: '10px', margin: '2px 0 0' }}>Streak</p>
+                  <div style={{ background: 'var(--accent)', borderRadius: '6px', padding: '10px 14px' }}>
+                    <p style={{ color: 'var(--accent-foreground)', fontSize: '14px', fontWeight: '800', margin: 0 }}>34 Day</p>
+                    <p style={{ color: 'var(--accent-foreground)', fontSize: '10px', margin: '2px 0 0' }}>Streak</p>
                   </div>
-                  <div style={{ background: '#0F172A', borderRadius: '6px', padding: '10px 12px', flex: 1 }}>
-                    <p style={{ color: 'white', fontSize: '11px', fontWeight: '600', margin: '0 0 4px' }}>Habits</p>
-                    <p style={{ color: '#64748B', fontSize: '10px', margin: 0 }}>Exercise · Read · Plan</p>
+                  <div style={{ background: 'var(--background)', borderRadius: '6px', padding: '10px 12px', flex: 1 }}>
+                    <p style={{ color: 'var(--foreground)', fontSize: '11px', fontWeight: '600', margin: '0 0 4px' }}>Habits</p>
+                    <p style={{ color: 'var(--muted-foreground)', fontSize: '10px', margin: 0 }}>Exercise · Read · Plan</p>
                   </div>
                 </div>
-                <p style={{ color: '#475569', fontSize: '12px', textAlign: 'center', margin: 0 }}>Default static mockup</p>
+                <p style={{ color: 'var(--muted-foreground)', fontSize: '12px', textAlign: 'center', margin: 0 }}>Default static mockup</p>
               </div>
             ) : null}
           </div>

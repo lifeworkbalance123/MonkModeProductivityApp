@@ -91,7 +91,7 @@ export default function SharePage() {
             <div className="h-[360px] animate-pulse rounded-lg bg-secondary/50" />
           )}
           <div className="mt-4 space-y-2">
-            <Button className="w-full bg-[#F59E0B] text-[#111827] hover:bg-[#F59E0B]/90" onClick={() => void saveImage()}>
+            <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => void saveImage()}>
               Save image
             </Button>
             <a href={twitterHref} target="_blank" rel="noreferrer">

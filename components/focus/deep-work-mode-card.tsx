@@ -91,7 +91,7 @@ function RingTimer(props: {
         cy={half}
         r={r}
         fill="none"
-        stroke="#1F2937"
+        stroke="var(--muted)"
         strokeWidth={stroke}
       />
       <circle
@@ -99,7 +99,7 @@ function RingTimer(props: {
         cy={half}
         r={r}
         fill="none"
-        stroke="#F59E0B"
+        stroke="var(--accent)"
         strokeWidth={stroke}
         strokeLinecap="round"
         strokeDasharray={c}
@@ -314,7 +314,7 @@ export function DeepWorkModeCard({ setSessions }: Props) {
             <div className="flex flex-wrap items-center gap-2">
               <Brain className="h-5 w-5 text-accent" />
               <h2 className="text-lg font-semibold">Deep Work Mode</h2>
-              <span className="rounded-md bg-[#F59E0B]/20 px-2 py-0.5 text-xs font-semibold text-[#F59E0B]">
+              <span className="rounded-md bg-accent/20 px-2 py-0.5 text-xs font-semibold text-accent">
                 PRO
               </span>
             </div>
@@ -355,7 +355,7 @@ export function DeepWorkModeCard({ setSessions }: Props) {
               size={280}
             />
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-              <p className="text-4xl font-bold tabular-nums text-white">
+              <p className="text-4xl font-bold tabular-nums text-foreground">
                 {formatMmSs(secondsRemaining)}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">{centerLabel}</p>
@@ -366,7 +366,7 @@ export function DeepWorkModeCard({ setSessions }: Props) {
                 <p className="mb-3 text-xs text-muted-foreground">Pro feature</p>
                 <Button
                   size="sm"
-                  className="bg-[#F59E0B] font-semibold text-[#111827] hover:bg-[#F59E0B]/90"
+                  className="bg-accent font-semibold text-accent-foreground hover:bg-accent/90"
                   asChild
                 >
                   <Link href="/upgrade">Unlock Deep Work — Upgrade to Pro</Link>
@@ -378,7 +378,7 @@ export function DeepWorkModeCard({ setSessions }: Props) {
           <div className="mt-8 flex w-full max-w-md flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-center">
             <Button
               type="button"
-              className="bg-[#F59E0B] font-semibold text-[#111827] hover:bg-[#F59E0B]/90"
+              className="bg-accent font-semibold text-accent-foreground hover:bg-accent/90"
               disabled={
                 locked ||
                 status === 'running' ||
@@ -481,7 +481,7 @@ export function DeepWorkModeCard({ setSessions }: Props) {
               sprint.
             </DialogDescription>
           </DialogHeader>
-          <p className="text-center text-4xl font-bold tabular-nums text-white">
+          <p className="text-center text-4xl font-bold tabular-nums text-foreground">
             {formatMmSs(secondsRemaining)}
           </p>
           <DialogFooter className="flex-col gap-2 sm:flex-row">
@@ -505,13 +505,13 @@ export function DeepWorkModeCard({ setSessions }: Props) {
 
       {immersive ? (
         <div
-          className="fixed inset-0 z-[100] flex flex-col bg-[#070B14] text-foreground"
+          className="fixed inset-0 z-[100] flex flex-col bg-background text-foreground"
           role="dialog"
           aria-label="Deep work fullscreen"
         >
           <button
             type="button"
-            className="absolute right-4 top-4 rounded-md p-2 text-muted-foreground hover:bg-white/10 hover:text-white"
+            className="absolute right-4 top-4 rounded-md p-2 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
             aria-label="Exit fullscreen"
             onClick={() => {
               setImmersive(false)
@@ -522,7 +522,7 @@ export function DeepWorkModeCard({ setSessions }: Props) {
           </button>
           <div className="px-6 pt-16 text-center">
             <p
-              className="text-white italic"
+              className="text-foreground italic"
               style={{ fontSize: 24, lineHeight: 1.3 }}
             >
               Working on: {task.trim() || '—'}
@@ -536,7 +536,7 @@ export function DeepWorkModeCard({ setSessions }: Props) {
                 size={300}
               />
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <p className="text-4xl font-bold tabular-nums text-white md:text-5xl">
+                <p className="text-4xl font-bold tabular-nums text-foreground md:text-5xl">
                   {formatMmSs(secondsRemaining)}
                 </p>
                 <p className="mt-2 text-sm text-muted-foreground">{centerLabel}</p>
@@ -565,7 +565,7 @@ export function DeepWorkModeCard({ setSessions }: Props) {
               End Session
             </Button>
           </div>
-          <div className="border-t border-white/10 px-6 py-4">
+          <div className="border-t border-border px-6 py-4">
             <p className="mb-3 text-center text-xs text-muted-foreground">
               Ambient sound
             </p>
@@ -585,8 +585,8 @@ export function DeepWorkModeCard({ setSessions }: Props) {
                   className={cn(
                     'flex h-12 w-12 items-center justify-center rounded-lg border text-lg transition-colors',
                     ambient === id
-                      ? 'border-[#F59E0B] bg-[#F59E0B]/20'
-                      : 'border-white/15 bg-white/5 hover:bg-white/10',
+                      ? 'border-accent bg-accent/20'
+                      : 'border-border bg-muted/40 hover:bg-muted/70',
                   )}
                   onClick={() => setAmbient(id)}
                 >

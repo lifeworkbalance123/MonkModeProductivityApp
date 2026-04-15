@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { PU } from '@/lib/program-ui-tokens'
 import { getYouTubeId } from '@/lib/trainingContent'
 
 type AddVideoModalProps = {
@@ -83,11 +84,11 @@ export default function AddVideoModal({ isOpen, onClose, onSave }: AddVideoModal
 
   const inputStyle = {
     width: '100%',
-    background: '#0F172A',
-    border: '1px solid #334155',
+    background: PU.bg,
+    border: `1px solid ${PU.border}`,
     borderRadius: '8px',
     padding: '10px 14px',
-    color: 'white',
+    color: PU.fg,
     fontSize: '14px',
     outline: 'none',
     boxSizing: 'border-box' as const,
@@ -95,7 +96,7 @@ export default function AddVideoModal({ isOpen, onClose, onSave }: AddVideoModal
 
   const labelStyle = {
     display: 'block',
-    color: '#94A3B8',
+    color: PU.mutedFg,
     fontSize: '12px',
     marginBottom: '6px',
     fontWeight: '500' as const,
@@ -118,11 +119,11 @@ export default function AddVideoModal({ isOpen, onClose, onSave }: AddVideoModal
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: '#1E293B',
+          background: PU.card,
           borderRadius: '16px',
           width: '100%',
           maxWidth: '540px',
-          border: '1px solid #334155',
+          border: `1px solid ${PU.border}`,
           maxHeight: '90vh',
           overflowY: 'auto',
         }}
@@ -133,19 +134,19 @@ export default function AddVideoModal({ isOpen, onClose, onSave }: AddVideoModal
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '20px 24px',
-            borderBottom: '1px solid #334155',
+            borderBottom: `1px solid ${PU.border}`,
           }}
         >
-          <h2 style={{ color: 'white', fontSize: '16px', fontWeight: '600', margin: 0 }}>
+          <h2 style={{ color: PU.fg, fontSize: '16px', fontWeight: '600', margin: 0 }}>
             Add to personal library
           </h2>
           <button
             type="button"
             onClick={onClose}
             style={{
-              background: '#334155',
+              background: PU.muted,
               border: 'none',
-              color: '#94A3B8',
+              color: PU.mutedFg,
               width: '32px',
               height: '32px',
               borderRadius: '8px',
@@ -168,7 +169,7 @@ export default function AddVideoModal({ isOpen, onClose, onSave }: AddVideoModal
               style={inputStyle}
             />
             {error ? (
-              <p style={{ color: '#EF4444', fontSize: '12px', marginTop: '4px' }}>{error}</p>
+              <p style={{ color: PU.destructive, fontSize: '12px', marginTop: '4px' }}>{error}</p>
             ) : null}
           </div>
 
@@ -177,9 +178,9 @@ export default function AddVideoModal({ isOpen, onClose, onSave }: AddVideoModal
               <img
                 src={preview}
                 alt="Video thumbnail"
-                style={{ width: '100%', borderRadius: '8px', border: '1px solid #334155' }}
+                style={{ width: '100%', borderRadius: '8px', border: `1px solid ${PU.border}` }}
               />
-              <p style={{ color: '#10B981', fontSize: '12px', marginTop: '6px' }}>
+              <p style={{ color: PU.success, fontSize: '12px', marginTop: '6px' }}>
                 ✓ Valid YouTube link detected
               </p>
             </div>
@@ -267,8 +268,8 @@ export default function AddVideoModal({ isOpen, onClose, onSave }: AddVideoModal
               onClick={onClose}
               style={{
                 flex: 1,
-                background: '#334155',
-                color: '#E2E8F0',
+                background: PU.muted,
+                color: PU.fg,
                 border: 'none',
                 borderRadius: '10px',
                 padding: '12px',
@@ -285,8 +286,8 @@ export default function AddVideoModal({ isOpen, onClose, onSave }: AddVideoModal
               disabled={saving}
               style={{
                 flex: 1,
-                background: '#F59E0B',
-                color: '#000',
+                background: PU.primary,
+                color: PU.primaryFg,
                 border: 'none',
                 borderRadius: '10px',
                 padding: '12px',

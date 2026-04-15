@@ -246,14 +246,14 @@ export default function AdminOnboardingPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <div>
-        <h1 className="text-xl font-semibold text-white">Onboarding steps</h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <h1 className="text-xl font-semibold text-foreground">Onboarding steps</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Controls the{' '}
-          <Link href="/onboarding" className="text-amber-400 underline hover:text-amber-300">
+          <Link href="/onboarding" className="text-accent underline hover:opacity-90">
             /onboarding
           </Link>{' '}
-          wizard. Use <code className="text-slate-300">step_kind</code> for special layouts; use{' '}
-          <code className="text-slate-300">content</code> for a simple title + body + button.
+          wizard. Use <code className="text-foreground">step_kind</code> for special layouts; use{' '}
+          <code className="text-foreground">content</code> for a simple title + body + button.
         </p>
       </div>
 
@@ -262,7 +262,7 @@ export default function AdminOnboardingPage() {
           className={
             looksLikeMissingOnboardingStepsTable(catalogError)
               ? 'border-red-900/60 bg-red-950/30 p-6 text-sm text-red-200'
-              : 'border-amber-900/50 bg-amber-950/20 p-6 text-sm text-amber-100'
+              : 'border-accent/50 bg-accent/15 p-6 text-sm text-foreground'
           }
         >
           <p className="font-medium text-white">
@@ -283,7 +283,7 @@ export default function AdminOnboardingPage() {
             <Button
               type="button"
               variant="outline"
-              className="border-slate-500 text-slate-100 hover:bg-slate-800"
+              className="border-border text-muted-foreground hover:bg-muted"
               disabled={loading}
               onClick={() => void load()}
             >
@@ -300,9 +300,9 @@ export default function AdminOnboardingPage() {
         </Card>
       ) : null}
 
-      <Card className="border-amber-900/40 bg-amber-950/20 p-4 text-xs text-amber-100/90">
-        <p className="font-medium text-amber-200">Description delimiters (why / commitment / wake)</p>
-        <ul className="mt-2 list-inside list-disc space-y-1 text-amber-100/80">
+      <Card className="border-accent/40 bg-accent/10 p-4 text-xs text-foreground/90">
+        <p className="font-medium text-accent">Description delimiters (why / commitment / wake)</p>
+        <ul className="mt-2 list-inside list-disc space-y-1 text-muted-foreground">
           <li>
             <strong>why</strong>: intro text, then <code>---CARD---</code>, then card title (first line) + card body.
           </li>
@@ -316,16 +316,16 @@ export default function AdminOnboardingPage() {
         </ul>
       </Card>
 
-      <Card className="border-slate-700 bg-slate-900/40 p-6">
-        <h2 className="mb-4 text-sm font-medium text-slate-200">{editingId ? 'Edit step' : 'Add step'}</h2>
+      <Card className="border-border bg-card p-6">
+        <h2 className="mb-4 text-sm font-medium text-foreground">{editingId ? 'Edit step' : 'Add step'}</h2>
         <form className="space-y-4" onSubmit={(e) => void submit(e)}>
           <div className="space-y-2">
-            <Label className="text-slate-300">Step kind</Label>
+            <Label className="text-muted-foreground">Step kind</Label>
             <Select
               value={form.step_kind}
               onValueChange={(v) => setForm((f) => ({ ...f, step_kind: v as OnboardingStepKind }))}
             >
-              <SelectTrigger className="border-slate-600 bg-slate-950 text-white">
+              <SelectTrigger className="border-border bg-background text-foreground">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -338,19 +338,19 @@ export default function AdminOnboardingPage() {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="ob-t" className="text-slate-300">
+            <Label htmlFor="ob-t" className="text-muted-foreground">
               Title
             </Label>
             <Input
               id="ob-t"
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              className="border-slate-600 bg-slate-950 text-white"
+              className="border-border bg-background text-foreground"
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="ob-d" className="text-slate-300">
+            <Label htmlFor="ob-d" className="text-muted-foreground">
               Description
             </Label>
             <Textarea
@@ -358,36 +358,36 @@ export default function AdminOnboardingPage() {
               rows={8}
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              className="resize-y border-slate-600 bg-slate-950 font-mono text-sm text-white"
+              className="resize-y border-border bg-background font-mono text-sm text-foreground"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="ob-v" className="text-slate-300">
+            <Label htmlFor="ob-v" className="text-muted-foreground">
               Video URL (optional, YouTube)
             </Label>
             <Input
               id="ob-v"
               value={form.video_url}
               onChange={(e) => setForm((f) => ({ ...f, video_url: e.target.value }))}
-              className="border-slate-600 bg-slate-950 text-white"
+              className="border-border bg-background text-foreground"
               placeholder="https://…"
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="ob-a" className="text-slate-300">
+              <Label htmlFor="ob-a" className="text-muted-foreground">
                 Action label (button)
               </Label>
               <Input
                 id="ob-a"
                 value={form.action_label}
                 onChange={(e) => setForm((f) => ({ ...f, action_label: e.target.value }))}
-                className="border-slate-600 bg-slate-950 text-white"
+                className="border-border bg-background text-foreground"
               />
             </div>
             {editingId ? (
               <div className="space-y-2">
-                <Label htmlFor="ob-o" className="text-slate-300">
+                <Label htmlFor="ob-o" className="text-muted-foreground">
                   Step order (numeric)
                 </Label>
                 <Input
@@ -395,11 +395,11 @@ export default function AdminOnboardingPage() {
                   type="number"
                   value={form.step_order}
                   onChange={(e) => setForm((f) => ({ ...f, step_order: e.target.value }))}
-                  className="border-slate-600 bg-slate-950 text-white"
+                  className="border-border bg-background text-foreground"
                 />
               </div>
             ) : (
-              <p className="self-end text-xs text-slate-500 sm:pb-2">
+              <p className="self-end text-xs text-muted-foreground sm:pb-2">
                 New steps are added at the end. Use ↑ ↓ in the list to reorder.
               </p>
             )}
@@ -408,7 +408,7 @@ export default function AdminOnboardingPage() {
             <Button
               type="submit"
               disabled={saving}
-              className="bg-amber-500 font-semibold text-slate-950 hover:bg-amber-400"
+              className="bg-accent font-semibold text-accent-foreground hover:bg-accent/90"
             >
               {saving ? (
                 <>
@@ -425,7 +425,7 @@ export default function AdminOnboardingPage() {
               )}
             </Button>
             {editingId ? (
-              <Button type="button" variant="outline" className="border-slate-600" onClick={cancelEdit}>
+              <Button type="button" variant="outline" className="border-border" onClick={cancelEdit}>
                 <X className="mr-2 h-4 w-4" aria-hidden />
                 Cancel
               </Button>
@@ -435,14 +435,14 @@ export default function AdminOnboardingPage() {
       </Card>
 
       <div>
-        <h2 className="mb-3 text-sm font-medium text-slate-200">Steps ({steps.length})</h2>
+        <h2 className="mb-3 text-sm font-medium text-foreground">Steps ({steps.length})</h2>
         {loading ? (
-          <p className="flex items-center gap-2 text-sm text-slate-400">
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
             Loading…
           </p>
         ) : steps.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             {catalogError
               ? looksLikeMissingOnboardingStepsTable(catalogError)
                 ? 'Fix the database issue above, then retry.'
@@ -454,21 +454,21 @@ export default function AdminOnboardingPage() {
             {steps.map((s, idx) => (
               <li
                 key={s.id}
-                className="flex flex-col gap-3 rounded-lg border border-slate-700 bg-slate-900/50 p-4 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-3 rounded-lg border border-border bg-card/80 p-4 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     #{s.step_order} · {s.step_kind}
                   </p>
-                  <p className="font-medium text-white">{s.title}</p>
-                  <p className="line-clamp-2 text-xs text-slate-400">{s.description?.slice(0, 120) ?? '—'}</p>
+                  <p className="font-medium text-foreground">{s.title}</p>
+                  <p className="line-clamp-2 text-xs text-muted-foreground">{s.description?.slice(0, 120) ?? '—'}</p>
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
                   <Button
                     type="button"
                     size="icon"
                     variant="outline"
-                    className="border-slate-600"
+                    className="border-border"
                     disabled={idx === 0}
                     onClick={() => void moveStep(s.id, -1)}
                     aria-label="Move up"
@@ -479,7 +479,7 @@ export default function AdminOnboardingPage() {
                     type="button"
                     size="icon"
                     variant="outline"
-                    className="border-slate-600"
+                    className="border-border"
                     disabled={idx === steps.length - 1}
                     onClick={() => void moveStep(s.id, 1)}
                     aria-label="Move down"
@@ -490,7 +490,7 @@ export default function AdminOnboardingPage() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="border-slate-600"
+                    className="border-border"
                     onClick={() => startEdit(s)}
                   >
                     <Pencil className="mr-1 h-3.5 w-3.5" aria-hidden />
@@ -514,15 +514,15 @@ export default function AdminOnboardingPage() {
       </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <AlertDialogContent className="border-slate-700 bg-slate-900 text-slate-100">
+        <AlertDialogContent className="border-border bg-card text-foreground">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this step?</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
+            <AlertDialogDescription className="text-muted-foreground">
               Users on /onboarding will no longer see it. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-600 bg-transparent">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-border bg-transparent">Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 text-white hover:bg-red-500"
               disabled={deleting}

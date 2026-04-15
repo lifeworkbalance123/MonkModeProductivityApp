@@ -26,14 +26,14 @@ function PaymentSuccessBody() {
       <h1 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
         {isV2Program ? "You're in the 60-day program." : "You're now on MonkMode Pro."}
       </h1>
-      <p className="mt-3 text-gray-300">
+      <p className="mt-3 text-muted-foreground">
         {isV2Program
           ? 'Your enrollment is active. Open Today to start Day 1 when you are ready.'
           : 'Welcome to the next level.'}
       </p>
       <Button
         asChild
-        className="mt-8 bg-[#F59E0B] font-semibold text-[#111827] hover:bg-[#F59E0B]/90"
+        className="mt-8 bg-accent font-semibold text-accent-foreground hover:bg-accent/90"
       >
         <Link href={isV2Program ? '/onboarding' : '/dashboard'}>
           {isV2Program ? 'Continue setup' : 'Go to dashboard'}
@@ -45,11 +45,11 @@ function PaymentSuccessBody() {
 
 export default function PaymentSuccessPage() {
   return (
-    <div className="min-h-screen bg-[#111827] text-white">
+    <div className="min-h-screen bg-background text-foreground">
       <Navigation />
       <Suspense
         fallback={
-          <div className="mx-auto max-w-lg px-4 pt-28 text-center text-gray-400 text-sm">
+          <div className="mx-auto max-w-lg px-4 pt-28 text-center text-muted-foreground text-sm">
             Loading…
           </div>
         }

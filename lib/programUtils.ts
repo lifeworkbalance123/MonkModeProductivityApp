@@ -31,27 +31,18 @@ export function getPhaseFromDay(day: number): Phase {
 
 export function getPhaseLabel(phase: Phase): string {
   const labels: Record<Phase, string> = {
-    student: 'Student',
-    monk: 'Monk',
-    master: 'Master',
+    student: 'Sprint',
+    monk: 'Transform',
+    master: 'Mastery',
   }
   return labels[phase]
 }
 
-export function getPhaseEmoji(phase: Phase): string {
-  const emojis: Record<Phase, string> = {
-    student: '📖',
-    monk: '🧘',
-    master: '🔥',
-  }
-  return emojis[phase]
-}
-
 export function getPhaseColor(phase: Phase): string {
   const colors: Record<Phase, string> = {
-    student: '#3B82F6',
-    monk: '#8B5CF6',
-    master: '#F59E0B',
+    student: '#5B6BA8',
+    monk: '#8B7EC8',
+    master: '#D4AF37',
   }
   return colors[phase]
 }

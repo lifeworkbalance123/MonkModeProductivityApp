@@ -1,13 +1,28 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
 import { enrollUser } from '@/lib/programUtils'
 import { useToast } from '@/context/ToastContext'
 import { buildOnboardingStepsFromCms, type OnboardingContentRow, type OnboardingHabitRow } from '@/lib/onboardingCms'
-import { parseCommitmentDescription, parseWakeDescription, parseWhyDescription, type OnboardingStepRow } from '@/lib/onboardingSteps'
+import {
+  parseCommitmentDescription,
+  parseEnvironmentDescription,
+  parseWakeDescription,
+  parseWhyDescription,
+  type OnboardingStepRow,
+} from '@/lib/onboardingSteps'
 import { youtubeEmbedFromUrl } from '@/lib/morning-video'
+import { MonkCubedLogo } from '@/components/brand/MonkCubedLogo'
+
+const BG = '#121212'
+const SURFACE = '#1E1E1E'
+const BORDER = '#333333'
+const TEXT = '#E0E0E0'
+const MUTED = '#A0A0A0'
+const GOLD = '#D4AF37'
+const GOLD_TEXT = '#121212'
 
 const WAKE_OPTIONS = [
   '04:00',
@@ -34,11 +49,13 @@ const DEFAULT_HABITS_STATIC = [
   { name: 'Read 20 minutes', icon: '📚' },
 ] as const
 
+type Goal = 'sprint' | 'transform' | 'mastery'
+
 function VideoBlock({ url, title }: { url: string; title: string }) {
   const embed = youtubeEmbedFromUrl(url)
   if (embed) {
     return (
-      <div className="mb-4 aspect-video w-full overflow-hidden rounded-md border border-[#334155] bg-black">
+      <div className="mb-4 aspect-video w-full overflow-hidden rounded-md border border-[#333333] bg-black">
         <iframe
           title={title}
           src={embed}
@@ -50,13 +67,27 @@ function VideoBlock({ url, title }: { url: string; title: string }) {
     )
   }
   return (
-    <p className="mb-4 text-sm text-[#94A3B8]">
+    <p className="mb-4 text-sm" style={{ color: MUTED }}>
       Video URL is not a recognised YouTube link.{' '}
-      <a className="text-[#F59E0B] underline" href={url} target="_blank" rel="noopener noreferrer">
+      <a className="underline" style={{ color: GOLD }} href={url} target="_blank" rel="noopener noreferrer">
         Open link
       </a>
     </p>
   )
+}
+
+function ctaButtonStyle(enabled: boolean, loadingBtn?: boolean): CSSProperties {
+  return {
+    width: '100%',
+    background: enabled ? GOLD : SURFACE,
+    color: enabled ? GOLD_TEXT : MUTED,
+    border: `1px solid ${enabled ? GOLD : BORDER}`,
+    borderRadius: '12px',
+    padding: '16px',
+    fontSize: '16px',
+    fontWeight: 600,
+    cursor: loadingBtn ? 'wait' : enabled ? 'pointer' : 'not-allowed',
+  }
 }
 
 export default function ProgramOnboardingClient() {
@@ -70,6 +101,11 @@ export default function ProgramOnboardingClient() {
   const [commitment, setCommitment] = useState(false)
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
+  const [goal, setGoal] = useState<Goal | null>(null)
+  const [sprintProject, setSprintProject] = useState('')
+  const [transformVars, setTransformVars] = useState('')
+  const [masteryLines, setMasteryLines] = useState('')
+  const [envChecks, setEnvChecks] = useState<boolean[]>([])
 
   const loadSteps = useCallback(async () => {
     setLoadingSteps(true)
@@ -119,6 +155,32 @@ export default function ProgramOnboardingClient() {
   }, [index, steps.length])
 
   const isLast = index >= steps.length - 1
+
+  const envItems = useMemo(() => {
+    if (!step || step.step_kind !== 'environment') return []
+    return parseEnvironmentDescription(step.description).items
+  }, [step])
+
+  useEffect(() => {
+    if (!step || step.step_kind !== 'environment') return
+    const { items } = parseEnvironmentDescription(step.description)
+    setEnvChecks((prev) => {
+      if (prev.length === items.length && items.length > 0) return prev
+      return items.map(() => false)
+    })
+  }, [step])
+
+  const conditionalOk = useMemo(() => {
+    if (!goal) return false
+    if (goal === 'sprint') return sprintProject.trim().length >= 2
+    if (goal === 'transform') return transformVars.trim().length >= 6
+    return masteryLines.trim().length >= 6
+  }, [goal, sprintProject, transformVars, masteryLines])
+
+  const envOk = useMemo(() => {
+    if (envItems.length === 0) return true
+    return envItems.every((_, i) => envChecks[i])
+  }, [envItems, envChecks])
 
   async function handleComplete() {
     setLoading(true)
@@ -203,11 +265,11 @@ export default function ProgramOnboardingClient() {
       <div
         style={{
           minHeight: '100vh',
-          background: '#0F172A',
+          background: BG,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#94A3B8',
+          color: MUTED,
         }}
       >
         Loading…
@@ -216,24 +278,38 @@ export default function ProgramOnboardingClient() {
   }
 
   const primaryDisabled =
-    (step.step_kind === 'commitment' && needsCommitment && !commitment) || loading
+    (step.step_kind === 'commitment' && needsCommitment && !commitment) ||
+    (step.step_kind === 'goal_choice' && !goal) ||
+    (step.step_kind === 'conditional' && !conditionalOk) ||
+    (step.step_kind === 'environment' && !envOk) ||
+    loading
+
+  const conditionalTitle =
+    goal === 'sprint'
+      ? 'Name your One Big Project.'
+      : goal === 'transform'
+        ? 'Choose 1–3 personal variables (for example: no sugar, meditate 10 min).'
+        : goal === 'mastery'
+          ? 'Set your daily non-negotiables (meditation, exercise, no alcohol or cannabis).'
+          : step.title
 
   return (
     <div
       style={{
         minHeight: '100vh',
-        background: '#0F172A',
+        background: BG,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '24px',
+        fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
       }}
     >
       <div style={{ maxWidth: '520px', width: '100%' }}>
         <div
           style={{
-            background: '#1E293B',
+            background: SURFACE,
             borderRadius: '4px',
             height: '4px',
             marginBottom: '40px',
@@ -242,7 +318,7 @@ export default function ProgramOnboardingClient() {
         >
           <div
             style={{
-              background: '#F59E0B',
+              background: GOLD,
               height: '100%',
               width: `${progress}%`,
               transition: 'width 0.4s ease',
@@ -253,14 +329,16 @@ export default function ProgramOnboardingClient() {
 
         {step.step_kind === 'welcome' ? (
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '64px', marginBottom: '20px' }}>🔥</div>
+            <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
+              <MonkCubedLogo variant="onDark" className="text-3xl sm:text-4xl" />
+            </div>
             <h1
               style={{
-                color: 'white',
-                fontSize: '32px',
-                fontWeight: '700',
+                color: TEXT,
+                fontSize: '24px',
+                fontWeight: 600,
                 margin: '0 0 16px',
-                lineHeight: '1.2',
+                lineHeight: '1.3',
               }}
             >
               {step.title}
@@ -268,50 +346,204 @@ export default function ProgramOnboardingClient() {
             {step.video_url ? <VideoBlock url={step.video_url} title={step.title} /> : null}
             <p
               style={{
-                color: '#94A3B8',
-                fontSize: '16px',
-                lineHeight: '1.7',
-                margin: '0 0 32px',
+                color: MUTED,
+                fontSize: '15px',
+                lineHeight: 1.5,
+                margin: '0 0 28px',
                 whiteSpace: 'pre-line',
               }}
             >
               {step.description ?? ''}
             </p>
-            <p style={{ color: '#64748B', fontSize: '14px', margin: '0 0 32px' }}>What should we call you?</p>
+            <p style={{ color: MUTED, fontSize: '13px', margin: '0 0 12px' }}>Preferred name (optional)</p>
             <input
               type="text"
-              placeholder="Your first name (optional)"
+              placeholder="First name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               style={{
                 width: '100%',
-                background: '#1E293B',
-                border: '1px solid #334155',
+                background: SURFACE,
+                border: `1px solid ${BORDER}`,
                 borderRadius: '10px',
                 padding: '14px 16px',
-                color: 'white',
-                fontSize: '16px',
+                color: TEXT,
+                fontSize: '15px',
                 outline: 'none',
                 boxSizing: 'border-box',
                 marginBottom: '16px',
                 textAlign: 'center',
               }}
             />
-            <button
-              type="button"
-              onClick={() => goNext()}
+            <button type="button" onClick={() => goNext()} style={ctaButtonStyle(true)}>
+              {step.action_label}
+            </button>
+          </div>
+        ) : null}
+
+        {step.step_kind === 'goal_choice' ? (
+          <div>
+            <h2
               style={{
-                width: '100%',
-                background: '#F59E0B',
-                color: '#000',
-                border: 'none',
-                borderRadius: '12px',
-                padding: '16px',
-                fontSize: '16px',
-                fontWeight: '700',
-                cursor: 'pointer',
+                color: TEXT,
+                fontSize: '22px',
+                fontWeight: 600,
+                margin: '0 0 16px',
+                lineHeight: '1.3',
               }}
             >
+              {step.title}
+            </h2>
+            {step.video_url ? <VideoBlock url={step.video_url} title={step.title} /> : null}
+            <p style={{ color: MUTED, fontSize: '15px', lineHeight: 1.5, margin: '0 0 20px', whiteSpace: 'pre-line' }}>
+              {step.description ?? ''}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
+              {(
+                [
+                  { id: 'sprint' as const, label: 'Sprint', sub: '21–60 days · Complete a project.' },
+                  { id: 'transform' as const, label: 'Transform', sub: '60 days · Holistic habit change.' },
+                  { id: 'mastery' as const, label: 'Mastery', sub: '90+ days · Advanced discipline.' },
+                ] as const
+              ).map((opt) => {
+                const selected = goal === opt.id
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setGoal(opt.id)}
+                    style={{
+                      textAlign: 'left',
+                      background: SURFACE,
+                      border: `1px solid ${selected ? GOLD : BORDER}`,
+                      borderRadius: '12px',
+                      padding: '16px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ color: TEXT, fontWeight: 600, fontSize: '16px' }}>{opt.label}</div>
+                    <div style={{ color: MUTED, fontSize: '13px', marginTop: '6px' }}>{opt.sub}</div>
+                  </button>
+                )
+              })}
+            </div>
+            <button type="button" onClick={() => goNext()} disabled={!goal} style={ctaButtonStyle(!!goal)}>
+              {step.action_label}
+            </button>
+          </div>
+        ) : null}
+
+        {step.step_kind === 'conditional' ? (
+          <div>
+            <h2 style={{ color: TEXT, fontSize: '22px', fontWeight: 600, margin: '0 0 16px' }}>{conditionalTitle}</h2>
+            {step.video_url ? <VideoBlock url={step.video_url} title={step.title} /> : null}
+            {step.description ? (
+              <p style={{ color: MUTED, fontSize: '15px', lineHeight: 1.5, margin: '0 0 16px', whiteSpace: 'pre-line' }}>
+                {step.description}
+              </p>
+            ) : null}
+            <textarea
+              value={goal === 'sprint' ? sprintProject : goal === 'transform' ? transformVars : masteryLines}
+              onChange={(e) => {
+                const v = e.target.value
+                if (goal === 'sprint') setSprintProject(v)
+                else if (goal === 'transform') setTransformVars(v)
+                else setMasteryLines(v)
+              }}
+              disabled={!goal}
+              rows={5}
+              placeholder={
+                goal === 'sprint'
+                  ? 'Project name'
+                  : goal === 'transform'
+                    ? 'Variables, one per line'
+                    : goal === 'mastery'
+                      ? 'Non-negotiables, one per line'
+                      : 'Choose a path on the previous step.'
+              }
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                background: SURFACE,
+                border: `1px solid ${BORDER}`,
+                borderRadius: '12px',
+                padding: '14px',
+                color: TEXT,
+                fontSize: '15px',
+                lineHeight: 1.5,
+                resize: 'vertical',
+                marginBottom: '24px',
+              }}
+            />
+            <button type="button" onClick={() => goNext()} disabled={!conditionalOk} style={ctaButtonStyle(conditionalOk)}>
+              {step.action_label}
+            </button>
+          </div>
+        ) : null}
+
+        {step.step_kind === 'environment' ? (
+          <div>
+            {(() => {
+              const { intro } = parseEnvironmentDescription(step.description)
+              return (
+                <>
+                  <h2 style={{ color: TEXT, fontSize: '22px', fontWeight: 600, margin: '0 0 8px' }}>{step.title}</h2>
+                  {step.video_url ? <VideoBlock url={step.video_url} title={step.title} /> : null}
+                  <p style={{ color: MUTED, fontSize: '15px', lineHeight: 1.5, margin: '0 0 20px' }}>{intro}</p>
+                </>
+              )
+            })()}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+              {envItems.map((label, i) => {
+                const on = envChecks[i] ?? false
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() =>
+                      setEnvChecks((prev) => {
+                        const next = [...prev]
+                        next[i] = !on
+                        return next
+                      })
+                    }
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '14px',
+                      width: '100%',
+                      textAlign: 'left',
+                      background: SURFACE,
+                      borderRadius: '12px',
+                      padding: '16px',
+                      border: `1px solid ${on ? GOLD : BORDER}`,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '22px',
+                        height: '22px',
+                        borderRadius: '6px',
+                        border: `2px solid ${on ? GOLD : BORDER}`,
+                        background: on ? GOLD : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        color: GOLD_TEXT,
+                        fontSize: '12px',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {on ? '✓' : ''}
+                    </div>
+                    <p style={{ color: TEXT, fontSize: '15px', lineHeight: 1.5, margin: 0 }}>{label}</p>
+                  </button>
+                )
+              })}
+            </div>
+            <button type="button" onClick={() => goNext()} disabled={!envOk} style={ctaButtonStyle(envOk)}>
               {step.action_label}
             </button>
           </div>
@@ -325,9 +557,9 @@ export default function ProgramOnboardingClient() {
                 <>
                   <h2
                     style={{
-                      color: 'white',
-                      fontSize: '26px',
-                      fontWeight: '700',
+                      color: TEXT,
+                      fontSize: '22px',
+                      fontWeight: 600,
                       margin: '0 0 16px',
                       lineHeight: '1.3',
                     }}
@@ -335,43 +567,25 @@ export default function ProgramOnboardingClient() {
                     {step.title}
                   </h2>
                   {step.video_url ? <VideoBlock url={step.video_url} title={step.title} /> : null}
-                  <p style={{ color: '#94A3B8', fontSize: '15px', lineHeight: '1.7', margin: '0 0 24px' }}>
-                    {intro}
-                  </p>
+                  <p style={{ color: MUTED, fontSize: '15px', lineHeight: 1.5, margin: '0 0 24px' }}>{intro}</p>
                   <div
                     style={{
-                      background: '#1E293B',
+                      background: SURFACE,
                       borderRadius: '12px',
                       padding: '20px',
                       marginBottom: '24px',
-                      border: '1px solid #334155',
+                      border: `1px solid ${BORDER}`,
                     }}
                   >
-                    <p style={{ color: '#F59E0B', fontSize: '15px', fontWeight: '600', margin: '0 0 8px' }}>
-                      {cardTitle}
-                    </p>
-                    <p style={{ color: '#CBD5E1', fontSize: '15px', lineHeight: '1.7', margin: 0, whiteSpace: 'pre-line' }}>
+                    <p style={{ color: GOLD, fontSize: '15px', fontWeight: 600, margin: '0 0 8px' }}>{cardTitle}</p>
+                    <p style={{ color: TEXT, fontSize: '15px', lineHeight: 1.5, margin: 0, whiteSpace: 'pre-line' }}>
                       {cardBody}
                     </p>
                   </div>
                 </>
               )
             })()}
-            <button
-              type="button"
-              onClick={() => goNext()}
-              style={{
-                width: '100%',
-                background: '#F59E0B',
-                color: '#000',
-                border: 'none',
-                borderRadius: '12px',
-                padding: '16px',
-                fontSize: '16px',
-                fontWeight: '700',
-                cursor: 'pointer',
-              }}
-            >
+            <button type="button" onClick={() => goNext()} style={ctaButtonStyle(true)}>
               {step.action_label}
             </button>
           </div>
@@ -379,9 +593,9 @@ export default function ProgramOnboardingClient() {
 
         {step.step_kind === 'commitment' ? (
           <div>
-            <h2 style={{ color: 'white', fontSize: '26px', fontWeight: '700', margin: '0 0 16px' }}>{step.title}</h2>
+            <h2 style={{ color: TEXT, fontSize: '22px', fontWeight: 600, margin: '0 0 16px' }}>{step.title}</h2>
             {step.video_url ? <VideoBlock url={step.video_url} title={step.title} /> : null}
-            <p style={{ color: '#94A3B8', fontSize: '15px', lineHeight: '1.7', margin: '0 0 24px' }}>
+            <p style={{ color: MUTED, fontSize: '15px', lineHeight: 1.5, margin: '0 0 24px' }}>
               {parseCommitmentDescription(step.description).intro}
             </p>
             <button
@@ -393,11 +607,11 @@ export default function ProgramOnboardingClient() {
                 gap: '14px',
                 width: '100%',
                 textAlign: 'left',
-                background: '#1E293B',
+                background: SURFACE,
                 borderRadius: '12px',
                 padding: '20px',
                 marginBottom: '24px',
-                border: `1px solid ${commitment ? '#F59E0B' : '#334155'}`,
+                border: `1px solid ${commitment ? GOLD : BORDER}`,
                 cursor: 'pointer',
               }}
             >
@@ -406,20 +620,20 @@ export default function ProgramOnboardingClient() {
                   width: '24px',
                   height: '24px',
                   borderRadius: '6px',
-                  border: `2px solid ${commitment ? '#F59E0B' : '#334155'}`,
-                  background: commitment ? '#F59E0B' : 'transparent',
+                  border: `2px solid ${commitment ? GOLD : BORDER}`,
+                  background: commitment ? GOLD : 'transparent',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexShrink: 0,
-                  color: '#000',
+                  color: GOLD_TEXT,
                   fontSize: '14px',
-                  fontWeight: '700',
+                  fontWeight: 700,
                 }}
               >
                 {commitment ? '✓' : ''}
               </div>
-              <p style={{ color: '#CBD5E1', fontSize: '15px', lineHeight: '1.6', margin: 0 }}>
+              <p style={{ color: TEXT, fontSize: '15px', lineHeight: 1.6, margin: 0 }}>
                 {parseCommitmentDescription(step.description).pledge}
               </p>
             </button>
@@ -427,17 +641,7 @@ export default function ProgramOnboardingClient() {
               type="button"
               onClick={() => primaryAction()}
               disabled={!commitment}
-              style={{
-                width: '100%',
-                background: commitment ? '#F59E0B' : '#334155',
-                color: commitment ? '#000' : '#64748B',
-                border: 'none',
-                borderRadius: '12px',
-                padding: '16px',
-                fontSize: '16px',
-                fontWeight: '700',
-                cursor: commitment ? 'pointer' : 'not-allowed',
-              }}
+              style={ctaButtonStyle(commitment)}
             >
               {step.action_label}
             </button>
@@ -446,7 +650,7 @@ export default function ProgramOnboardingClient() {
 
         {step.step_kind === 'wake' ? (
           <div>
-            <h2 style={{ color: 'white', fontSize: '26px', fontWeight: '700', margin: '0 0 8px' }}>{step.title}</h2>
+            <h2 style={{ color: TEXT, fontSize: '22px', fontWeight: 600, margin: '0 0 8px' }}>{step.title}</h2>
             {step.video_url ? <VideoBlock url={step.video_url} title={step.title} /> : null}
             {(() => {
               const { intro, wakeLabel, habitsBlock } = parseWakeDescription(step.description)
@@ -456,18 +660,18 @@ export default function ProgramOnboardingClient() {
                 .filter(Boolean)
               return (
                 <>
-                  <p style={{ color: '#94A3B8', fontSize: '15px', margin: '0 0 24px' }}>{intro}</p>
+                  <p style={{ color: MUTED, fontSize: '15px', margin: '0 0 24px' }}>{intro}</p>
                   <div
                     style={{
-                      background: '#1E293B',
+                      background: SURFACE,
                       borderRadius: '12px',
                       padding: '20px',
                       marginBottom: '24px',
-                      border: '1px solid #334155',
+                      border: `1px solid ${BORDER}`,
                     }}
                   >
                     <label
-                      style={{ display: 'block', color: '#94A3B8', fontSize: '13px', marginBottom: '10px' }}
+                      style={{ display: 'block', color: MUTED, fontSize: '13px', marginBottom: '10px' }}
                       htmlFor="wake-select"
                     >
                       {wakeLabel}
@@ -478,11 +682,11 @@ export default function ProgramOnboardingClient() {
                       onChange={(e) => setWakeTime(e.target.value)}
                       style={{
                         width: '100%',
-                        background: '#0F172A',
-                        border: '1px solid #334155',
+                        background: BG,
+                        border: `1px solid ${BORDER}`,
                         borderRadius: '8px',
                         padding: '12px',
-                        color: 'white',
+                        color: TEXT,
                         fontSize: '15px',
                         cursor: 'pointer',
                       }}
@@ -496,15 +700,15 @@ export default function ProgramOnboardingClient() {
                   </div>
                   <div
                     style={{
-                      background: '#1E293B',
+                      background: SURFACE,
                       borderRadius: '12px',
                       padding: '16px',
                       marginBottom: '24px',
-                      border: '1px solid #334155',
+                      border: `1px solid ${BORDER}`,
                     }}
                   >
                     {habitLines.map((line) => (
-                      <div key={line} style={{ color: '#CBD5E1', fontSize: '14px', padding: '4px 0' }}>
+                      <div key={line} style={{ color: TEXT, fontSize: '14px', padding: '4px 0' }}>
                         {line}
                       </div>
                     ))}
@@ -512,21 +716,7 @@ export default function ProgramOnboardingClient() {
                 </>
               )
             })()}
-            <button
-              type="button"
-              onClick={() => goNext()}
-              style={{
-                width: '100%',
-                background: '#F59E0B',
-                color: '#000',
-                border: 'none',
-                borderRadius: '12px',
-                padding: '16px',
-                fontSize: '16px',
-                fontWeight: '700',
-                cursor: 'pointer',
-              }}
-            >
+            <button type="button" onClick={() => goNext()} style={ctaButtonStyle(true)}>
               {step.action_label}
             </button>
           </div>
@@ -534,39 +724,97 @@ export default function ProgramOnboardingClient() {
 
         {step.step_kind === 'ready' ? (
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '64px', marginBottom: '20px' }}>🧘</div>
             {step.video_url ? <VideoBlock url={step.video_url} title={step.title} /> : null}
-            <h2 style={{ color: 'white', fontSize: '28px', fontWeight: '700', margin: '0 0 16px' }}>
-              {name.trim() ? `You're ready, ${name.trim()}.` : step.title}
-            </h2>
-            <p
-              style={{
-                color: '#94A3B8',
-                fontSize: '15px',
-                lineHeight: '1.7',
-                margin: '0 0 32px',
-                whiteSpace: 'pre-line',
-              }}
-            >
-              {step.description ?? ''}
-            </p>
+            {(() => {
+              const { intro, wakeLabel, habitsBlock } = parseWakeDescription(step.description)
+              const habitLines = habitsBlock
+                .split('\n')
+                .map((l) => l.trim())
+                .filter(Boolean)
+              return (
+                <>
+                  <h2 style={{ color: TEXT, fontSize: '22px', fontWeight: 600, margin: '0 0 12px', lineHeight: 1.35 }}>
+                    Your journey begins tomorrow at {wakeTime}. Ready?
+                  </h2>
+                  {intro ? (
+                    <p
+                      style={{
+                        color: MUTED,
+                        fontSize: '15px',
+                        lineHeight: 1.5,
+                        margin: '0 0 24px',
+                        whiteSpace: 'pre-line',
+                      }}
+                    >
+                      {intro}
+                    </p>
+                  ) : null}
+                  <div
+                    style={{
+                      background: SURFACE,
+                      borderRadius: '12px',
+                      padding: '20px',
+                      marginBottom: '20px',
+                      border: `1px solid ${BORDER}`,
+                      textAlign: 'left',
+                    }}
+                  >
+                    <label
+                      style={{ display: 'block', color: MUTED, fontSize: '13px', marginBottom: '10px' }}
+                      htmlFor="wake-select-ready"
+                    >
+                      {wakeLabel}
+                    </label>
+                    <select
+                      id="wake-select-ready"
+                      value={wakeTime}
+                      onChange={(e) => setWakeTime(e.target.value)}
+                      style={{
+                        width: '100%',
+                        background: BG,
+                        border: `1px solid ${BORDER}`,
+                        borderRadius: '8px',
+                        padding: '12px',
+                        color: TEXT,
+                        fontSize: '15px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {WAKE_OPTIONS.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {habitLines.length > 0 ? (
+                    <div
+                      style={{
+                        background: SURFACE,
+                        borderRadius: '12px',
+                        padding: '16px',
+                        marginBottom: '28px',
+                        border: `1px solid ${BORDER}`,
+                        textAlign: 'left',
+                      }}
+                    >
+                      {habitLines.map((line) => (
+                        <div key={line} style={{ color: TEXT, fontSize: '14px', padding: '4px 0' }}>
+                          {line}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </>
+              )
+            })()}
             <button
               type="button"
               onClick={() => void handleComplete()}
               disabled={loading}
-              style={{
-                width: '100%',
-                background: '#F59E0B',
-                color: '#000',
-                border: 'none',
-                borderRadius: '12px',
-                padding: '18px',
-                fontSize: '18px',
-                fontWeight: '700',
-                cursor: loading ? 'wait' : 'pointer',
-              }}
+              style={{ ...ctaButtonStyle(!loading, loading), padding: '18px', fontSize: '17px' }}
             >
-              {loading ? 'Setting up…' : step.action_label}
+              {loading ? 'Saving…' : step.action_label}
             </button>
           </div>
         ) : null}
@@ -575,9 +823,9 @@ export default function ProgramOnboardingClient() {
           <div>
             <h2
               style={{
-                color: 'white',
-                fontSize: '26px',
-                fontWeight: '700',
+                color: TEXT,
+                fontSize: '22px',
+                fontWeight: 600,
                 margin: '0 0 16px',
                 lineHeight: '1.3',
               }}
@@ -586,26 +834,11 @@ export default function ProgramOnboardingClient() {
             </h2>
             {step.video_url ? <VideoBlock url={step.video_url} title={step.title} /> : null}
             {step.description ? (
-              <p style={{ color: '#94A3B8', fontSize: '15px', lineHeight: '1.7', margin: '0 0 24px', whiteSpace: 'pre-line' }}>
+              <p style={{ color: MUTED, fontSize: '15px', lineHeight: 1.5, margin: '0 0 24px', whiteSpace: 'pre-line' }}>
                 {step.description}
               </p>
             ) : null}
-            <button
-              type="button"
-              onClick={() => primaryAction()}
-              disabled={primaryDisabled}
-              style={{
-                width: '100%',
-                background: primaryDisabled ? '#334155' : '#F59E0B',
-                color: primaryDisabled ? '#64748B' : '#000',
-                border: 'none',
-                borderRadius: '12px',
-                padding: '16px',
-                fontSize: '16px',
-                fontWeight: '700',
-                cursor: primaryDisabled ? 'not-allowed' : 'pointer',
-              }}
-            >
+            <button type="button" onClick={() => primaryAction()} disabled={primaryDisabled} style={ctaButtonStyle(!primaryDisabled)}>
               {step.action_label}
             </button>
           </div>

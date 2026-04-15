@@ -41,7 +41,7 @@ export default function JoinPage() {
     <div
       style={{
         minHeight: '100vh',
-        background: '#0F172A',
+        background: 'var(--background)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -60,20 +60,20 @@ export default function JoinPage() {
               lineHeight: '1.2',
             }}
           >
-            The 60-Day Monk Mode Program
+            The 60-day monkcubed program
           </h1>
-          <p style={{ color: '#64748B', fontSize: '16px', lineHeight: '1.6', margin: 0 }}>
-            Student → Monk → Master. One daily lesson. One action. 60 days to become a different
-            person.
+          <p style={{ color: 'var(--muted-foreground)', fontSize: '16px', lineHeight: '1.6', margin: 0 }}>
+            Sprint, then Transform, then Mastery. One daily lesson. One action. Sixty days of
+            structured practice.
           </p>
         </div>
 
         <div
           style={{
-            background: '#1E293B',
+            background: 'var(--card)',
             borderRadius: '20px',
             padding: '32px',
-            border: '1px solid #F59E0B44',
+            border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)',
             marginBottom: '16px',
           }}
         >
@@ -81,8 +81,8 @@ export default function JoinPage() {
             <div
               style={{
                 display: 'inline-block',
-                background: '#F59E0B22',
-                color: '#F59E0B',
+                background: 'color-mix(in srgb, var(--accent) 18%, transparent)',
+                color: 'var(--accent)',
                 fontSize: '12px',
                 fontWeight: '700',
                 padding: '4px 12px',
@@ -102,13 +102,13 @@ export default function JoinPage() {
                 gap: '4px',
               }}
             >
-              <span style={{ color: '#94A3B8', fontSize: '24px', marginTop: '8px' }}>$</span>
-              <span style={{ color: 'white', fontSize: '72px', fontWeight: '700', lineHeight: 1 }}>
+              <span style={{ color: 'var(--muted-foreground)', fontSize: '24px', marginTop: '8px' }}>$</span>
+              <span style={{ color: 'var(--foreground)', fontSize: '72px', fontWeight: '700', lineHeight: 1 }}>
                 19
               </span>
-              <span style={{ color: '#64748B', fontSize: '16px', marginTop: '12px' }}>AUD</span>
+              <span style={{ color: 'var(--muted-foreground)', fontSize: '16px', marginTop: '12px' }}>AUD</span>
             </div>
-            <p style={{ color: '#64748B', fontSize: '14px', margin: '8px 0 0' }}>
+            <p style={{ color: 'var(--muted-foreground)', fontSize: '14px', margin: '8px 0 0' }}>
               One-time payment. Lifetime access to the program.
             </p>
           </div>
@@ -131,11 +131,11 @@ export default function JoinPage() {
                   alignItems: 'center',
                   gap: '10px',
                   padding: '8px 0',
-                  borderBottom: i < 7 ? '1px solid #1E293B' : 'none',
+                  borderBottom: i < 7 ? '1px solid var(--border)' : 'none',
                 }}
               >
-                <span style={{ color: '#F59E0B', fontSize: '14px' }}>✓</span>
-                <span style={{ color: '#CBD5E1', fontSize: '14px' }}>{feature}</span>
+                <span style={{ color: 'var(--accent)', fontSize: '14px' }}>✓</span>
+                <span style={{ color: 'var(--foreground)', fontSize: '14px' }}>{feature}</span>
               </div>
             ))}
           </div>
@@ -152,8 +152,8 @@ export default function JoinPage() {
             disabled={loading}
             style={{
               width: '100%',
-              background: '#F59E0B',
-              color: '#000',
+              background: 'var(--accent)',
+              color: 'var(--accent-foreground)',
               border: 'none',
               borderRadius: '12px',
               padding: '16px',
@@ -167,19 +167,19 @@ export default function JoinPage() {
           </button>
 
           <div style={{ textAlign: 'center' }}>
-            <p style={{ color: '#64748B', fontSize: '12px', margin: '0 0 4px' }}>
+            <p style={{ color: 'var(--muted-foreground)', fontSize: '12px', margin: '0 0 4px' }}>
               30-day money-back guarantee
             </p>
-            <p style={{ color: '#475569', fontSize: '11px', margin: 0 }}>
+            <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', margin: 0 }}>
               If you complete the first 30 days and don&apos;t feel any different, email us for a full
               refund. No questions asked.
             </p>
           </div>
         </div>
 
-        <div style={{ textAlign: 'center', color: '#475569', fontSize: '13px' }}>
+        <div style={{ textAlign: 'center', color: 'var(--muted-foreground)', fontSize: '13px' }}>
           Already have an account?{' '}
-          <Link href="/auth" style={{ color: '#F59E0B', textDecoration: 'none' }}>
+          <Link href="/auth" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
             Sign in
           </Link>
         </div>

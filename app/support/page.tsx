@@ -98,68 +98,68 @@ export default function SupportPage() {
   }, [query])
 
   return (
-    <div className="min-h-screen bg-[#111827] text-white">
+    <div className="min-h-screen bg-background text-foreground">
       <Navigation />
       <div className="mx-auto max-w-6xl px-4 pb-16 pt-24">
         <div className="mx-auto max-w-2xl text-center">
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
             How can we help?
           </h1>
-          <p className="mt-2 text-sm text-gray-300">
+          <p className="mt-2 text-sm text-muted-foreground">
             We typically respond within 24 hours.
           </p>
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search FAQs..."
-            className="mt-5 border-white/15 bg-white/5 text-white placeholder:text-gray-400"
+            className="mt-5 border-border bg-card text-foreground placeholder:text-muted-foreground"
           />
         </div>
 
         <div className="mt-8 grid gap-4 md:grid-cols-3">
-          <Card className="border-[#F59E0B]/20 bg-white/[0.03] p-5">
+          <Card className="border-accent/20 bg-card p-5">
             <div className="text-3xl">✉️</div>
             <h2 className="mt-3 text-lg font-semibold">Email us</h2>
-            <p className="mt-2 text-sm text-gray-300">
+            <p className="mt-2 text-sm text-muted-foreground">
               For billing, account issues, and bug reports.
             </p>
             <a
               href="mailto:support@monkmodeapp.com"
-              className="mt-4 inline-block text-sm font-medium text-[#F59E0B] hover:underline"
+              className="mt-4 inline-block text-sm font-medium text-accent hover:underline"
             >
               support@monkmodeapp.com
             </a>
-            <p className="mt-2 text-xs text-gray-400">Within 24 hours</p>
+            <p className="mt-2 text-xs text-muted-foreground">Within 24 hours</p>
           </Card>
 
-          <Card className="border-[#F59E0B]/20 bg-white/[0.03] p-5">
+          <Card className="border-accent/20 bg-card p-5">
             <div className="text-3xl">💡</div>
             <h2 className="mt-3 text-lg font-semibold">Request a feature</h2>
-            <p className="mt-2 text-sm text-gray-300">
+            <p className="mt-2 text-sm text-muted-foreground">
               Have an idea to make MonkMode better? We read every suggestion.
             </p>
             <a
               href={FEATURE_REQUEST_URL}
               target="_blank"
               rel="noreferrer"
-              className="mt-4 inline-block text-sm font-medium text-[#F59E0B] hover:underline"
+              className="mt-4 inline-block text-sm font-medium text-accent hover:underline"
             >
               Submit idea
             </a>
-            <p className="mt-2 text-xs text-gray-400">
+            <p className="mt-2 text-xs text-muted-foreground">
               Most-requested features get prioritised in our roadmap.
             </p>
           </Card>
 
-          <Card className="border-[#F59E0B]/20 bg-white/[0.03] p-5">
+          <Card className="border-accent/20 bg-card p-5">
             <div className="text-3xl">🐛</div>
             <h2 className="mt-3 text-lg font-semibold">Report a bug</h2>
-            <p className="mt-2 text-sm text-gray-300">
+            <p className="mt-2 text-sm text-muted-foreground">
               Found something broken? Tell us and we&apos;ll fix it fast.
             </p>
             <a
               href={bugReportHref}
-              className="mt-4 inline-block text-sm font-medium text-[#F59E0B] hover:underline"
+              className="mt-4 inline-block text-sm font-medium text-accent hover:underline"
             >
               Report bug
             </a>
@@ -173,10 +173,10 @@ export default function SupportPage() {
           <Accordion
             type="single"
             collapsible
-            className="rounded-xl border border-white/10 bg-white/[0.03] px-4"
+            className="rounded-xl border border-border bg-card px-4"
           >
             {filtered.length === 0 ? (
-              <div className="py-6 text-center text-sm text-gray-400">
+              <div className="py-6 text-center text-sm text-muted-foreground">
                 No results found for your search.
               </div>
             ) : (
@@ -184,12 +184,12 @@ export default function SupportPage() {
                 <AccordionItem
                   key={`${item.group}-${item.q}`}
                   value={`q-${i}`}
-                  className="border-white/10"
+                  className="border-border"
                 >
-                  <AccordionTrigger className="text-left text-white hover:no-underline">
+                  <AccordionTrigger className="text-left text-foreground hover:no-underline">
                     {item.q}
                   </AccordionTrigger>
-                  <AccordionContent className="text-gray-300">
+                  <AccordionContent className="text-muted-foreground">
                     {item.a}
                   </AccordionContent>
                 </AccordionItem>
@@ -198,9 +198,9 @@ export default function SupportPage() {
           </Accordion>
         </div>
 
-        <p className="mt-8 text-center text-sm text-gray-400">
+        <p className="mt-8 text-center text-sm text-muted-foreground">
           Need direct help?{' '}
-          <Link href="mailto:support@monkmodeapp.com" className="text-[#F59E0B] hover:underline">
+          <Link href="mailto:support@monkmodeapp.com" className="text-accent hover:underline">
             support@monkmodeapp.com
           </Link>
         </p>

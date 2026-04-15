@@ -1,5 +1,7 @@
 'use client'
 
+import { PU } from '@/lib/program-ui-tokens'
+
 type LessonMediaProps = {
   mediaType: string | null | undefined
   mediaUrl: string | null | undefined
@@ -60,18 +62,18 @@ export default function LessonMedia({ mediaType, mediaUrl }: LessonMediaProps) {
     return (
       <div
         style={{
-          background: '#0F172A',
+          background: PU.bg,
           borderRadius: '10px',
           padding: '16px',
           marginBottom: '16px',
-          border: '1px solid #334155',
+          border: `1px solid ${PU.border}`,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
           <span style={{ fontSize: '20px' }}>🎵</span>
-          <span style={{ color: '#94A3B8', fontSize: '13px' }}>Listen to today&apos;s lesson</span>
+          <span style={{ color: PU.mutedFg, fontSize: '13px' }}>Listen to today&apos;s lesson</span>
         </div>
-        <audio controls style={{ width: '100%', height: '40px', accentColor: '#F59E0B' }}>
+        <audio controls style={{ width: '100%', height: '40px', accentColor: PU.primary }}>
           <source src={mediaUrl} type="audio/mpeg" />
           Your browser does not support audio playback.
         </audio>

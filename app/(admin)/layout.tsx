@@ -228,9 +228,9 @@ export default function AdminShellLayout({
           <>
             <p>This area is only available to admin accounts.</p>
             <p className="max-w-md text-xs text-muted-foreground">
-              If you recently deployed, confirm your user has <code className="text-slate-400">is_admin = true</code>{' '}
+              If you recently deployed, confirm your user has <code className="text-muted-foreground">is_admin = true</code>{' '}
               in Supabase (Table Editor or SQL) and that migrations defining{' '}
-              <code className="text-slate-400">is_current_user_admin</code> have been applied.
+              <code className="text-muted-foreground">is_current_user_admin</code> have been applied.
             </p>
             {debugReason ? (
               <p className="max-w-md rounded border border-border bg-card/70 px-3 py-2 text-left text-[11px] text-muted-foreground">

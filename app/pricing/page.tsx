@@ -22,11 +22,11 @@ export default function PricingPage() {
           Start free. Upgrade when you&apos;re ready. Cancel anytime.
         </p>
 
-        <div className="mx-auto mt-2 flex max-w-sm items-center justify-between gap-3 rounded-full border border-[#F59E0B]/30 bg-black/25 p-1">
+        <div className="mx-auto mt-2 flex max-w-sm items-center justify-between gap-3 rounded-full border border-accent/30 bg-card/50 p-1">
           <button
             type="button"
             className={`flex-1 rounded-full py-2 text-sm font-medium transition ${
-              !annual ? 'bg-[#F59E0B] text-[#111827]' : 'text-gray-400 hover:text-white'
+              !annual ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:text-foreground'
             }`}
             onClick={() => setAnnual(false)}
           >
@@ -35,7 +35,7 @@ export default function PricingPage() {
           <button
             type="button"
             className={`relative flex-1 rounded-full py-2 text-sm font-medium transition ${
-              annual ? 'bg-[#F59E0B] text-[#111827]' : 'text-gray-400 hover:text-white'
+              annual ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:text-foreground'
             }`}
             onClick={() => setAnnual(true)}
           >
@@ -56,7 +56,7 @@ export default function PricingPage() {
             </Button>
           </Card>
 
-          <Card className="border-[#F59E0B]/50 bg-[#F59E0B]/10 p-5 text-left">
+          <Card className="border-accent/50 bg-accent/10 p-5 text-left">
             <div className="inline-flex rounded bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
               BEST VALUE
             </div>
@@ -79,7 +79,7 @@ export default function PricingPage() {
                 <p className="text-xs text-muted-foreground">&nbsp;</p>
               </div>
             </div>
-            <Button asChild className="mt-4 w-full bg-[#F59E0B] text-[#111827] hover:bg-[#F59E0B]/90">
+            <Button asChild className="mt-4 w-full bg-accent text-accent-foreground hover:bg-accent/90">
               <Link href="/auth">
                 {annual
                   ? 'Start free trial — $59.99/yr'

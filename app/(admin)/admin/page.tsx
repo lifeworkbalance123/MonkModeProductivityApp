@@ -107,11 +107,11 @@ export default function AdminOverviewPage() {
   }, [])
 
   if (loading) {
-    return <div className="text-slate-400">Loading dashboard…</div>
+    return <div className="text-muted-foreground">Loading dashboard…</div>
   }
 
   const statCards = [
-    { label: 'Total users', value: stats?.totalUsers ?? 0, color: '#F59E0B' },
+    { label: 'Total users', value: stats?.totalUsers ?? 0, color: 'var(--accent)' },
     { label: 'Active trials', value: stats?.trialUsers ?? 0, color: '#3B82F6' },
     { label: 'Pro subscribers', value: stats?.proUsers ?? 0, color: '#10B981' },
     {
@@ -119,7 +119,7 @@ export default function AdminOverviewPage() {
       value: stats?.lifetimeUsers ?? 0,
       color: '#8B5CF6',
     },
-    { label: 'Signups today', value: stats?.todaySignups ?? 0, color: '#F59E0B' },
+    { label: 'Signups today', value: stats?.todaySignups ?? 0, color: 'var(--accent)' },
     {
       label: 'Signups this week',
       value: stats?.weekSignups ?? 0,
@@ -136,8 +136,8 @@ export default function AdminOverviewPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-white">Overview</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-2xl font-semibold text-foreground">Overview</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           {new Date().toLocaleDateString('en-AU', {
             weekday: 'long',
             year: 'numeric',
@@ -151,7 +151,7 @@ export default function AdminOverviewPage() {
         {statCards.map((card) => (
           <div
             key={card.label}
-            className="rounded-xl border border-slate-700 bg-[#1E293B] p-5"
+            className="rounded-xl border border-border bg-card p-5"
           >
             <div
               className="text-3xl font-semibold leading-none"
@@ -159,13 +159,13 @@ export default function AdminOverviewPage() {
             >
               {card.value}
             </div>
-            <div className="mt-2 text-[13px] text-slate-500">{card.label}</div>
+            <div className="mt-2 text-[13px] text-muted-foreground">{card.label}</div>
           </div>
         ))}
       </div>
 
-      <div className="mb-8 rounded-xl border border-slate-700 bg-[#1E293B] p-6">
-        <h2 className="mb-4 text-base font-medium text-white">Plan breakdown</h2>
+      <div className="mb-8 rounded-xl border border-border bg-card p-6">
+        <h2 className="mb-4 text-base font-medium text-foreground">Plan breakdown</h2>
         {[
           { label: 'Trial (14-day free)', count: stats?.trialUsers ?? 0, color: '#3B82F6' },
           {
@@ -181,28 +181,28 @@ export default function AdminOverviewPage() {
           {
             label: 'Lifetime ($149)',
             count: stats?.lifetimeUsers ?? 0,
-            color: '#F59E0B',
+            color: 'var(--accent)',
           },
-          { label: 'Free', count: stats?.freeUsers ?? 0, color: '#64748B' },
+          { label: 'Free', count: stats?.freeUsers ?? 0, color: 'var(--muted-foreground)' },
         ].map((row) => (
           <div
             key={row.label}
-            className="flex items-center justify-between border-b border-slate-700 py-2.5 last:border-0"
+            className="flex items-center justify-between border-b border-border py-2.5 last:border-0"
           >
             <div className="flex items-center gap-2.5">
               <div
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ background: row.color }}
               />
-              <span className="text-sm text-slate-300">{row.label}</span>
+              <span className="text-sm text-muted-foreground">{row.label}</span>
             </div>
-            <span className="text-sm font-medium text-white">{row.count}</span>
+            <span className="text-sm font-medium text-foreground">{row.count}</span>
           </div>
         ))}
       </div>
 
-      <div className="rounded-xl border border-slate-700 bg-[#1E293B] p-6">
-        <h2 className="mb-4 text-base font-medium text-white">Recent signups</h2>
+      <div className="rounded-xl border border-border bg-card p-6">
+        <h2 className="mb-4 text-base font-medium text-foreground">Recent signups</h2>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[13px]">
             <thead>
@@ -210,7 +210,7 @@ export default function AdminOverviewPage() {
                 {['Email', 'Plan', 'Trial ends', 'Signed up'].map((h) => (
                   <th
                     key={h}
-                    className="border-b border-slate-600 pb-3 text-left text-xs font-medium text-slate-500"
+                    className="border-b border-border pb-3 text-left text-xs font-medium text-muted-foreground"
                   >
                     {h}
                   </th>
@@ -220,18 +220,18 @@ export default function AdminOverviewPage() {
             <tbody>
               {recentUsers.map((user) => (
                 <tr key={user.id}>
-                  <td className="border-b border-slate-800 py-3 text-slate-300">
+                  <td className="border-b border-border py-3 text-muted-foreground">
                     {user.email ?? '—'}
                   </td>
-                  <td className="border-b border-slate-800 py-3">
+                  <td className="border-b border-border py-3">
                     <PlanBadge plan={user.plan} />
                   </td>
-                  <td className="border-b border-slate-800 py-3 text-xs text-slate-500">
+                  <td className="border-b border-border py-3 text-xs text-muted-foreground">
                     {user.trial_end_date
                       ? new Date(user.trial_end_date).toLocaleDateString('en-AU')
                       : '—'}
                   </td>
-                  <td className="border-b border-slate-800 py-3 text-xs text-slate-500">
+                  <td className="border-b border-border py-3 text-xs text-muted-foreground">
                     {user.created_at
                       ? new Date(user.created_at).toLocaleDateString('en-AU')
                       : '—'}

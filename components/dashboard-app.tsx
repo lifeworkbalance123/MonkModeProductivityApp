@@ -528,7 +528,7 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
                   {userId ? (
                     <Link
                       href={`/share/${userId}`}
-                      className="inline-flex min-h-11 items-center gap-1 rounded-md border border-[#F59E0B]/60 px-3 text-xs font-medium text-[#F59E0B] hover:bg-[#F59E0B]/10 md:min-h-0 md:px-2.5 md:py-1.5"
+                      className="inline-flex min-h-11 items-center gap-1 rounded-md border border-primary/50 px-3 text-xs font-medium text-primary hover:bg-primary/10 md:min-h-0 md:px-2.5 md:py-1.5"
                     >
                       <Share2 className="h-3.5 w-3.5" />
                       Share your streak

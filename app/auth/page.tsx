@@ -424,7 +424,7 @@ export default function AuthPage() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-16">
       <Card className="w-full max-w-md p-6 space-y-6 border-border">
         {showReferralBanner ? (
-          <div className="rounded-lg border border-[#F59E0B]/35 bg-[#F59E0B]/10 px-3 py-2 text-sm text-amber-100">
+          <div className="rounded-lg border border-accent/35 bg-accent/10 px-3 py-2 text-sm text-foreground">
             You were invited to MonkMode! Sign up free — your friend gets a reward
             when you join.
           </div>
