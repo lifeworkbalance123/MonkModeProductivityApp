@@ -1,7 +1,8 @@
 'use client'
 
 import { useProgram } from '@/hooks/useProgram'
-import { getPhaseColor, getPhaseEmoji, getPhaseLabel } from '@/lib/programUtils'
+import { PU } from '@/lib/program-ui-tokens'
+import { getPhaseColor, getPhaseLabel } from '@/lib/programUtils'
 
 export default function ProgramHeader() {
   const { enrollment, loading } = useProgram()
@@ -15,10 +16,10 @@ export default function ProgramHeader() {
   return (
     <div
       style={{
-        background: '#1E293B',
+        background: PU.card,
         borderRadius: '12px',
         padding: '16px 20px',
-        border: `1px solid ${phaseColor}44`,
+        border: `1px solid color-mix(in srgb, ${phaseColor} 45%, ${PU.border})`,
         marginBottom: '24px',
       }}
     >
@@ -33,17 +34,26 @@ export default function ProgramHeader() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '24px' }}>{getPhaseEmoji(enrollment.phase)}</span>
+          <span
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: '50%',
+              background: phaseColor,
+              flexShrink: 0,
+            }}
+            aria-hidden
+          />
           <div>
             <span style={{ color: phaseColor, fontWeight: '600', fontSize: '16px' }}>
               {getPhaseLabel(enrollment.phase)}
             </span>
-            <span style={{ color: '#64748B', fontSize: '13px', marginLeft: '8px' }}>Phase</span>
+            <span style={{ color: PU.mutedFg, fontSize: '13px', marginLeft: '8px' }}>Phase</span>
           </div>
         </div>
         <div
           style={{
-            background: `${phaseColor}22`,
+            background: `color-mix(in srgb, ${phaseColor} 20%, transparent)`,
             color: phaseColor,
             padding: '4px 12px',
             borderRadius: '20px',
@@ -57,7 +67,7 @@ export default function ProgramHeader() {
 
       <div
         style={{
-          background: '#0F172A',
+          background: PU.muted,
           borderRadius: '4px',
           height: '6px',
           overflow: 'hidden',
@@ -75,8 +85,8 @@ export default function ProgramHeader() {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
-        <span style={{ color: '#64748B', fontSize: '11px' }}>{completedCount} days completed</span>
-        <span style={{ color: '#64748B', fontSize: '11px' }}>{progressPercent}%</span>
+        <span style={{ color: PU.mutedFg, fontSize: '11px' }}>{completedCount} days completed</span>
+        <span style={{ color: PU.mutedFg, fontSize: '11px' }}>{progressPercent}%</span>
       </div>
     </div>
   )

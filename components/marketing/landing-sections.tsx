@@ -1,16 +1,17 @@
 'use client'
 
 import Link from 'next/link'
-import { Flame } from 'lucide-react'
 import { useState } from 'react'
+import { MonkCubedLogo } from '@/components/brand/MonkCubedLogo'
+import { MONKCUBED_TAGLINE } from '@/components/brand/MonkCubedLogo'
 
 export function SocialProofBar() {
   return (
-    <section className="border-y border-white/10 bg-[#13203b]">
-      <div className="mx-auto grid max-w-[1100px] grid-cols-1 gap-4 px-4 py-5 text-center text-sm text-[#94A3B8] md:grid-cols-3">
-        <p>🔥 14-Day Free Trial — No card required</p>
-        <p>📱 Works on iOS, Android & Web</p>
-        <p>🔒 Your data, your control</p>
+    <section className="border-y border-border bg-card">
+      <div className="mx-auto grid max-w-[1100px] grid-cols-1 gap-4 px-4 py-5 text-center text-sm text-muted-foreground md:grid-cols-3">
+        <p>14-day free trial. No card required.</p>
+        <p>Works on iOS, Android, and web.</p>
+        <p>Your data, your control.</p>
       </div>
     </section>
   )
@@ -30,13 +31,13 @@ export function FeaturesSection() {
   ]
   return (
     <section id="features" className="mx-auto max-w-[1100px] px-4 py-20">
-      <h2 className="text-center text-3xl font-bold text-white">Everything you need to enter Monk Mode</h2>
-      <p className="mx-auto mt-3 max-w-2xl text-center text-[#94A3B8]">A complete productivity system designed around one principle: intentional living.</p>
+      <h2 className="text-center text-3xl font-semibold text-foreground">Everything you need for structured depth</h2>
+      <p className="mx-auto mt-3 max-w-2xl text-center text-muted-foreground">A complete productivity system built around one principle: intentional living.</p>
       <div className="mt-10 grid gap-4 md:grid-cols-3">
         {features.map(([title, desc]) => (
-          <div key={title} className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
-            <h3 className="text-lg font-semibold text-white">{title}</h3>
-            <p className="mt-2 text-sm text-[#94A3B8]">{desc}</p>
+          <div key={title} className="rounded-xl border border-border bg-card/60 p-5">
+            <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+            <p className="mt-2 text-sm text-muted-foreground">{desc}</p>
           </div>
         ))}
       </div>
@@ -52,13 +53,13 @@ export function HowItWorksSection() {
   ]
   return (
     <section className="mx-auto max-w-[1100px] px-4 py-20">
-      <h2 className="text-center text-3xl font-bold text-white">Your daily MonkMode ritual</h2>
+      <h2 className="text-center text-3xl font-semibold text-foreground">Your daily monkcubed rhythm</h2>
       <div className="mt-10 grid gap-6 md:grid-cols-3">
         {steps.map(([icon, title, desc]) => (
-          <div key={title} className="rounded-xl border border-white/10 bg-white/[0.02] p-5 text-center">
+          <div key={title} className="rounded-xl border border-border bg-card/60 p-5 text-center">
             <div className="text-2xl">{icon}</div>
-            <p className="mt-3 font-semibold text-white">{title}</p>
-            <p className="mt-2 text-sm text-[#94A3B8]">{desc}</p>
+            <p className="mt-3 font-semibold text-foreground">{title}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{desc}</p>
           </div>
         ))}
       </div>
@@ -80,34 +81,34 @@ export function PricingSection() {
   ]
   return (
     <section id="pricing" className="mx-auto max-w-[1100px] px-4 py-20">
-      <h2 className="text-center text-3xl font-bold text-white">Simple, honest pricing</h2>
-      <p className="mx-auto mt-3 max-w-2xl text-center text-[#94A3B8]">Start free. Upgrade when you&apos;re ready. Cancel anytime.</p>
-      <div className="mx-auto mt-6 flex max-w-sm items-center justify-between gap-3 rounded-full border border-[#F59E0B]/30 bg-black/25 p-1">
+      <h2 className="text-center text-3xl font-semibold text-foreground">Simple, honest pricing</h2>
+      <p className="mx-auto mt-3 max-w-2xl text-center text-muted-foreground">Start free. Upgrade when you&apos;re ready. Cancel anytime.</p>
+      <div className="mx-auto mt-6 flex max-w-sm items-center justify-between gap-3 rounded-full border border-accent/30 bg-background/60 p-1">
         <button
           type="button"
-          className={`flex-1 rounded-full py-2 text-sm font-medium transition ${!annual ? 'bg-[#F59E0B] text-[#111827]' : 'text-gray-400 hover:text-white'}`}
+          className={`flex-1 rounded-full py-2 text-sm font-medium transition ${!annual ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           onClick={() => setAnnual(false)}
         >
           Monthly
         </button>
         <button
           type="button"
-          className={`relative flex-1 rounded-full py-2 text-sm font-medium transition ${annual ? 'bg-[#F59E0B] text-[#111827]' : 'text-gray-400 hover:text-white'}`}
+          className={`relative flex-1 rounded-full py-2 text-sm font-medium transition ${annual ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           onClick={() => setAnnual(true)}
         >
           Annual
-          <span className="absolute -right-1 -top-2 rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+          <span className="absolute -right-1 -top-2 rounded bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
             SAVE 50%
           </span>
         </button>
       </div>
       <div className="mt-10 grid gap-4 md:grid-cols-3">
         {plans.map((p) => (
-          <div key={p.title} className={`rounded-xl border p-5 ${p.featured ? 'border-[#F59E0B]/70 bg-[#F59E0B]/10' : 'border-white/10 bg-white/[0.02]'}`}>
-            <h3 className="text-xl font-semibold text-white">{p.title}</h3>
-            <p className="mt-2 text-[#F59E0B]">{p.price}</p>
-            <p className="mt-2 text-sm text-[#94A3B8]">{p.desc}</p>
-            <Link href="/auth" className="mt-4 inline-block rounded-md bg-[#F59E0B] px-4 py-2 text-sm font-semibold text-[#0F172A]">
+          <div key={p.title} className={`rounded-xl border p-5 ${p.featured ? 'border-accent/70 bg-accent/10' : 'border-border bg-card/60'}`}>
+            <h3 className="text-xl font-semibold text-foreground">{p.title}</h3>
+            <p className="mt-2 text-accent">{p.price}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{p.desc}</p>
+            <Link href="/auth" className="mt-4 inline-block rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
               {p.title === 'Pro'
                 ? annual
                   ? 'Start free trial — $59.99/yr'
@@ -115,7 +116,7 @@ export function PricingSection() {
                 : 'Start free trial'}
             </Link>
             {p.title === 'Pro' && annual ? (
-              <p className="mt-2 text-xs text-emerald-300">
+              <p className="mt-2 text-xs text-primary">
                 You save $59.89 per year vs monthly billing
               </p>
             ) : null}
@@ -134,18 +135,18 @@ export function TrainingPreviewSection() {
   ]
   return (
     <section id="training" className="mx-auto max-w-[1100px] px-4 py-20">
-      <h2 className="text-center text-3xl font-bold text-white">Learn the systems behind the app</h2>
-      <p className="mx-auto mt-3 max-w-2xl text-center text-[#94A3B8]">MonkMode isn&apos;t just a tracker — it teaches you the productivity frameworks behind every feature.</p>
+      <h2 className="text-center text-3xl font-semibold text-foreground">Learn the systems behind the app</h2>
+      <p className="mx-auto mt-3 max-w-2xl text-center text-muted-foreground">monkcubed is not only a tracker. It teaches the productivity frameworks behind each feature.</p>
       <div className="mt-10 grid gap-4 md:grid-cols-3">
         {cards.map(([t, m]) => (
-          <div key={t} className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
-            <p className="font-semibold text-white">{t}</p>
-            <p className="mt-2 text-sm text-[#94A3B8]">{m}</p>
+          <div key={t} className="rounded-xl border border-border bg-card/60 p-5">
+            <p className="font-semibold text-foreground">{t}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{m}</p>
           </div>
         ))}
       </div>
       <div className="mt-8 text-center">
-        <Link href="/training" className="text-[#F59E0B] hover:underline">View all training modules →</Link>
+        <Link href="/training" className="text-accent hover:underline">View all training modules</Link>
       </div>
     </section>
   )
@@ -153,17 +154,17 @@ export function TrainingPreviewSection() {
 
 export function FinalCtaSection() {
   return (
-    <section id="roadmap" className="border-t border-[#F59E0B]/40 bg-[#111c31] py-20">
+    <section id="roadmap" className="border-t border-accent/40 bg-background py-20">
       <div className="mx-auto max-w-[1100px] px-4 text-center">
-        <h2 className="text-4xl font-bold text-white">Your focused life starts today.</h2>
-        <p className="mx-auto mt-3 max-w-xl text-[#94A3B8]">Join MonkMode free. 14 days of full Pro access — no card needed.</p>
-        <Link href="/auth" className="mt-6 inline-block rounded-md bg-[#F59E0B] px-6 py-3 font-semibold text-[#0F172A]">Start your free trial →</Link>
+        <h2 className="text-4xl font-semibold text-foreground">Your focused life starts today.</h2>
+        <p className="mx-auto mt-3 max-w-xl text-muted-foreground">Join monkcubed free. Fourteen days of full Pro access. No card required.</p>
+        <Link href="/auth" className="mt-6 inline-block rounded-md bg-accent px-6 py-3 font-semibold text-accent-foreground">Begin</Link>
         <div className="mt-3">
-          <Link href="/waitlist" className="text-sm text-[#94A3B8] hover:text-white">
+          <Link href="/waitlist" className="text-sm text-muted-foreground hover:text-foreground">
             Join waitlist
           </Link>
         </div>
-        <p className="mt-3 text-sm text-[#94A3B8]">Free forever plan available after trial.</p>
+        <p className="mt-3 text-sm text-muted-foreground">Free plan available after trial.</p>
       </div>
     </section>
   )
@@ -171,29 +172,31 @@ export function FinalCtaSection() {
 
 export function MarketingFooter() {
   return (
-    <footer className="border-t border-white/10 bg-[#0b1324]">
+    <footer className="border-t border-border bg-background">
       <div className="mx-auto grid max-w-[1100px] gap-8 px-4 py-12 md:grid-cols-4">
         <div>
-          <div className="flex items-center gap-2 text-white"><Flame className="h-5 w-5 text-[#F59E0B]" /> MONKMODE</div>
-          <p className="mt-2 text-sm text-[#94A3B8]">Master your time. Transform your life.</p>
-          <p className="mt-4 text-xs text-[#94A3B8]">© 2026 MonkMode. All rights reserved.</p>
+          <div className="flex items-center gap-2 text-white">
+            <MonkCubedLogo variant="onDark" className="text-lg" />
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">{MONKCUBED_TAGLINE}</p>
+          <p className="mt-4 text-xs text-muted-foreground">© 2026 monkcubed. All rights reserved.</p>
         </div>
-        <div className="space-y-2 text-sm text-[#94A3B8]">
-          <p className="font-semibold text-white">Product</p>
+        <div className="space-y-2 text-sm text-muted-foreground">
+          <p className="font-semibold text-foreground">Product</p>
           <a href="#features">Features</a><br />
           <a href="#pricing">Pricing</a><br />
           <a href="#training">Training</a><br />
           <a href="#roadmap">Roadmap</a><br />
           <Link href="/waitlist">Join waitlist</Link>
         </div>
-        <div className="space-y-2 text-sm text-[#94A3B8]">
-          <p className="font-semibold text-white">Company</p>
+        <div className="space-y-2 text-sm text-muted-foreground">
+          <p className="font-semibold text-foreground">Company</p>
           <Link href="/support">About</Link><br />
           <a href="YOUR_BLOG_URL">Blog</a><br />
           <a href="mailto:hello@monkmodeapp.com">Contact</a>
         </div>
-        <div className="space-y-2 text-sm text-[#94A3B8]">
-          <p className="font-semibold text-white">Legal</p>
+        <div className="space-y-2 text-sm text-muted-foreground">
+          <p className="font-semibold text-foreground">Legal</p>
           <Link href="/privacy">Privacy</Link><br />
           <Link href="/terms">Terms</Link><br />
           <Link href="/support">Support</Link>

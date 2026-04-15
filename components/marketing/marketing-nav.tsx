@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { Flame, Menu, X } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
+import { MonkCubedLogo } from '@/components/brand/MonkCubedLogo'
 
 const links = [
   { href: '#features', label: 'Features' },
@@ -16,28 +17,27 @@ export default function MarketingNav() {
   const [open, setOpen] = useState(false)
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0F172A]/90 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur">
       <div className="mx-auto flex h-16 w-full max-w-[1100px] items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2">
-          <Flame className="h-5 w-5 text-[#F59E0B]" />
-          <span className="font-semibold text-white">MONKMODE</span>
+        <Link href="/" className="flex items-center gap-2" aria-label="monk cubed home">
+          <MonkCubedLogo variant="onDark" className="text-lg" />
         </Link>
 
         <nav className="hidden items-center gap-6 md:flex">
           {links.map((l) => (
-            <a key={l.href} href={l.href} className="text-sm text-[#94A3B8] hover:text-white">
+            <a key={l.href} href={l.href} className="text-sm text-muted-foreground hover:text-foreground">
               {l.label}
             </a>
           ))}
         </nav>
 
         <div className="hidden items-center gap-4 md:flex">
-          <Link href="/auth" className="text-sm text-[#94A3B8] hover:text-white">
+          <Link href="/auth" className="text-sm text-muted-foreground hover:text-foreground">
             Sign in
           </Link>
           <Link
             href="/auth"
-            className="rounded-md bg-[#F59E0B] px-4 py-2 text-sm font-semibold text-[#0F172A] hover:bg-[#f6ab2d]"
+            className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:opacity-90"
           >
             Start free trial
           </Link>
@@ -46,7 +46,7 @@ export default function MarketingNav() {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="md:hidden text-[#94A3B8]"
+          className="md:hidden text-muted-foreground"
           aria-label="Toggle menu"
         >
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -54,20 +54,20 @@ export default function MarketingNav() {
       </div>
 
       {open ? (
-        <div className="border-t border-white/10 px-4 py-3 md:hidden">
+        <div className="border-t border-border px-4 py-3 md:hidden">
           <div className="mx-auto flex max-w-[1100px] flex-col gap-3">
             {links.map((l) => (
-              <a key={l.href} href={l.href} onClick={() => setOpen(false)} className="text-[#94A3B8]">
+              <a key={l.href} href={l.href} onClick={() => setOpen(false)} className="text-muted-foreground">
                 {l.label}
               </a>
             ))}
-            <Link href="/auth" className="text-[#94A3B8]" onClick={() => setOpen(false)}>
+            <Link href="/auth" className="text-muted-foreground" onClick={() => setOpen(false)}>
               Sign in
             </Link>
             <Link
               href="/auth"
               onClick={() => setOpen(false)}
-              className="rounded-md bg-[#F59E0B] px-4 py-2 text-center font-semibold text-[#0F172A]"
+              className="rounded-md bg-accent px-4 py-2 text-center font-semibold text-accent-foreground"
             >
               Start free trial
             </Link>
