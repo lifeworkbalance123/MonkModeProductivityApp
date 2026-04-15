@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { THEME_IDS, type ColorThemeId } from '@/lib/colorThemes'
+import { isColorThemeId, THEME_IDS, type ColorThemeId } from '@/lib/colorThemes'
 
 export type ThemePersonaRow = {
   id: ColorThemeId
@@ -27,13 +27,15 @@ export function useThemePersonas() {
     const { data, error: qErr } = await supabase
       .from('theme_personas')
       .select('id, display_name, description, updated_at')
+      .in('id', [...THEME_IDS])
       .order('id')
 
     if (qErr) {
       setError(qErr.message)
       setPersonas([])
     } else {
-      setPersonas(sortPersonas((data ?? []) as ThemePersonaRow[]))
+      const rows = ((data ?? []) as ThemePersonaRow[]).filter((r) => isColorThemeId(r.id))
+      setPersonas(sortPersonas(rows))
     }
     setLoading(false)
   }, [])

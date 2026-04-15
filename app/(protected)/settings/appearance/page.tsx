@@ -5,15 +5,44 @@ import { Loader2, Palette } from 'lucide-react'
 import { Navigation } from '@/components/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useColorTheme } from '@/context/ColorThemeContext'
 import { useThemePersonas } from '@/hooks/useThemePersonas'
-import { THEME_ACCENT_SWATCH, THEME_IDS, type ColorThemeId } from '@/lib/colorThemes'
+import {
+  THEME_ACCENT_SWATCH,
+  THEME_IDS,
+  type ColorThemeId,
+} from '@/lib/colorThemes'
 import { cn } from '@/lib/utils'
 
 const FALLBACK: Record<ColorThemeId, { display_name: string; description: string }> = {
-  forge: { display_name: 'The Forge', description: 'Intense, gritty — for the warrior.' },
-  sanctuary: { display_name: 'The Sanctuary', description: 'Calm, focused — teal clarity.' },
-  sage: { display_name: 'The Sage', description: 'Warm stone and olive — grounded wisdom.' },
+  stoic: {
+    display_name: 'The Stoic',
+    description: 'Dark canvas and amber gold — the default disciplined look.',
+  },
+  zen: {
+    display_name: 'Zen Monochrome',
+    description: 'Warm off-white and soft grey — a calm light workspace.',
+  },
+  nomad: {
+    display_name: 'Digital Nomad',
+    description: 'Deep navy with sand accents — travel-ready focus.',
+  },
+  forge: {
+    display_name: 'The Forge',
+    description: 'Charcoal steel and ember orange — high intensity.',
+  },
+  silent: {
+    display_name: 'Silent Monk',
+    description: 'Greyscale interface; gold reserved for key actions only.',
+  },
 }
 
 export default function AppearanceSettingsPage() {
@@ -45,12 +74,12 @@ export default function AppearanceSettingsPage() {
             Appearance
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Choose a color persona. Names and descriptions are managed in the admin panel.
+            Pick a palette for monkcubed. Labels can be edited in the admin Themes screen.
           </p>
         </div>
 
         {error ? (
-          <p className="text-sm text-amber-600 dark:text-amber-400">
+          <p className="text-sm text-muted-foreground">
             Could not load theme labels ({error}). Showing defaults until the database migration is applied.
           </p>
         ) : null}
@@ -61,7 +90,29 @@ export default function AppearanceSettingsPage() {
             Loading…
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="palette-select" className="text-foreground">
+                Quick pick
+              </Label>
+              <Select
+                value={themeId}
+                onValueChange={(v) => void setThemeId(v as ColorThemeId)}
+              >
+                <SelectTrigger id="palette-select" className="max-w-md w-full bg-card">
+                  <SelectValue placeholder="Choose palette" />
+                </SelectTrigger>
+                <SelectContent>
+                  {THEME_IDS.map((id) => (
+                    <SelectItem key={id} value={id}>
+                      {meta(id).name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-3">
             {THEME_IDS.map((id) => {
               const { name, description } = meta(id)
               const selected = themeId === id
@@ -113,6 +164,7 @@ export default function AppearanceSettingsPage() {
                 </Card>
               )
             })}
+            </div>
           </div>
         )}
       </div>

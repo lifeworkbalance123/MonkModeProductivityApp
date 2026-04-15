@@ -13,8 +13,9 @@ import { supabase } from '@/lib/supabase'
 import {
   applyColorThemeToDocument,
   COLOR_THEME_STORAGE_KEY,
+  DEFAULT_COLOR_THEME,
+  normalizeColorThemeId,
   type ColorThemeId,
-  isColorThemeId,
 } from '@/lib/colorThemes'
 import { useAuth } from '@/context/AuthContext'
 
@@ -27,11 +28,9 @@ type ColorThemeContextValue = {
 
 const ColorThemeContext = createContext<ColorThemeContextValue | undefined>(undefined)
 
-const DEFAULT_THEME: ColorThemeId = 'forge'
-
 export function ColorThemeProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: authLoading } = useAuth()
-  const [themeId, setThemeIdState] = useState<ColorThemeId>(DEFAULT_THEME)
+  const [themeId, setThemeIdState] = useState<ColorThemeId>(DEFAULT_COLOR_THEME)
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
@@ -46,7 +45,7 @@ export function ColorThemeProvider({ children }: { children: ReactNode }) {
     async function load() {
       if (!user) {
         const raw = typeof window !== 'undefined' ? localStorage.getItem(COLOR_THEME_STORAGE_KEY) : null
-        const next = isColorThemeId(raw) ? raw : DEFAULT_THEME
+        const next = normalizeColorThemeId(raw)
         if (!cancelled) {
           setThemeIdState(next)
           applyColorThemeToDocument(next)
@@ -64,7 +63,7 @@ export function ColorThemeProvider({ children }: { children: ReactNode }) {
       if (cancelled) return
 
       const pref = (data as { theme_preference?: string } | null)?.theme_preference
-      const next = isColorThemeId(pref) ? pref : DEFAULT_THEME
+      const next = normalizeColorThemeId(pref)
       setThemeIdState(next)
       applyColorThemeToDocument(next)
       try {

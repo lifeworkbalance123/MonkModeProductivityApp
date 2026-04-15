@@ -1,21 +1,34 @@
 'use client'
 
-import { useTheme } from 'next-themes'
-import { Toaster as Sonner, ToasterProps } from 'sonner'
+import { useEffect, useState, type CSSProperties } from 'react'
+import { Toaster as Sonner, type ToasterProps } from 'sonner'
+
+function useDocumentDarkClass(): boolean {
+  const [dark, setDark] = useState(true)
+  useEffect(() => {
+    const el = document.documentElement
+    const sync = () => setDark(el.classList.contains('dark'))
+    sync()
+    const obs = new MutationObserver(sync)
+    obs.observe(el, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
+  return dark
+}
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = 'system' } = useTheme()
+  const dark = useDocumentDarkClass()
 
   return (
     <Sonner
-      theme={theme as ToasterProps['theme']}
+      theme={dark ? 'dark' : 'light'}
       className="toaster group"
       style={
         {
           '--normal-bg': 'var(--popover)',
           '--normal-text': 'var(--popover-foreground)',
           '--normal-border': 'var(--border)',
-        } as React.CSSProperties
+        } as CSSProperties
       }
       {...props}
     />

@@ -18,13 +18,14 @@ import {
   Settings,
   Menu,
   X,
-  Flame,
   BarChart2,
   Cloud,
   Timer,
   Sunrise,
   Clapperboard,
 } from "lucide-react"
+import { MonkCubedLogo } from "@/components/brand/MonkCubedLogo"
+import { useColorTheme } from "@/context/ColorThemeContext"
 
 type IconType = typeof LayoutDashboard
 
@@ -68,7 +69,7 @@ const navItems: NavItem[] = [
     icon: Cloud,
     proOnly: true,
     proDescription:
-      "Keep your MonkMode data backed up and in sync across devices with cloud storage.",
+      "Keep your monkcubed data backed up and in sync across devices with cloud storage.",
   },
   { href: "/settings", label: "Settings", icon: Settings },
 ]
@@ -76,6 +77,7 @@ const navItems: NavItem[] = [
 export function Navigation() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { openUpgrade } = useUpgradeOffer()
+  const { themeId } = useColorTheme()
   const { user } = useAuth()
   const trial = useTrialBanner()
   const { isPro, isLoading: planLoading } = usePlan()
@@ -101,11 +103,15 @@ export function Navigation() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center gap-2 shrink-0">
-              <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
-                <Flame className="w-5 h-5 text-accent-foreground" />
-              </div>
-              <span className="font-semibold text-lg tracking-tight">MONKMODE</span>
+            <Link
+              href="/"
+              className="flex items-center gap-2 shrink-0"
+              aria-label="monk cubed — home"
+            >
+              <MonkCubedLogo
+                variant={themeId === "zen" ? "onLight" : "onDark"}
+                className="text-lg sm:text-xl"
+              />
             </Link>
 
             <div className="hidden md:flex items-center gap-1 flex-wrap justify-end max-w-[70%]">
@@ -173,15 +179,15 @@ export function Navigation() {
           </div>
 
           {showTrialBanner ? (
-            <div className="hidden md:flex items-center justify-between gap-3 border-t border-[#F59E0B]/25 bg-[#F59E0B]/[0.07] px-1 py-1.5">
-              <p className="text-xs text-amber-100/90 sm:text-sm">
+            <div className="hidden md:flex items-center justify-between gap-3 border-t border-primary/25 bg-primary/[0.08] px-1 py-1.5">
+              <p className="text-xs text-foreground/90 sm:text-sm">
                 {trial.expired
                   ? "Your Pro preview ended — upgrade to keep every Pro feature."
                   : `Pro preview — ${trial.daysLeft} day${trial.daysLeft === 1 ? "" : "s"} left. Unlock the full system.`}
               </p>
               <Button
                 size="sm"
-                className="h-7 shrink-0 bg-[#F59E0B] text-xs font-semibold text-[#111827] hover:bg-[#F59E0B]/90"
+                className="h-7 shrink-0 bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90"
                 asChild
               >
                 <Link href={upgradeHref}>Upgrade now</Link>
@@ -194,15 +200,15 @@ export function Navigation() {
           <div className="md:hidden bg-background border-b border-border">
             <div className="px-4 py-4 space-y-2">
               {showTrialBanner ? (
-                <div className="mb-3 rounded-lg border border-[#F59E0B]/25 bg-[#F59E0B]/10 px-3 py-2">
-                  <p className="text-xs text-amber-100/90">
+                <div className="mb-3 rounded-lg border border-primary/25 bg-primary/10 px-3 py-2">
+                  <p className="text-xs text-foreground/90">
                     {trial.expired
                       ? "Preview ended — upgrade to keep Pro features."
                       : `${trial.daysLeft} day${trial.daysLeft === 1 ? "" : "s"} left in your preview.`}
                   </p>
                   <Button
                     size="sm"
-                    className="mt-2 min-h-11 w-full bg-[#F59E0B] text-[#111827] hover:bg-[#F59E0B]/90 md:h-8 md:min-h-8"
+                    className="mt-2 min-h-11 w-full bg-primary text-primary-foreground hover:bg-primary/90 md:h-8 md:min-h-8"
                     asChild
                   >
                     <Link href={upgradeHref} onClick={() => setMobileOpen(false)}>
