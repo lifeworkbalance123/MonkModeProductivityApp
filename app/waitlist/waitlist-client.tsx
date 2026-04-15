@@ -194,15 +194,15 @@ export function WaitlistPageClient() {
           {[
             [
               "I've tried every productivity app out there. monkcubed is the first one that actually changed my daily habits.",
-              '— Beta tester, Sydney',
+              '— Slawomir Rdest',
             ],
             [
               'The streak counter alone keeps me coming back every day. Simple but powerful.',
-              '— Beta tester, London',
+              '— Frank Zhuang',
             ],
             [
               'Finally an app that takes focus seriously. No fluff, just systems that work.',
-              '— Beta tester, New York',
+              '— Leo Ferro',
             ],
           ].map(([quote, by]) => (
             <article key={quote} className="rounded-xl border-l-4 border-accent bg-card p-4">
