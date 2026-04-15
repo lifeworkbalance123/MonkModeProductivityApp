@@ -1,0 +1,4 @@
+# Exclude local env files from Vercel uploads (use dashboard Environment Variables).
+.env
+.env.*
+!.env.example

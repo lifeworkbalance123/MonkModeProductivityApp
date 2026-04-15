@@ -6,7 +6,7 @@ function truthyEnv(value: string | undefined): boolean {
   return v === '1' || v?.toLowerCase() === 'true'
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isProd = process.env.NODE_ENV === 'production'
   if (!isProd) {

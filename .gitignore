@@ -7,7 +7,10 @@ __v0_jsx-dev-runtime.ts
 .vercel/
 next.user-config.*
 
-# Environment variables
+# Environment variables — keep secrets out of git; set vars in Vercel → Project → Settings.
+.env
+.env.*
+!.env.example
 .env*.local
 
 # Common ignores
@@ -21,3 +24,4 @@ mobile/.expo/
 mobile/dist/
 mobile/web-build/
 *.log
+.vercel
