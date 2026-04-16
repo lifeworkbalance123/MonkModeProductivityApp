@@ -80,6 +80,8 @@ export async function POST(request: Request) {
   const prefix = b.prefix === 'rhythm' ? 'rhythm' : 'hero'
   const originalFileName = typeof b.originalFileName === 'string' ? b.originalFileName : ''
   const removePath = typeof b.removePath === 'string' && b.removePath.length > 0 ? b.removePath : null
+  /** Client uses TUS resumable upload (recommended by Supabase for files over ~6 MB). */
+  const preferResumable = b.preferResumable === true
 
   if (!originalFileName.trim()) {
     return NextResponse.json({ error: 'originalFileName is required' }, { status: 400 })
@@ -97,6 +99,13 @@ export async function POST(request: Request) {
   const ext = safeExt(originalFileName)
   const folder = prefix === 'rhythm' ? 'rhythm' : 'hero'
   const objectPath = `${folder}/${folder}-media-${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${ext}`
+
+  if (preferResumable) {
+    return NextResponse.json({
+      path: objectPath,
+      resumable: true as const,
+    })
+  }
 
   const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(objectPath, { upsert: true })
   if (error || !data) {

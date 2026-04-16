@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { uploadSiteMediaWithAdminSession } from '@/lib/upload-site-media-client'
 
 type MediaType = 'youtube' | 'image' | 'video' | null
 const C = {
@@ -27,53 +28,6 @@ function getYouTubeId(url: string) {
     if (match) return match[1]
   }
   return null
-}
-
-type SiteMediaPrefix = 'hero' | 'rhythm'
-
-/** Admin-only signed upload: avoids client storage RLS and sends large files straight to Supabase. */
-async function uploadSiteMediaWithAdminSession(
-  file: File,
-  prefix: SiteMediaPrefix,
-  removePath: string | null,
-): Promise<{ path: string; publicUrl: string }> {
-  const { data: sessionData } = await supabase.auth.getSession()
-  const session = sessionData.session
-  if (!session?.access_token) {
-    throw new Error('Not signed in. Refresh the page and sign in again.')
-  }
-
-  const res = await fetch('/api/admin/site-media/signed-upload', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify({
-      prefix,
-      originalFileName: file.name,
-      removePath: removePath || undefined,
-    }),
-  })
-
-  const json = (await res.json()) as { error?: string; path?: string; token?: string }
-  if (!res.ok) {
-    throw new Error(json.error || `Upload setup failed (${res.status})`)
-  }
-  if (!json.path || !json.token) {
-    throw new Error('Invalid response from server')
-  }
-
-  const { error: uploadError } = await supabase.storage.from('site-media')
-    .uploadToSignedUrl(json.path, json.token, file, {
-      cacheControl: '3600',
-      contentType: file.type || undefined,
-      upsert: true,
-    })
-  if (uploadError) throw uploadError
-
-  const { data: urlData } = supabase.storage.from('site-media').getPublicUrl(json.path)
-  return { path: json.path, publicUrl: urlData.publicUrl }
 }
 
 async function removeSiteMediaWithAdminSession(paths: string[]): Promise<void> {
@@ -443,8 +397,8 @@ export default function AdminHeroPage() {
           live immediately.
         </p>
         <p style={{ color: C.mutedFg, fontSize: '12px', margin: 0 }}>
-          Uploaded videos: up to <strong style={{ color: C.fg }}>5 GB</strong> by default, or use YouTube. Match the
-          cap in Supabase Storage settings if uploads still fail.
+          Uploaded videos: up to <strong style={{ color: C.fg }}>5 GB</strong> by default; files over ~6 MB use chunked
+          (resumable) upload. Or use YouTube. Match the cap in Supabase Storage settings if uploads still fail.
         </p>
       </div>
 
