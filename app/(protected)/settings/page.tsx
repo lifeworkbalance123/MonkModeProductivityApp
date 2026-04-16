@@ -37,6 +37,107 @@ function formatBillingDate(iso: string | null): string | null {
   }
 }
 
+function SyncStatusCard({
+  isPro,
+  planLoading,
+}: {
+  isPro: boolean
+  planLoading: boolean
+}) {
+  const [lastSync, setLastSync] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncSuccess, setSyncSuccess] = useState<boolean | null>(null)
+
+  async function testSyncConnection() {
+    setSyncing(true)
+    setSyncSuccess(null)
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not logged in')
+
+      const { error } = await supabase
+        .from('habits')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+
+      if (error) throw error
+
+      setLastSync(new Date().toLocaleTimeString('en-AU'))
+      setSyncSuccess(true)
+    } catch {
+      setSyncSuccess(false)
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  return (
+    <Card className="p-4 space-y-4">
+      <div>
+        <h2 className="font-medium mb-1">Cloud sync</h2>
+        <p className="text-sm text-muted-foreground">
+          {planLoading
+            ? '…'
+            : isPro
+              ? 'Your data syncs across all devices automatically.'
+              : 'Your data is stored locally on this device only.'}
+        </p>
+      </div>
+
+      <div className="rounded-md border border-border bg-card p-3">
+        {[
+          'Habits',
+          'Goals',
+          'Planner',
+          'Journal',
+          'Streak',
+          'Program progress',
+        ].map((label) => (
+          <div key={label} className="flex items-center justify-between py-1.5 text-sm">
+            <span className="text-muted-foreground">{label}</span>
+            <span className={isPro ? 'text-emerald-500' : 'text-muted-foreground'}>
+              {isPro ? 'Synced' : 'Local only'}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {isPro ? (
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void testSyncConnection()}
+            disabled={syncing}
+          >
+            {syncing ? 'Testing…' : 'Test connection'}
+          </Button>
+          {syncSuccess === true ? (
+            <span className="text-xs text-emerald-500">
+              Connected{lastSync ? ` - last checked ${lastSync}` : ''}
+            </span>
+          ) : null}
+          {syncSuccess === false ? (
+            <span className="text-xs text-red-400">Connection failed. Check internet and try again.</span>
+          ) : null}
+        </div>
+      ) : (
+        <Button
+          type="button"
+          size="sm"
+          className="bg-accent text-accent-foreground hover:bg-accent/90"
+          onClick={() => window.location.assign('/upgrade')}
+        >
+          Upgrade to Pro
+        </Button>
+      )}
+    </Card>
+  )
+}
+
 const bugReportHref =
   'mailto:support@monkmodeapp.com?subject=' +
   encodeURIComponent('Bug Report — MonkMode') +
@@ -272,18 +373,7 @@ export default function SettingsPage() {
             </Button>
           </div>
         </Card>
-        <Card className="p-4 space-y-4">
-          <div>
-            <h2 className="font-medium mb-1">Sync status</h2>
-            <p className="text-sm text-muted-foreground">
-              {planLoading
-                ? '…'
-                : isPro
-                  ? 'Syncing to cloud'
-                  : 'Stored locally — upgrade to Pro to sync across devices'}
-            </p>
-          </div>
-        </Card>
+        <SyncStatusCard isPro={isPro} planLoading={planLoading} />
         <Card className="p-4 space-y-4">
           <div>
             <h2 className="font-medium mb-1">Account</h2>
