@@ -496,6 +496,13 @@ function LessonsEditor() {
   }
 
   if (editing !== null) {
+    const missingRequired: string[] = []
+    if (!editing.title.trim()) missingRequired.push('Title')
+    if (!editing.lesson.trim()) missingRequired.push('Lesson content')
+    if (!editing.action.trim()) missingRequired.push("Today's action")
+    if (!editing.action_label.trim()) missingRequired.push('Action button label')
+    const canSave = missingRequired.length === 0
+
     return (
       <div>
         <div
@@ -693,10 +700,10 @@ function LessonsEditor() {
             <button
               type="button"
               onClick={() => void saveLesson()}
-              disabled={saving || !editing.title || !editing.lesson || !editing.action}
+              disabled={saving || !canSave}
               style={{
-                background: editing.title && editing.lesson && editing.action ? '#F59E0B' : '#334155',
-                color: editing.title && editing.lesson && editing.action ? '#000' : '#64748B',
+                background: canSave ? '#F59E0B' : '#334155',
+                color: canSave ? '#000' : '#64748B',
                 border: 'none',
                 borderRadius: '8px',
                 padding: '12px 28px',
@@ -711,6 +718,11 @@ function LessonsEditor() {
               <span style={{ color: '#10B981', fontSize: '13px' }}>✓ Saved successfully</span>
             ) : null}
           </div>
+          {!canSave ? (
+            <p style={{ color: 'var(--muted-foreground)', fontSize: '12px', margin: '10px 0 0' }}>
+              Complete required fields to save: {missingRequired.join(', ')}.
+            </p>
+          ) : null}
         </div>
       </div>
     )
