@@ -6,6 +6,20 @@ import { MonkCubedLogo } from '@/components/brand/MonkCubedLogo'
 import { MONKCUBED_TAGLINE } from '@/components/brand/MonkCubedLogo'
 import { supabase } from '@/lib/supabase'
 
+function getYouTubeId(url: string) {
+  const patterns = [
+    /youtube\.com\/watch\?v=([^&\s]+)/,
+    /youtu\.be\/([^?\s]+)/,
+    /youtube\.com\/embed\/([^?\s]+)/,
+    /youtube\.com\/shorts\/([^?\s]+)/,
+  ]
+  for (const p of patterns) {
+    const match = url.match(p)
+    if (match) return match[1]
+  }
+  return null
+}
+
 export function SocialProofBar() {
   return (
     <section className="border-y border-border bg-card">
@@ -47,7 +61,7 @@ export function FeaturesSection() {
 }
 
 export function HowItWorksSection() {
-  const [introVideoUrl, setIntroVideoUrl] = useState<string | null>(null)
+  const [introMedia, setIntroMedia] = useState<{ type: 'video' | 'youtube'; url: string } | null>(null)
   const [introVideoReady, setIntroVideoReady] = useState(false)
 
   useEffect(() => {
@@ -59,8 +73,12 @@ export function HowItWorksSection() {
           .eq('key', 'rhythm_intro_video')
           .single()
 
-        if (data?.media_type === 'video' && data.media_url) {
-          setIntroVideoUrl(data.media_url)
+        const url = (data?.media_url as string | null) ?? null
+        const t = data?.media_type
+        if (url && (t === 'video' || t === 'youtube')) {
+          setIntroMedia({ type: t, url })
+        } else {
+          setIntroMedia(null)
         }
       } finally {
         setIntroVideoReady(true)
@@ -80,9 +98,19 @@ export function HowItWorksSection() {
       <div className="mx-auto mt-8 max-w-[900px] overflow-hidden rounded-2xl border border-border bg-card/60">
         {!introVideoReady ? (
           <div className="min-h-[280px] animate-pulse bg-muted/40" />
-        ) : introVideoUrl ? (
+        ) : introMedia?.type === 'youtube' && getYouTubeId(introMedia.url) ? (
+          <div className="relative w-full overflow-hidden" style={{ paddingBottom: '56.25%' }}>
+            <iframe
+              src={`https://www.youtube.com/embed/${getYouTubeId(introMedia.url)}?rel=0&modestbranding=1&color=white`}
+              title="monkcubed rhythm intro"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="absolute left-0 top-0 h-full w-full border-0"
+            />
+          </div>
+        ) : introMedia?.type === 'video' ? (
           <video autoPlay muted loop playsInline className="block max-h-[520px] w-full object-cover">
-            <source src={introVideoUrl} type="video/mp4" />
+            <source src={introMedia.url} type="video/mp4" />
           </video>
         ) : (
           <div className="min-h-[220px] px-6 py-10 text-center text-sm text-muted-foreground">
