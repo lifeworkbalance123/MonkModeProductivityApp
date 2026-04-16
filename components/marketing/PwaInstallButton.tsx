@@ -24,14 +24,24 @@ function detectIOS(): boolean {
   return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
 }
 
+function detectAndroid(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /Android/i.test(navigator.userAgent)
+}
+
+const triggerClassName =
+  'inline-flex min-h-10 max-w-[7.5rem] shrink-0 touch-manipulation items-center justify-center gap-1 rounded-md border border-border bg-card px-2 text-[11px] font-semibold leading-tight text-foreground shadow-sm hover:bg-muted/80 sm:max-w-none sm:gap-1.5 sm:px-2.5 sm:text-xs'
+
 export function PwaInstallButton({ className }: { className?: string }) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [isIOS, setIsIOS] = useState(false)
+  const [isAndroid, setIsAndroid] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
     setIsIOS(detectIOS())
+    setIsAndroid(detectAndroid())
 
     if (isStandaloneDisplay()) return
 
@@ -62,23 +72,53 @@ export function PwaInstallButton({ className }: { className?: string }) {
 
   const showChromium = !!deferredPrompt
   const showIOS = isIOS && !showChromium
+  const showAndroidManual = !showChromium && !showIOS && isAndroid
 
-  if (!showChromium && !showIOS) return null
+  if (!showChromium && !showIOS && !showAndroidManual) return null
 
   if (showChromium) {
     return (
       <button
         type="button"
         onClick={() => void runInstall()}
-        className={cn(
-          'inline-flex min-h-10 shrink-0 touch-manipulation items-center justify-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-xs font-semibold text-foreground shadow-sm hover:bg-muted/80 sm:px-3',
-          className,
-        )}
+        className={cn(triggerClassName, className)}
         aria-label="Install monkcubed app"
       >
         <Download className="h-4 w-4 shrink-0 text-accent" aria-hidden />
-        <span className="hidden sm:inline">Install app</span>
+        <span className="truncate">Install</span>
       </button>
+    )
+  }
+
+  if (showIOS) {
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className={cn(triggerClassName, className)}
+            aria-label="Add monkcubed to Home Screen"
+          >
+            <Download className="h-4 w-4 shrink-0 text-accent" aria-hidden />
+            <span className="truncate">Install</span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="start" side="bottom" className="z-[100] w-72 text-sm">
+          <p className="font-semibold text-foreground">Add to Home Screen</p>
+          <p className="mt-2 text-muted-foreground">
+            In <span className="font-medium text-foreground">Safari</span>, tap{' '}
+            <span className="font-medium text-foreground">Share</span>, then{' '}
+            <span className="font-medium text-foreground">Add to Home Screen</span>.
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            On iPhone, if you use Chrome or another browser, open this page in Safari first — only Safari
+            can add web apps to your home screen.
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            monkcubed then opens like an app with the browser chrome hidden.
+          </p>
+        </PopoverContent>
+      </Popover>
     )
   }
 
@@ -87,24 +127,24 @@ export function PwaInstallButton({ className }: { className?: string }) {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className={cn(
-            'inline-flex min-h-10 shrink-0 touch-manipulation items-center justify-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-xs font-semibold text-foreground shadow-sm hover:bg-muted/80 sm:px-3',
-            className,
-          )}
-          aria-label="Add monkcubed to Home Screen"
+          className={cn(triggerClassName, className)}
+          aria-label="Install monkcubed or add to home screen"
         >
           <Download className="h-4 w-4 shrink-0 text-accent" aria-hidden />
-          <span className="hidden sm:inline">Add app</span>
+          <span className="truncate">Install</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" side="bottom" className="w-72 text-sm">
-        <p className="font-semibold text-foreground">Add to Home Screen</p>
+      <PopoverContent align="start" side="bottom" className="z-[100] w-72 text-sm">
+        <p className="font-semibold text-foreground">Install or add to Home screen</p>
         <p className="mt-2 text-muted-foreground">
-          In Safari, tap <span className="font-medium text-foreground">Share</span> in the toolbar, then{' '}
-          <span className="font-medium text-foreground">Add to Home Screen</span>.
+          In <span className="font-medium text-foreground">Chrome</span>, open the browser menu (three dots)
+          and tap <span className="font-medium text-foreground">Install app</span> or{' '}
+          <span className="font-medium text-foreground">Add to Home screen</span> (wording varies by
+          version).
         </p>
         <p className="mt-2 text-xs text-muted-foreground">
-          monkcubed opens like an app with the address bar hidden.
+          If you do not see that option, use Chrome (not an in-app browser), stay on this site for a few
+          seconds, or try opening the homepage in a normal browser tab.
         </p>
       </PopoverContent>
     </Popover>
