@@ -40,7 +40,8 @@ export const metadata: Metadata = {
   },
   manifest: '/manifest.json',
   icons: {
-    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
+    icon: [{ url: '/icon' }],
+    apple: [{ url: '/apple-icon' }],
   },
 }
 
