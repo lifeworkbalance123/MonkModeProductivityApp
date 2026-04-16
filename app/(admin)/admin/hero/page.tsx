@@ -29,6 +29,75 @@ function getYouTubeId(url: string) {
   return null
 }
 
+type SiteMediaPrefix = 'hero' | 'rhythm'
+
+/** Admin-only signed upload: avoids client storage RLS and sends large files straight to Supabase. */
+async function uploadSiteMediaWithAdminSession(
+  file: File,
+  prefix: SiteMediaPrefix,
+  removePath: string | null,
+): Promise<{ path: string; publicUrl: string }> {
+  const { data: sessionData } = await supabase.auth.getSession()
+  const session = sessionData.session
+  if (!session?.access_token) {
+    throw new Error('Not signed in. Refresh the page and sign in again.')
+  }
+
+  const res = await fetch('/api/admin/site-media/signed-upload', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({
+      prefix,
+      originalFileName: file.name,
+      removePath: removePath || undefined,
+    }),
+  })
+
+  const json = (await res.json()) as { error?: string; path?: string; token?: string }
+  if (!res.ok) {
+    throw new Error(json.error || `Upload setup failed (${res.status})`)
+  }
+  if (!json.path || !json.token) {
+    throw new Error('Invalid response from server')
+  }
+
+  const { error: uploadError } = await supabase.storage.from('site-media')
+    .uploadToSignedUrl(json.path, json.token, file, {
+      cacheControl: '3600',
+      contentType: file.type || undefined,
+      upsert: true,
+    })
+  if (uploadError) throw uploadError
+
+  const { data: urlData } = supabase.storage.from('site-media').getPublicUrl(json.path)
+  return { path: json.path, publicUrl: urlData.publicUrl }
+}
+
+async function removeSiteMediaWithAdminSession(paths: string[]): Promise<void> {
+  if (paths.length === 0) return
+  const { data: sessionData } = await supabase.auth.getSession()
+  const session = sessionData.session
+  if (!session?.access_token) {
+    throw new Error('Not signed in. Refresh the page and sign in again.')
+  }
+
+  const res = await fetch('/api/admin/site-media/delete', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ paths }),
+  })
+  const json = (await res.json()) as { error?: string }
+  if (!res.ok) {
+    throw new Error(json.error || `Remove failed (${res.status})`)
+  }
+}
+
 export default function AdminHeroPage() {
   const [currentType, setCurrentType] = useState<MediaType>(null)
   const [currentUrl, setCurrentUrl] = useState('')
@@ -86,29 +155,19 @@ export default function AdminHeroPage() {
     setRhythmUploading(true)
     setRhythmError('')
     try {
-      const ext = file.name.split('.').pop() ?? 'mp4'
-      const fileName = `rhythm-intro-${Date.now()}.${ext}`
-      const storagePath = `rhythm/${fileName}`
-
-      if (rhythmCurrentPath) {
-        await supabase.storage.from('site-media').remove([rhythmCurrentPath])
-      }
-
-      const { error: uploadError } = await supabase.storage.from('site-media').upload(storagePath, file, {
-        upsert: true,
-        cacheControl: '3600',
-      })
-      if (uploadError) throw uploadError
-
-      const { data: urlData } = supabase.storage.from('site-media').getPublicUrl(storagePath)
-      const publicUrl = urlData.publicUrl
+      const { path, publicUrl } = await uploadSiteMediaWithAdminSession(
+        file,
+        'rhythm',
+        rhythmCurrentPath || null,
+      )
       setRhythmPreviewUrl(publicUrl)
-      setRhythmCurrentPath(storagePath)
+      setRhythmCurrentPath(path)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       setRhythmError('Upload failed: ' + message)
     } finally {
       setRhythmUploading(false)
+      e.target.value = ''
     }
   }
 
@@ -160,25 +219,9 @@ export default function AdminHeroPage() {
     setError('')
 
     try {
-      const ext = file.name.split('.').pop() ?? 'bin'
-      const fileName = `hero-media-${Date.now()}.${ext}`
-      const storagePath = `hero/${fileName}`
-
-      if (currentPath) {
-        await supabase.storage.from('site-media').remove([currentPath])
-      }
-
-      const { error: uploadError } = await supabase.storage.from('site-media').upload(storagePath, file, {
-        upsert: true,
-        cacheControl: '3600',
-      })
-
-      if (uploadError) throw uploadError
-
-      const { data: urlData } = supabase.storage.from('site-media').getPublicUrl(storagePath)
-      const publicUrl = urlData.publicUrl
+      const { path, publicUrl } = await uploadSiteMediaWithAdminSession(file, 'hero', currentPath || null)
       setPreviewUrl(publicUrl)
-      setCurrentPath(storagePath)
+      setCurrentPath(path)
 
       const mediaType = file.type.startsWith('image/') ? 'image' : 'video'
       setSelectedType(mediaType)
@@ -187,6 +230,7 @@ export default function AdminHeroPage() {
       setError('Upload failed: ' + message)
     } finally {
       setUploading(false)
+      e.target.value = ''
     }
   }
 
@@ -247,7 +291,11 @@ export default function AdminHeroPage() {
     setSaving(true)
 
     if (currentPath) {
-      await supabase.storage.from('site-media').remove([currentPath])
+      try {
+        await removeSiteMediaWithAdminSession([currentPath])
+      } catch {
+        /* still clear DB row */
+      }
     }
 
     await supabase.from('site_settings').upsert(
