@@ -11,7 +11,7 @@ type MonkCubedLogoProps = {
  */
 export function MonkCubedLogo({ variant = 'onDark', className }: MonkCubedLogoProps) {
   const monk = variant === 'onDark' ? '#FFFFFF' : '#1A1A1A'
-  const sup = variant === 'onDark' ? '#D4AF37' : '#C8A951'
+  const sup = variant === 'onDark' ? '#F4C84A' : '#E2B53A'
   const cubed = variant === 'onDark' ? '#E8E8E8' : '#2C2C2C'
   return (
     <span
