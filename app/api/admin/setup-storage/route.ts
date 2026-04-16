@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-service'
+import { getSiteMediaBucketOptions } from '@/lib/site-media-storage'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,19 +18,7 @@ export async function POST() {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    const siteMediaOpts = {
-      public: true,
-      allowedMimeTypes: [
-        'image/png',
-        'image/jpeg',
-        'image/webp',
-        'image/gif',
-        'video/mp4',
-        'video/quicktime',
-        'video/webm',
-      ],
-      fileSizeLimit: 1024 * 1024 * 1024,
-    }
+    const siteMediaOpts = getSiteMediaBucketOptions()
 
     const { error: siteError } = await supabase.storage.createBucket('site-media', siteMediaOpts)
 

@@ -438,9 +438,13 @@ export default function AdminHeroPage() {
     <div style={{ maxWidth: '900px' }}>
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ color: C.fg, fontSize: '24px', fontWeight: '600', margin: '0 0 4px' }}>Hero Media</h1>
-        <p style={{ color: C.mutedFg, fontSize: '14px', margin: 0 }}>
+        <p style={{ color: C.mutedFg, fontSize: '14px', margin: '0 0 6px' }}>
           Controls the media displayed in the right side of the landing page hero section. Changes are
           live immediately.
+        </p>
+        <p style={{ color: C.mutedFg, fontSize: '12px', margin: 0 }}>
+          Uploaded videos: up to <strong style={{ color: C.fg }}>5 GB</strong> by default, or use YouTube. Match the
+          cap in Supabase Storage settings if uploads still fail.
         </p>
       </div>
 
@@ -846,8 +850,13 @@ export default function AdminHeroPage() {
         <p style={{ color: C.mutedFg, fontSize: '13px', margin: '0 0 8px' }}>
           This video appears above the "Your daily monkcubed rhythm" section.
         </p>
-        <p style={{ color: C.mutedFg, fontSize: '12px', margin: '0 0 16px' }}>
+        <p style={{ color: C.mutedFg, fontSize: '12px', margin: '0 0 8px' }}>
           Use a <strong style={{ color: C.fg }}>YouTube link</strong> to avoid storage file size limits.
+        </p>
+        <p style={{ color: C.mutedFg, fontSize: '11px', margin: '0 0 16px' }}>
+          MP4 uploads allow up to <strong style={{ color: C.fg }}>5 GB</strong> per file by default (server env{' '}
+          <code style={{ fontSize: '10px' }}>SITE_MEDIA_MAX_UPLOAD_BYTES</code> to override). Your Supabase project
+          global upload limit must be at least as high.
         </p>
 
         <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>

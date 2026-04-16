@@ -1,22 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-service'
+import { getSiteMediaBucketOptions } from '@/lib/site-media-storage'
 
 export const dynamic = 'force-dynamic'
 
 const BUCKET = 'site-media'
-
-/** Per-bucket object size cap (bytes). Supabase project “global max upload” can still override this. */
-const SITE_MEDIA_MAX_BYTES = 1024 * 1024 * 1024 // 1 GiB
-
-const SITE_MEDIA_MIME_TYPES = [
-  'image/png',
-  'image/jpeg',
-  'image/webp',
-  'image/gif',
-  'video/mp4',
-  'video/quicktime',
-  'video/webm',
-] as const
 
 async function verifyAdmin(request: Request) {
   const admin = createServiceRoleClient()
@@ -40,11 +28,7 @@ async function verifyAdmin(request: Request) {
 }
 
 async function ensureSiteMediaBucket(admin: ReturnType<typeof createServiceRoleClient>) {
-  const options = {
-    public: true,
-    allowedMimeTypes: [...SITE_MEDIA_MIME_TYPES],
-    fileSizeLimit: SITE_MEDIA_MAX_BYTES,
-  }
+  const options = getSiteMediaBucketOptions()
 
   const { error: createError } = await admin.storage.createBucket(BUCKET, options)
   if (!createError) return null
