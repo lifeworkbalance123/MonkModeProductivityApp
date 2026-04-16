@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-service'
-import { getSiteMediaBucketOptions } from '@/lib/site-media-storage'
+import { ensureSiteMediaBucket } from '@/lib/site-media-storage'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,16 +18,8 @@ export async function POST() {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    const siteMediaOpts = getSiteMediaBucketOptions()
-
-    const { error: siteError } = await supabase.storage.createBucket('site-media', siteMediaOpts)
-
-    if (siteError && /already exists|duplicate/i.test(siteError.message)) {
-      const { error: siteUpdateErr } = await supabase.storage.updateBucket('site-media', siteMediaOpts)
-      if (siteUpdateErr) console.warn('site-media bucket update:', siteUpdateErr.message)
-    } else if (siteError) {
-      console.warn('site-media bucket:', siteError.message)
-    }
+    const siteErrMsg = await ensureSiteMediaBucket(supabase)
+    if (siteErrMsg) console.warn('site-media bucket:', siteErrMsg)
 
     return NextResponse.json({ success: true, message: 'Storage bucket ready' })
   } catch (e) {

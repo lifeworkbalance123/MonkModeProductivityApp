@@ -1,8 +1,7 @@
 'use client'
 
 import { supabase } from '@/lib/supabase'
-
-const BUCKET = 'site-media'
+import { SITE_MEDIA_BUCKET_ID } from '@/lib/site-media-storage'
 
 /** Supabase recommends resumable uploads above ~6 MB; single-request uploads often fail or stall beyond that. */
 export const SITE_MEDIA_RESUMABLE_THRESHOLD_BYTES = 6 * 1024 * 1024
@@ -35,7 +34,7 @@ async function uploadViaTus(file: File, objectPath: string, accessToken: string)
       uploadDataDuringCreation: true,
       removeFingerprintOnSuccess: true,
       metadata: {
-        bucketName: BUCKET,
+        bucketName: SITE_MEDIA_BUCKET_ID,
         objectName: objectPath,
         contentType: file.type || 'video/mp4',
         cacheControl: '3600',
@@ -101,14 +100,19 @@ export async function uploadSiteMediaWithAdminSession(
     if (!json.token) {
       throw new Error('Invalid response from server')
     }
-    const { error: uploadError } = await supabase.storage.from(BUCKET).uploadToSignedUrl(json.path, json.token, file, {
-      cacheControl: '3600',
-      contentType: file.type || undefined,
-      upsert: true,
-    })
+    const { error: uploadError } = await supabase.storage.from(SITE_MEDIA_BUCKET_ID).uploadToSignedUrl(
+      json.path,
+      json.token,
+      file,
+      {
+        cacheControl: '3600',
+        contentType: file.type || undefined,
+        upsert: true,
+      },
+    )
     if (uploadError) throw uploadError
   }
 
-  const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(json.path)
+  const { data: urlData } = supabase.storage.from(SITE_MEDIA_BUCKET_ID).getPublicUrl(json.path)
   return { path: json.path, publicUrl: urlData.publicUrl }
 }
