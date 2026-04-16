@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-service'
-import { getSiteMediaBucketOptions } from '@/lib/site-media-storage'
+import {
+  ensureSiteMediaBucket,
+  looksLikeStorageSizePolicyError,
+  SITE_MEDIA_BUCKET_ID,
+} from '@/lib/site-media-storage'
 
 export const dynamic = 'force-dynamic'
-
-const BUCKET = 'site-media'
 
 async function verifyAdmin(request: Request) {
   const admin = createServiceRoleClient()
@@ -25,21 +27,6 @@ async function verifyAdmin(request: Request) {
     return { admin, ok: false as const, status: 403 }
   }
   return { admin, ok: true as const, status: 200 }
-}
-
-async function ensureSiteMediaBucket(admin: ReturnType<typeof createServiceRoleClient>) {
-  const options = getSiteMediaBucketOptions()
-
-  const { error: createError } = await admin.storage.createBucket(BUCKET, options)
-  if (!createError) return null
-
-  if (/already exists|duplicate/i.test(createError.message)) {
-    const { error: updateError } = await admin.storage.updateBucket(BUCKET, options)
-    if (updateError) return updateError.message
-    return null
-  }
-
-  return createError.message
 }
 
 function safeExt(originalFileName: string): string {
@@ -89,11 +76,14 @@ export async function POST(request: Request) {
 
   const bucketErr = await ensureSiteMediaBucket(admin)
   if (bucketErr) {
-    return NextResponse.json({ error: `Storage bucket: ${bucketErr}` }, { status: 500 })
+    const hint = looksLikeStorageSizePolicyError(bucketErr)
+      ? ' In Supabase: Project Settings → Storage → raise “Global file size limit” above your file size. You can also lower SITE_MEDIA_MAX_UPLOAD_BYTES to match your project cap.'
+      : ''
+    return NextResponse.json({ error: `Storage bucket: ${bucketErr}${hint}` }, { status: 500 })
   }
 
   if (removePath) {
-    await admin.storage.from(BUCKET).remove([removePath])
+    await admin.storage.from(SITE_MEDIA_BUCKET_ID).remove([removePath])
   }
 
   const ext = safeExt(originalFileName)
@@ -107,7 +97,9 @@ export async function POST(request: Request) {
     })
   }
 
-  const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(objectPath, { upsert: true })
+  const { data, error } = await admin.storage.from(SITE_MEDIA_BUCKET_ID).createSignedUploadUrl(objectPath, {
+    upsert: true,
+  })
   if (error || !data) {
     console.error('createSignedUploadUrl:', error)
     return NextResponse.json({ error: error?.message ?? 'Failed to create upload URL' }, { status: 500 })
