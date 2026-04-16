@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { MonkCubedLogo } from '@/components/brand/MonkCubedLogo'
 import { MONKCUBED_TAGLINE } from '@/components/brand/MonkCubedLogo'
+import { supabase } from '@/lib/supabase'
 
 export function SocialProofBar() {
   return (
@@ -46,6 +47,28 @@ export function FeaturesSection() {
 }
 
 export function HowItWorksSection() {
+  const [introVideoUrl, setIntroVideoUrl] = useState<string | null>(null)
+  const [introVideoReady, setIntroVideoReady] = useState(false)
+
+  useEffect(() => {
+    async function fetchRhythmIntroVideo() {
+      try {
+        const { data } = await supabase
+          .from('site_settings')
+          .select('media_type, media_url')
+          .eq('key', 'rhythm_intro_video')
+          .single()
+
+        if (data?.media_type === 'video' && data.media_url) {
+          setIntroVideoUrl(data.media_url)
+        }
+      } finally {
+        setIntroVideoReady(true)
+      }
+    }
+    void fetchRhythmIntroVideo()
+  }, [])
+
   const steps = [
     ['☀️', 'Start your day right', "Write 3 things you're grateful for. Set your top 5 goals. Review your schedule."],
     ['⚡', 'Execute with focus', 'Time-box every task. Run Pomodoro sessions. Move Kanban cards as you complete work.'],
@@ -53,7 +76,21 @@ export function HowItWorksSection() {
   ]
   return (
     <section className="mx-auto max-w-[1100px] px-4 py-20">
-      <h2 className="text-center text-3xl font-semibold text-foreground">Your daily monkcubed rhythm</h2>
+      <h2 className="text-center text-3xl font-semibold text-foreground">Discipline x Focus x Productivity</h2>
+      <div className="mx-auto mt-8 max-w-[900px] overflow-hidden rounded-2xl border border-border bg-card/60">
+        {!introVideoReady ? (
+          <div className="min-h-[280px] animate-pulse bg-muted/40" />
+        ) : introVideoUrl ? (
+          <video autoPlay muted loop playsInline className="block max-h-[520px] w-full object-cover">
+            <source src={introVideoUrl} type="video/mp4" />
+          </video>
+        ) : (
+          <div className="min-h-[220px] px-6 py-10 text-center text-sm text-muted-foreground">
+            Add this section video from Admin → Hero.
+          </div>
+        )}
+      </div>
+      <h2 className="mt-16 text-center text-3xl font-semibold text-foreground">Your daily monkcubed rhythm</h2>
       <div className="mt-10 grid gap-6 md:grid-cols-3">
         {steps.map(([icon, title, desc]) => (
           <div key={title} className="rounded-xl border border-border bg-card/60 p-5 text-center">

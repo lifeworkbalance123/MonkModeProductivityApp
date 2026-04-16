@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 type HeroMediaData = {
@@ -114,6 +114,9 @@ function StaticMockup() {
 export default function HeroMedia() {
   const [media, setMedia] = useState<HeroMediaData>({ mediaType: null, mediaUrl: null })
   const [loading, setLoading] = useState(true)
+  const [isMuted, setIsMuted] = useState(true)
+  const [volume, setVolume] = useState(1)
+  const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
     async function fetchHeroMedia() {
@@ -138,6 +141,12 @@ export default function HeroMedia() {
     }
     void fetchHeroMedia()
   }, [])
+
+  useEffect(() => {
+    if (!videoRef.current) return
+    videoRef.current.muted = isMuted
+    videoRef.current.volume = volume
+  }, [isMuted, volume, media.mediaUrl])
 
   const frameStyle = {
     background: '#0F172A',
@@ -241,10 +250,11 @@ export default function HeroMedia() {
 
   if (media.mediaType === 'video') {
     return (
-      <div style={frameStyle}>
+      <div style={{ ...frameStyle, position: 'relative' }}>
         <video
+          ref={videoRef}
           autoPlay
-          muted
+          muted={isMuted}
           loop
           playsInline
           style={{
@@ -256,6 +266,55 @@ export default function HeroMedia() {
         >
           <source src={media.mediaUrl} type="video/mp4" />
         </video>
+        <div
+          style={{
+            position: 'absolute',
+            right: '12px',
+            bottom: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'rgba(2, 6, 23, 0.72)',
+            border: '1px solid rgba(148, 163, 184, 0.35)',
+            borderRadius: '999px',
+            padding: '8px 10px',
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          <button
+            onClick={() => setIsMuted((prev) => !prev)}
+            aria-label={isMuted ? 'Unmute hero video' : 'Mute hero video'}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'white',
+              cursor: 'pointer',
+              fontSize: '14px',
+              padding: 0,
+              lineHeight: 1,
+            }}
+          >
+            {isMuted ? '🔇' : '🔊'}
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={volume}
+            onChange={(e) => {
+              const next = Number(e.target.value)
+              setVolume(next)
+              setIsMuted(next === 0)
+              if (videoRef.current) {
+                videoRef.current.volume = next
+                if (next > 0) videoRef.current.muted = false
+              }
+            }}
+            aria-label="Hero video volume"
+            style={{ width: '84px', accentColor: '#F59E0B', cursor: 'pointer' }}
+          />
+        </div>
       </div>
     )
   }

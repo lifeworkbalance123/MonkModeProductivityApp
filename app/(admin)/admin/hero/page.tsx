@@ -42,25 +42,106 @@ export default function AdminHeroPage() {
   const [previewUrl, setPreviewUrl] = useState('')
   const [loading, setLoading] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [rhythmCurrentUrl, setRhythmCurrentUrl] = useState('')
+  const [rhythmCurrentPath, setRhythmCurrentPath] = useState('')
+  const [rhythmPreviewUrl, setRhythmPreviewUrl] = useState('')
+  const [rhythmUploading, setRhythmUploading] = useState(false)
+  const [rhythmSaving, setRhythmSaving] = useState(false)
+  const [rhythmSaved, setRhythmSaved] = useState(false)
+  const [rhythmError, setRhythmError] = useState('')
+  const rhythmFileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase.from('site_settings').select('*').eq('key', 'hero_media').single()
+      const { data } = await supabase.from('site_settings').select('*').in('key', ['hero_media', 'rhythm_intro_video'])
 
-      if (data) {
-        setCurrentType((data.media_type as MediaType) ?? null)
-        setCurrentUrl((data.media_url as string | null) ?? '')
-        setCurrentPath((data.media_storage_path as string | null) ?? '')
-        setSelectedType((data.media_type as MediaType) ?? null)
-        setPreviewUrl((data.media_url as string | null) ?? '')
-        if (data.media_type === 'youtube') {
-          setYoutubeInput((data.media_url as string | null) ?? '')
+      const heroData = data?.find((row) => row.key === 'hero_media')
+      const rhythmData = data?.find((row) => row.key === 'rhythm_intro_video')
+
+      if (heroData) {
+        setCurrentType((heroData.media_type as MediaType) ?? null)
+        setCurrentUrl((heroData.media_url as string | null) ?? '')
+        setCurrentPath((heroData.media_storage_path as string | null) ?? '')
+        setSelectedType((heroData.media_type as MediaType) ?? null)
+        setPreviewUrl((heroData.media_url as string | null) ?? '')
+        if (heroData.media_type === 'youtube') {
+          setYoutubeInput((heroData.media_url as string | null) ?? '')
         }
+      }
+
+      if (rhythmData) {
+        setRhythmCurrentUrl((rhythmData.media_url as string | null) ?? '')
+        setRhythmCurrentPath((rhythmData.media_storage_path as string | null) ?? '')
+        setRhythmPreviewUrl((rhythmData.media_url as string | null) ?? '')
       }
       setLoading(false)
     }
     void load()
   }, [])
+
+  async function handleRhythmFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setRhythmUploading(true)
+    setRhythmError('')
+    try {
+      const ext = file.name.split('.').pop() ?? 'mp4'
+      const fileName = `rhythm-intro-${Date.now()}.${ext}`
+      const storagePath = `rhythm/${fileName}`
+
+      if (rhythmCurrentPath) {
+        await supabase.storage.from('site-media').remove([rhythmCurrentPath])
+      }
+
+      const { error: uploadError } = await supabase.storage.from('site-media').upload(storagePath, file, {
+        upsert: true,
+        cacheControl: '3600',
+      })
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage.from('site-media').getPublicUrl(storagePath)
+      const publicUrl = urlData.publicUrl
+      setRhythmPreviewUrl(publicUrl)
+      setRhythmCurrentPath(storagePath)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setRhythmError('Upload failed: ' + message)
+    } finally {
+      setRhythmUploading(false)
+    }
+  }
+
+  async function handleSaveRhythmVideo() {
+    setRhythmSaving(true)
+    setRhythmError('')
+    setRhythmSaved(false)
+    try {
+      const { data: authData } = await supabase.auth.getUser()
+      const { error: saveError } = await supabase.from('site_settings').upsert(
+        {
+          key: 'rhythm_intro_video',
+          value: 'Discipline x Focus x Productivity section video',
+          media_type: rhythmPreviewUrl ? 'video' : null,
+          media_url: rhythmPreviewUrl || null,
+          media_storage_path: rhythmCurrentPath || null,
+          updated_at: new Date().toISOString(),
+          updated_by: authData.user?.id ?? null,
+        },
+        { onConflict: 'key' },
+      )
+      if (saveError) throw saveError
+
+      setRhythmCurrentUrl(rhythmPreviewUrl)
+      setRhythmSaved(true)
+      setTimeout(() => setRhythmSaved(false), 4000)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setRhythmError('Save failed: ' + message)
+    } finally {
+      setRhythmSaving(false)
+    }
+  }
 
   function handleYouTubeInput(url: string) {
     setYoutubeInput(url)
@@ -609,6 +690,122 @@ export default function AdminHeroPage() {
           >
             View live landing page →
           </a>
+        </div>
+      </div>
+
+      <div
+        style={{
+          marginTop: '40px',
+          paddingTop: '24px',
+          borderTop: `1px solid ${C.border}`,
+          maxWidth: '560px',
+        }}
+      >
+        <h2 style={{ color: C.fg, fontSize: '20px', fontWeight: '600', margin: '0 0 4px' }}>
+          Discipline x Focus x Productivity Video
+        </h2>
+        <p style={{ color: C.mutedFg, fontSize: '13px', margin: '0 0 16px' }}>
+          This video appears above the "Your daily monkcubed rhythm" section.
+        </p>
+
+        <div
+          style={{
+            background: C.card,
+            border: `1px solid ${C.border}`,
+            borderRadius: '12px',
+            padding: '14px 16px',
+            marginBottom: '14px',
+          }}
+        >
+          <p style={{ color: C.mutedFg, fontSize: '12px', margin: '0 0 6px' }}>Current video</p>
+          {rhythmCurrentUrl ? (
+            <a
+              href={rhythmCurrentUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: C.fg,
+                fontSize: '12px',
+                textDecoration: 'none',
+                fontFamily: 'monospace',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                display: 'block',
+              }}
+            >
+              {rhythmCurrentUrl}
+            </a>
+          ) : (
+            <p style={{ color: C.mutedFg, fontSize: '12px', margin: 0 }}>No custom video set yet.</p>
+          )}
+        </div>
+
+        <button
+          onClick={() => {
+            setRhythmError('')
+            if (rhythmFileInputRef.current) {
+              rhythmFileInputRef.current.accept = 'video/mp4,video/quicktime,video/webm'
+              rhythmFileInputRef.current.click()
+            }
+          }}
+          disabled={rhythmUploading || rhythmSaving}
+          style={{
+            padding: '10px 16px',
+            borderRadius: '8px',
+            border: `1px solid ${C.border}`,
+            background: C.card,
+            color: C.fg,
+            cursor: rhythmUploading || rhythmSaving ? 'wait' : 'pointer',
+          }}
+        >
+          {rhythmUploading ? 'Uploading video...' : 'Upload video (MP4)'}
+        </button>
+        <input ref={rhythmFileInputRef} type="file" onChange={handleRhythmFileUpload} style={{ display: 'none' }} />
+
+        {rhythmPreviewUrl ? (
+          <div style={{ marginTop: '12px', borderRadius: '10px', overflow: 'hidden', border: `1px solid ${C.border}` }}>
+            <video autoPlay muted loop playsInline style={{ width: '100%', display: 'block', maxHeight: '300px', objectFit: 'cover' }}>
+              <source src={rhythmPreviewUrl} type="video/mp4" />
+            </video>
+          </div>
+        ) : null}
+
+        {rhythmError ? (
+          <div
+            style={{
+              background: '#450A0A',
+              border: '1px solid #EF4444',
+              borderRadius: '8px',
+              padding: '10px 14px',
+              marginTop: '12px',
+              color: '#FCA5A5',
+              fontSize: '13px',
+            }}
+          >
+            {rhythmError}
+          </div>
+        ) : null}
+
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '14px', flexWrap: 'wrap' }}>
+          <button
+            onClick={handleSaveRhythmVideo}
+            disabled={rhythmSaving || rhythmUploading}
+            style={{
+              background: C.accent,
+              color: C.accentFg,
+              border: 'none',
+              borderRadius: '8px',
+              padding: '12px 20px',
+              fontSize: '14px',
+              fontWeight: '700',
+              cursor: rhythmSaving || rhythmUploading ? 'wait' : 'pointer',
+              opacity: rhythmSaving || rhythmUploading ? 0.7 : 1,
+            }}
+          >
+            {rhythmSaving ? 'Saving...' : 'Save section video'}
+          </button>
+          {rhythmSaved ? <span style={{ color: C.primary, fontSize: '13px' }}>✓ Live on landing page</span> : null}
         </div>
       </div>
     </div>
