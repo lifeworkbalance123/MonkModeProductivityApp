@@ -17,7 +17,7 @@ export async function POST() {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    const { error: siteError } = await supabase.storage.createBucket('site-media', {
+    const siteMediaOpts = {
       public: true,
       allowedMimeTypes: [
         'image/png',
@@ -28,10 +28,15 @@ export async function POST() {
         'video/quicktime',
         'video/webm',
       ],
-      fileSizeLimit: 104857600,
-    })
+      fileSizeLimit: 1024 * 1024 * 1024,
+    }
 
-    if (siteError && !/already exists|duplicate/i.test(siteError.message)) {
+    const { error: siteError } = await supabase.storage.createBucket('site-media', siteMediaOpts)
+
+    if (siteError && /already exists|duplicate/i.test(siteError.message)) {
+      const { error: siteUpdateErr } = await supabase.storage.updateBucket('site-media', siteMediaOpts)
+      if (siteUpdateErr) console.warn('site-media bucket update:', siteUpdateErr.message)
+    } else if (siteError) {
       console.warn('site-media bucket:', siteError.message)
     }
 

@@ -5,6 +5,19 @@ export const dynamic = 'force-dynamic'
 
 const BUCKET = 'site-media'
 
+/** Per-bucket object size cap (bytes). Supabase project “global max upload” can still override this. */
+const SITE_MEDIA_MAX_BYTES = 1024 * 1024 * 1024 // 1 GiB
+
+const SITE_MEDIA_MIME_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+  'video/mp4',
+  'video/quicktime',
+  'video/webm',
+] as const
+
 async function verifyAdmin(request: Request) {
   const admin = createServiceRoleClient()
   const authHeader = request.headers.get('authorization')
@@ -27,23 +40,22 @@ async function verifyAdmin(request: Request) {
 }
 
 async function ensureSiteMediaBucket(admin: ReturnType<typeof createServiceRoleClient>) {
-  const { error } = await admin.storage.createBucket(BUCKET, {
+  const options = {
     public: true,
-    allowedMimeTypes: [
-      'image/png',
-      'image/jpeg',
-      'image/webp',
-      'image/gif',
-      'video/mp4',
-      'video/quicktime',
-      'video/webm',
-    ],
-    fileSizeLimit: 104_857_600,
-  })
-  if (error && !/already exists|duplicate/i.test(error.message)) {
-    return error.message
+    allowedMimeTypes: [...SITE_MEDIA_MIME_TYPES],
+    fileSizeLimit: SITE_MEDIA_MAX_BYTES,
   }
-  return null
+
+  const { error: createError } = await admin.storage.createBucket(BUCKET, options)
+  if (!createError) return null
+
+  if (/already exists|duplicate/i.test(createError.message)) {
+    const { error: updateError } = await admin.storage.updateBucket(BUCKET, options)
+    if (updateError) return updateError.message
+    return null
+  }
+
+  return createError.message
 }
 
 function safeExt(originalFileName: string): string {
