@@ -1,15 +1,31 @@
 'use client'
 
+import type { RefObject } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Timer } from 'lucide-react'
+import {
+  playTimerAlarm,
+  pulseTimerVibration,
+  showTimerNotification,
+} from '@/lib/timer-alarm'
 
 const WORK_SEC = 25 * 60
 const BREAK_SEC = 5 * 60
 
-export function PomodoroTimerCard() {
+type Props = {
+  alarmSoundRef: RefObject<boolean>
+  alarmNotifyRef: RefObject<boolean>
+}
+
+export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
   const [mode, setMode] = useState<'work' | 'break'>('work')
+  const modeRef = useRef(mode)
+  useEffect(() => {
+    modeRef.current = mode
+  }, [mode])
+
   const [status, setStatus] = useState<'idle' | 'running' | 'paused'>('idle')
   const [secLeft, setSecLeft] = useState(WORK_SEC)
   const wallEnd = useRef<number | null>(null)
@@ -22,15 +38,29 @@ export function PomodoroTimerCard() {
 
   const total = mode === 'work' ? WORK_SEC : BREAK_SEC
 
+  // Refs from parent (stable); read .current inside tick — do not list in deps.
   const sync = useCallback(() => {
     if (wallEnd.current == null) return
     const s = Math.max(0, Math.ceil((wallEnd.current - Date.now()) / 1000))
     setSecLeft(s)
     if (s === 0) {
       wallEnd.current = null
+      const ended = modeRef.current
+      if (alarmSoundRef.current) {
+        playTimerAlarm(ended === 'work' ? 'pomodoro-work' : 'pomodoro-break')
+      }
+      if (alarmNotifyRef.current) {
+        if (ended === 'work') {
+          showTimerNotification('Pomodoro — focus complete', 'Time for a 5-minute break.')
+        } else {
+          showTimerNotification('Pomodoro — break over', 'Start your next focus round when you are ready.')
+        }
+      }
+      pulseTimerVibration()
       setMode((m) => (m === 'work' ? 'break' : 'work'))
       setStatus('idle')
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- alarm refs are stable RefObjects
   }, [])
 
   useEffect(() => {
@@ -87,17 +117,16 @@ export function PomodoroTimerCard() {
   const ss = String(secLeft % 60).padStart(2, '0')
 
   return (
-    <Card className="p-6 border-border">
-      <div className="flex items-center gap-2 mb-2">
-        <Timer className="w-5 h-5 text-accent" />
+    <Card className="border-border p-6">
+      <div className="mb-2 flex items-center gap-2">
+        <Timer className="h-5 w-5 text-accent" />
         <h2 className="text-lg font-semibold">Pomodoro</h2>
-        <span className="text-xs text-muted-foreground uppercase tracking-wide">
+        <span className="text-xs uppercase tracking-wide text-muted-foreground">
           {mode === 'work' ? 'Focus' : 'Break'}
         </span>
       </div>
-      <p className="text-sm text-muted-foreground mb-6">
-        25-minute focus blocks with a 5-minute break. Classic cadence for daily
-        tasks.
+      <p className="mb-6 text-sm text-muted-foreground">
+        25-minute focus blocks with a 5-minute break. Classic cadence for daily tasks. Timer alerts are configured above.
       </p>
       <div className="text-center">
         <p className="text-5xl font-mono font-bold tabular-nums tracking-tight">

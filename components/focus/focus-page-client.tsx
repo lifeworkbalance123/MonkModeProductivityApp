@@ -5,8 +5,12 @@ import { Navigation } from '@/components/navigation'
 import { DeepWorkModeCard } from '@/components/focus/deep-work-mode-card'
 import { DeepWorkStatsStrip } from '@/components/focus/deep-work-stats-strip'
 import { PomodoroTimerCard } from '@/components/focus/pomodoro-timer-card'
+import { Card } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { useDataServiceContext } from '@/hooks/use-data-service-context'
 import { usePlan } from '@/hooks/usePlan'
+import { useTimerAlarmSettings } from '@/hooks/useTimerAlarmSettings'
 import { listDeepWorkSessions, shouldSyncToCloud } from '@/lib/dataService'
 import {
   loadDeepWorkSessionsLocal,
@@ -17,6 +21,7 @@ export function FocusPageClient() {
   const ctx = useDataServiceContext()
   const { isLoading: planLoading } = usePlan()
   const [sessions, setSessions] = useState<DeepWorkSession[]>([])
+  const alarm = useTimerAlarmSettings()
 
   useEffect(() => {
     if (planLoading) return
@@ -50,8 +55,47 @@ export function FocusPageClient() {
             after the timer.
           </p>
         </div>
-        <PomodoroTimerCard />
-        <DeepWorkModeCard setSessions={setSessions} />
+
+        <Card className="border-border p-4">
+          <p className="mb-3 text-sm font-medium text-foreground">Timer alerts</p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-8">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="timer-alarm-sound"
+                checked={alarm.soundOn}
+                onCheckedChange={alarm.setSoundOn}
+              />
+              <Label htmlFor="timer-alarm-sound" className="cursor-pointer font-normal">
+                Sound when a phase ends
+              </Label>
+            </div>
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="timer-alarm-notify"
+                  checked={alarm.notifyOn}
+                  onCheckedChange={alarm.setNotifyOn}
+                  disabled={alarm.notifyPermission === 'unsupported'}
+                />
+                <Label htmlFor="timer-alarm-notify" className="cursor-pointer font-normal">
+                  Desktop notification
+                </Label>
+              </div>
+              {alarm.notifyPermission === 'denied' ? (
+                <p className="text-xs text-muted-foreground sm:ml-0">
+                  Unblock notifications for this site in your browser settings to use alerts in the background.
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </Card>
+
+        <PomodoroTimerCard alarmSoundRef={alarm.soundRef} alarmNotifyRef={alarm.notifyRef} />
+        <DeepWorkModeCard
+          setSessions={setSessions}
+          alarmSoundRef={alarm.soundRef}
+          alarmNotifyRef={alarm.notifyRef}
+        />
         <DeepWorkStatsStrip sessions={sessions} />
       </div>
     </div>

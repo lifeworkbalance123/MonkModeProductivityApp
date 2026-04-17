@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import type { Dispatch, SetStateAction } from 'react'
+import type { Dispatch, RefObject, SetStateAction } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDeepWorkTimer } from '@/hooks/useDeepWorkTimer'
 import { useDataServiceContext } from '@/hooks/use-data-service-context'
@@ -26,6 +26,11 @@ import {
   stopAmbient,
   type AmbientNoiseHandle,
 } from '@/lib/deep-work-audio'
+import {
+  playTimerAlarm,
+  pulseTimerVibration,
+  showTimerNotification,
+} from '@/lib/timer-alarm'
 import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -58,6 +63,8 @@ type AmbientId = 'silence' | 'rain' | 'ocean' | 'white'
 
 type Props = {
   setSessions: Dispatch<SetStateAction<DeepWorkSession[]>>
+  alarmSoundRef: RefObject<boolean>
+  alarmNotifyRef: RefObject<boolean>
 }
 
 function formatMmSs(sec: number) {
@@ -110,7 +117,7 @@ function RingTimer(props: {
   )
 }
 
-export function DeepWorkModeCard({ setSessions }: Props) {
+export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }: Props) {
   const ctx = useDataServiceContext()
   const { isPro, isLoading: planLoading } = usePlan()
   const chimePlayed = useRef(false)
@@ -124,20 +131,36 @@ export function DeepWorkModeCard({ setSessions }: Props) {
   const [endEarlyOpen, setEndEarlyOpen] = useState(false)
   const [earlyEndMinutes, setEarlyEndMinutes] = useState(0)
 
+  // Alarm prefs via stable RefObjects from Focus page.
   const onSprintZero = useCallback(() => {
     if (!chimePlayed.current) {
       chimePlayed.current = true
-      playChime()
+      if (alarmSoundRef.current) {
+        playChime()
+      }
     }
+    if (alarmNotifyRef.current) {
+      showTimerNotification('Deep work — sprint complete', 'Log your check-in when you are ready.')
+    }
+    pulseTimerVibration()
     setCheckInOpen(true)
     if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
       setImmersive(true)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const onBreakZero = useCallback(() => {
+    if (alarmSoundRef.current) {
+      playTimerAlarm('deep-work-break')
+    }
+    if (alarmNotifyRef.current) {
+      showTimerNotification('Deep work — break over', 'Start your next sprint from the Focus page.')
+    }
+    pulseTimerVibration()
     setBreakModalOpen(false)
     setSprintNumber((n) => n + 1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const timer = useDeepWorkTimer({
