@@ -1,11 +1,24 @@
-<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <defs>
-    <linearGradient id="mcg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#2A2F4F"/>
-      <stop offset="100%" stop-color="#F4C84A"/>
-    </linearGradient>
-  </defs>
-  <rect width="180" height="180" rx="40" fill="#121212"/>
-  <rect x="38" y="38" width="72" height="72" rx="14" fill="url(#mcg)" opacity="0.95"/>
-  <circle cx="118" cy="62" r="44" fill="url(#mcg)" opacity="0.88"/>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <rect width="512" height="512" rx="104" fill="#121212"/>
+  <text
+    x="62"
+    y="330"
+    fill="#F2D34C"
+    font-family="Inter, Arial, sans-serif"
+    font-size="176"
+    font-weight="700"
+    letter-spacing="-2.2"
+  >
+    monk
+  </text>
+  <text
+    x="430"
+    y="182"
+    fill="#F6DD66"
+    font-family="Inter, Arial, sans-serif"
+    font-size="92"
+    font-weight="800"
+  >
+    3
+  </text>
 </svg>

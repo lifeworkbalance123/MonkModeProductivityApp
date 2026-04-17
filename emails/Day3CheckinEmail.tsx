@@ -25,7 +25,7 @@ export function Day3CheckinEmail({
       <H2>How&apos;s your first week going? 👀</H2>
 
       <P>Hey {name},</P>
-      <P>It&apos;s been 3 days since you entered Monk Mode.</P>
+      <P>It&apos;s been 3 days since you started with monkcubed.</P>
       <Muted>
         The most successful users set their habits in the first 48 hours — have
         you added yours yet?

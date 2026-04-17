@@ -32,10 +32,10 @@ export function PaymentConfirmationEmail({
       appUrl={appUrl}
       recipientEmail={recipientEmail}
     >
-      <H2>You&apos;re now on MonkMode Pro 🔥</H2>
+      <H2>You&apos;re now on monkcubed Pro 🔥</H2>
 
       <P>Hey {name},</P>
-      <P>Payment confirmed. Welcome to MonkMode Pro.</P>
+      <P>Payment confirmed. Welcome to monkcubed Pro.</P>
 
       <P>
         <strong>Receipt summary</strong>
@@ -98,7 +98,7 @@ export function PaymentConfirmationEmail({
       </div>
 
       <Muted>
-        Questions? Reply to this email or reach us at support@monkmodeapp.com
+        Questions? Reply to this email or reach us at support@monkcubed.com
       </Muted>
     </EmailLayout>
   )

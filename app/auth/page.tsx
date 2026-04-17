@@ -425,7 +425,7 @@ export default function AuthPage() {
       <Card className="w-full max-w-md p-6 space-y-6 border-border">
         {showReferralBanner ? (
           <div className="rounded-lg border border-accent/35 bg-accent/10 px-3 py-2 text-sm text-foreground">
-            You were invited to MonkMode! Sign up free — your friend gets a reward
+            You were invited to monkcubed! Sign up free — your friend gets a reward
             when you join.
           </div>
         ) : null}

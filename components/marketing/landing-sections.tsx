@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { MonkCubedLogo } from '@/components/brand/MonkCubedLogo'
 import { MONKCUBED_TAGLINE } from '@/components/brand/MonkCubedLogo'
 import { supabase } from '@/lib/supabase'
+import { SALES_EMAIL } from '@/lib/site-contact'
 
 function getYouTubeId(url: string) {
   const patterns = [
@@ -258,7 +259,7 @@ export function MarketingFooter() {
           <p className="font-semibold text-foreground">Company</p>
           <Link href="/support">About</Link><br />
           <a href="YOUR_BLOG_URL">Blog</a><br />
-          <a href="mailto:hello@monkmodeapp.com">Contact</a>
+          <a href={`mailto:${SALES_EMAIL}`}>Contact</a>
         </div>
         <div className="space-y-2 text-sm text-muted-foreground">
           <p className="font-semibold text-foreground">Legal</p>

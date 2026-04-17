@@ -77,7 +77,7 @@ export function GettingStartedChecklist({ data }: { data: MonkData }) {
   return (
     <Card className="mb-6 border-primary/35 bg-primary/[0.08] p-4 sm:p-5">
       <h2 className="text-lg font-semibold text-foreground">
-        Welcome to MonkMode 🔥
+        Welcome to monkcubed 🔥
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">
         Complete these steps to get started:

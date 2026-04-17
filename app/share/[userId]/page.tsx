@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
 import { supabase } from '@/lib/supabase'
+import { publicSiteOrigin } from '@/lib/site-contact'
 
 type ShareStats = {
   streakCount: number
@@ -58,22 +59,23 @@ export default function SharePage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `monkmode-streak-${stats?.streakCount ?? 0}.png`
+    a.download = `monkcubed-streak-${stats?.streakCount ?? 0}.png`
     document.body.appendChild(a)
     a.click()
     a.remove()
     URL.revokeObjectURL(url)
   }
 
-  const referralCode = stats?.referralCode ?? 'MONKMODE'
-  const referralLink = `https://monkmodeapp.com/ref/${referralCode}`
+  const origin = publicSiteOrigin()
+  const referralCode = stats?.referralCode ?? 'MONKCUBED'
+  const referralLink = `${origin}/ref/${referralCode}`
   const twitterHref =
     'https://twitter.com/intent/tweet?text=' +
     encodeURIComponent(
-      `I'm on a 🔥${stats?.streakCount ?? 0} day streak with @MonkMode — building unstoppable habits one day at a time. Join me free: monkmodeapp.com/ref/${referralCode}`,
+      `I'm on a 🔥${stats?.streakCount ?? 0} day streak with monkcubed — building unstoppable habits one day at a time. Join me free: ${origin.replace(/^https?:\/\//, '')}/ref/${referralCode}`,
     ) +
     '&url=' +
-    encodeURIComponent('https://monkmodeapp.com')
+    encodeURIComponent(origin)
 
   return (
     <div className="min-h-screen bg-background">
@@ -81,7 +83,7 @@ export default function SharePage() {
       <div className="mx-auto max-w-2xl px-4 py-8 pt-24">
         <h1 className="text-2xl font-semibold">Share your streak</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Share your progress and invite friends to MonkMode.
+          Share your progress and invite friends to monkcubed.
         </p>
 
         <Card className="mt-5 p-4">

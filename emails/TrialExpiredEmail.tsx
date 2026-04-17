@@ -19,7 +19,7 @@ export function TrialExpiredEmail({
       appUrl={appUrl}
       recipientEmail={recipientEmail}
     >
-      <H2>Your MonkMode Pro trial has ended</H2>
+      <H2>Your monkcubed Pro trial has ended</H2>
 
       <P>Hey {name},</P>
       <P>

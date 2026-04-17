@@ -212,7 +212,7 @@ export async function loadFullMonkData(
     slotsRes.error ||
     journalRes.error
   ) {
-    console.error('MonkMode cloud load error', {
+    console.error('monkcubed cloud load error', {
       habitsRes,
       compRes,
       goalsRes,

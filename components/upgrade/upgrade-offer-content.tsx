@@ -167,7 +167,7 @@ export function UpgradeOfferContent({
               Unlock Your Full Potential
             </h1>
             <p className="mt-3 text-base text-gray-300 sm:text-lg">
-              You&apos;ve experienced what MonkMode Pro can do. Don&apos;t go
+              You&apos;ve experienced what monkcubed Pro can do. Don&apos;t go
               back to ordinary.
             </p>
           </>
@@ -203,7 +203,7 @@ export function UpgradeOfferContent({
       {isLifetime ? (
         <div className="mx-auto mt-10 max-w-xl rounded-2xl border border-[#F59E0B]/40 bg-[#F59E0B]/10 px-4 py-4 text-center text-sm text-amber-50">
           You have <span className="font-semibold">Lifetime</span> access.
-          Thank you for supporting MonkMode.
+          Thank you for supporting monkcubed.
         </div>
       ) : null}
 
@@ -393,10 +393,10 @@ export function UpgradeOfferContent({
         <div>
           💬 Support at{' '}
           <a
-            href="mailto:support@monkmodeapp.com"
+            href="mailto:support@monkcubed.com"
             className="text-[#F59E0B] hover:underline"
           >
-            support@monkmodeapp.com
+            support@monkcubed.com
           </a>
         </div>
       </div>
@@ -465,7 +465,7 @@ export function UpgradeOfferContent({
             </DialogTitle>
             <DialogDescription className="text-gray-300">
               Something went wrong on our end. Please try again or contact
-              support@monkmodeapp.com
+              support@monkcubed.com
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col gap-3 sm:flex-col">
@@ -484,7 +484,7 @@ export function UpgradeOfferContent({
               )}
             </Button>
             <a
-              href="mailto:support@monkmodeapp.com"
+              href="mailto:support@monkcubed.com"
               className="text-center text-sm text-[#F59E0B] hover:underline"
             >
               Contact support

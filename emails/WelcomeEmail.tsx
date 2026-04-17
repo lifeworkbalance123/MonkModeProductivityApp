@@ -15,11 +15,11 @@ export function WelcomeEmail({
 
   return (
     <EmailLayout
-      previewText="Welcome to MonkMode"
+      previewText="Welcome to monkcubed"
       appUrl={appUrl}
       recipientEmail={recipientEmail}
     >
-      <H2>🔥 Welcome to MonkMode</H2>
+      <H2>🔥 Welcome to monkcubed</H2>
 
       <P>Hey {name},</P>
       <P>You just made a great decision.</P>
@@ -29,7 +29,7 @@ export function WelcomeEmail({
       </Muted>
 
       <div style={{ margin: '16px 0 18px', textAlign: 'center' }}>
-        <PrimaryButton href={dashboardUrl}>Open MonkMode →</PrimaryButton>
+        <PrimaryButton href={dashboardUrl}>Open monkcubed →</PrimaryButton>
       </div>
 
       <P>
@@ -50,7 +50,7 @@ export function WelcomeEmail({
       <P>
         Enter monk mode. The focused version of you is waiting.
       </P>
-      <P>The MonkMode Team</P>
+      <P>The monkcubed Team</P>
 
       <Muted>
         <strong>PS:</strong> Your trial ends in 14 days. No card needed until you

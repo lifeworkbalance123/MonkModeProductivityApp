@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { Navigation } from '@/components/navigation'
+import { SALES_EMAIL } from '@/lib/site-contact'
 
-const contactEmail = 'hello@monkmode.app'
+const contactEmail = SALES_EMAIL
 
 function Section({
   id,
@@ -36,7 +37,7 @@ export default function LearnMorePage() {
           </Link>
         </p>
 
-        <h1 className="text-2xl font-bold mb-2">About MONKMODE</h1>
+        <h1 className="text-2xl font-bold mb-2">About monkcubed</h1>
         <p className="text-muted-foreground text-sm mb-12">
           MVP reference pages for footer links. Full marketing and legal copy will expand in later
           releases.
@@ -45,7 +46,7 @@ export default function LearnMorePage() {
         <div className="space-y-12">
           <Section id="about" title="About">
             <p>
-              MONKMODE is a deep-focus productivity workspace: weekly planner, habits, daily goals,
+              monkcubed is a deep-focus productivity workspace: weekly planner, habits, daily goals,
               and reflections — with your data stored locally in the browser for this MVP.
             </p>
           </Section>
@@ -116,7 +117,7 @@ export default function LearnMorePage() {
 
           <Section id="terms" title="Terms">
             <p>
-              MONKMODE is provided as-is for personal productivity. No warranty; use at your own risk.
+              monkcubed is provided as-is for personal productivity. No warranty; use at your own risk.
               Formal terms will be published before paid plans.
             </p>
           </Section>

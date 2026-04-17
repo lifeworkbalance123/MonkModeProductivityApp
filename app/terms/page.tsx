@@ -7,9 +7,9 @@ import {
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: "Terms of Service | MonkMode",
+  title: "Terms of Service | monkcubed",
   description:
-    "Terms governing use of the MonkMode productivity app, Free vs Pro plans, and payments.",
+    "Terms governing use of the monkcubed productivity app, Free vs Pro plans, and payments.",
 }
 
 export default function TermsPage() {
@@ -17,7 +17,7 @@ export default function TermsPage() {
     <LegalDocumentLayout title="Terms of Service" lastUpdated="April 2026">
       <LegalSection title="Acceptance of terms">
         <p>
-          By accessing or using MonkMode (the &quot;Service&quot;), you agree to these Terms of
+          By accessing or using monkcubed (the &quot;Service&quot;), you agree to these Terms of
           Service. If you do not agree, do not use the Service. We may update these terms from time
           to time; the &quot;Last updated&quot; date above will change, and your continued use after
           changes become effective constitutes acceptance where allowed by law.
@@ -26,10 +26,10 @@ export default function TermsPage() {
 
       <LegalSection title="Description of service">
         <p>
-          MonkMode is a productivity and personal organization application. It is provided for
+          monkcubed is a productivity and personal organization application. It is provided for
           general information and self-management purposes only.{" "}
           <strong>
-            MonkMode is not a medical, mental health, or therapeutic service and does not provide
+            monkcubed is not a medical, mental health, or therapeutic service and does not provide
             clinical advice, diagnosis, or treatment.
           </strong>{" "}
           If you need professional support, consult a qualified provider.
@@ -38,7 +38,7 @@ export default function TermsPage() {
 
       <LegalSection title="Free vs Pro plans">
         <p>
-          <strong>Free tier:</strong> Includes core MonkMode features as described in the app or
+          <strong>Free tier:</strong> Includes core monkcubed features as described in the app or
           on our website at the time you use them. Some data may be stored locally in your browser
           rather than in the cloud.
         </p>
@@ -102,7 +102,7 @@ export default function TermsPage() {
 
       <LegalSection title="Limitation of liability">
         <p>
-          To the maximum extent permitted by applicable law, MonkMode and its operators will not
+          To the maximum extent permitted by applicable law, monkcubed and its operators will not
           be liable for any indirect, incidental, special, consequential, or punitive damages, or
           loss of profits, data, or goodwill, arising from your use of the Service.
         </p>
@@ -127,12 +127,12 @@ export default function TermsPage() {
       <LegalSection title="Contact">
         <p>
           For legal notices or questions about these terms, email{" "}
-          <a href="mailto:legal@monkmodeapp.com">legal@monkmodeapp.com</a>.
+          <a href="mailto:support@monkcubed.com">support@monkcubed.com</a>.
         </p>
       </LegalSection>
 
       <p className="text-sm text-gray-500 border-t border-gray-700 pt-8">
-        These terms are a starting point for MonkMode. Have them reviewed by a qualified lawyer
+        These terms are a starting point for monkcubed. Have them reviewed by a qualified lawyer
         before launching paid tiers, especially for GDPR, Australian Consumer Law, and
         industry-specific obligations.
       </p>

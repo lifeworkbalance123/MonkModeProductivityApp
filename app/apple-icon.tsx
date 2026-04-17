@@ -18,7 +18,7 @@ export default function AppleIcon() {
           alignItems: 'center',
           justifyContent: 'center',
           background: '#121212',
-          color: '#FFFFFF',
+          color: '#F2D34C',
           fontSize: 58,
           fontWeight: 700,
           letterSpacing: '-0.02em',
@@ -28,15 +28,15 @@ export default function AppleIcon() {
         monk
         <span
           style={{
-            color: '#F4C84A',
-            fontSize: '0.5em',
+            color: '#F6DD66',
+            fontSize: '0.48em',
             marginLeft: 2,
-            transform: 'translateY(-20px)',
+            transform: 'translateY(-23px)',
             fontWeight: 800,
             lineHeight: 1,
           }}
         >
-          3
+          ³
         </span>
       </div>
     ),

@@ -4,17 +4,15 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
+import { mailtoSales, mailtoSupport, SUPPORT_EMAIL } from '@/lib/site-contact'
 
-const FEATURE_REQUEST_URL = 'YOUR_FEATURE_REQUEST_FORM_URL'
+const FEATURE_REQUEST_URL = mailtoSales('Feature request — monkcubed')
 const EXCLUDED_PATHS = new Set(['/', '/auth', '/pricing', '/upgrade'])
 
-const bugReportHref =
-  'mailto:support@monkmodeapp.com?subject=' +
-  encodeURIComponent('Bug Report — MonkMode') +
-  '&body=' +
-  encodeURIComponent(
-    'Page/screen:\nWhat happened:\nWhat I expected:\nDevice & browser:',
-  )
+const bugReportHref = mailtoSupport(
+  'Bug Report — monkcubed',
+  'Page/screen:\nWhat happened:\nWhat I expected:\nDevice & browser:',
+)
 
 export function SupportFloatingButton() {
   const { user } = useAuth()
@@ -48,7 +46,7 @@ export function SupportFloatingButton() {
           <p className="mb-2 text-sm font-medium text-foreground">Need help?</p>
           <div className="space-y-1.5 text-sm">
             <a
-              href="mailto:support@monkmodeapp.com"
+              href={`mailto:${SUPPORT_EMAIL}`}
               className="block text-muted-foreground hover:text-foreground"
             >
               📧 Email support
@@ -62,8 +60,6 @@ export function SupportFloatingButton() {
             </Link>
             <a
               href={FEATURE_REQUEST_URL}
-              target="_blank"
-              rel="noreferrer"
               className="block text-muted-foreground hover:text-foreground"
             >
               💡 Request a feature

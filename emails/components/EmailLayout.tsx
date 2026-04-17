@@ -1,4 +1,5 @@
 import React from 'react'
+import { SUPPORT_EMAIL } from '@/lib/site-contact'
 
 const COLORS = {
   bg: '#111827',
@@ -51,10 +52,10 @@ export function EmailLayout({
                   color: COLORS.amber,
                 }}
               >
-                MonkMode
+                monkcubed
               </div>
               <div style={{ fontSize: 12, color: COLORS.muted }}>
-                Enter monk mode. Stay focused.
+                Discipline to the third power.
               </div>
             </div>
 
@@ -81,10 +82,10 @@ export function EmailLayout({
               <div style={{ marginBottom: 6 }}>
                 Need help?{' '}
                 <a
-                  href="mailto:support@monkmodeapp.com"
+                  href={`mailto:${SUPPORT_EMAIL}`}
                   style={{ color: COLORS.amber, textDecoration: 'underline' }}
                 >
-                  support@monkmodeapp.com
+                  {SUPPORT_EMAIL}
                 </a>
               </div>
               <div>

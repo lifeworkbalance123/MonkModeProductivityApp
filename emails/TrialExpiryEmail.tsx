@@ -25,7 +25,7 @@ export function TrialExpiryEmail({
       appUrl={appUrl}
       recipientEmail={recipientEmail}
     >
-      <H2>⏰ 2 days left of MonkMode Pro</H2>
+      <H2>⏰ 2 days left of monkcubed Pro</H2>
 
       <P>Hey {name},</P>
       <P>Your free Pro trial ends in 2 days.</P>

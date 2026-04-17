@@ -1,8 +1,10 @@
 import { ImageResponse } from 'next/og'
+import { publicSiteOrigin } from '@/lib/site-contact'
 
 export const runtime = 'nodejs'
 
 export async function GET(request: Request) {
+  const host = publicSiteOrigin().replace(/^https?:\/\//, '')
   const { searchParams } = new URL(request.url)
   const streakCount = Number(searchParams.get('streakCount') ?? '0')
   const habitsCompleted = searchParams.get('habitsCompleted') ?? '0/0'
@@ -35,7 +37,7 @@ export async function GET(request: Request) {
           }}
         />
         <div style={{ position: 'relative', display: 'flex', fontSize: 30, color: '#F59E0B' }}>
-          MONKMODE
+          monkcubed
         </div>
         <div
           style={{
@@ -60,7 +62,7 @@ export async function GET(request: Request) {
             color: '#94A3B8',
           }}
         >
-          monkmodeapp.com
+          {host}
         </div>
       </div>
     ),

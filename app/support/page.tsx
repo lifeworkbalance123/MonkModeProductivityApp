@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import Link from 'next/link'
 import { Navigation } from '@/components/navigation'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -11,16 +10,14 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
+import { mailtoSales, mailtoSupport, SALES_EMAIL, SUPPORT_EMAIL } from '@/lib/site-contact'
 
-const FEATURE_REQUEST_URL = 'YOUR_FEATURE_REQUEST_FORM_URL'
+const FEATURE_REQUEST_URL = mailtoSales('Feature request — monkcubed')
 
-const bugReportHref =
-  'mailto:support@monkmodeapp.com?subject=' +
-  encodeURIComponent('Bug Report — MonkMode') +
-  '&body=' +
-  encodeURIComponent(
-    'Page/screen:\nWhat happened:\nWhat I expected:\nDevice & browser:',
-  )
+const bugReportHref = mailtoSupport(
+  'Bug Report — monkcubed',
+  'Page/screen:\nWhat happened:\nWhat I expected:\nDevice & browser:',
+)
 
 const FAQ_ITEMS = [
   {
@@ -30,13 +27,13 @@ const FAQ_ITEMS = [
   },
   {
     group: 'ACCOUNT & DATA',
-    q: 'Can I use MonkMode on multiple devices?',
+    q: 'Can I use monkcubed on multiple devices?',
     a: 'Cloud sync across devices is a Pro feature. On the Free plan, your data stays on the device you used to create it.',
   },
   {
     group: 'ACCOUNT & DATA',
     q: 'How do I delete my account?',
-    a: 'Email us at support@monkmodeapp.com with the subject "Delete my account" and we\'ll remove all your data within 7 days. This cannot be undone.',
+    a: 'Email us at support@monkcubed.com with the subject "Delete my account" and we\'ll remove all your data within 7 days. This cannot be undone.',
   },
   {
     group: 'ACCOUNT & DATA',
@@ -51,12 +48,12 @@ const FAQ_ITEMS = [
   {
     group: 'BILLING & SUBSCRIPTIONS',
     q: 'I was charged but my account still shows Free.',
-    a: "This can take up to 5 minutes to update. If it hasn't updated after 10 minutes, go to Settings → Restore purchases. Still not working? Email support@monkmodeapp.com with your payment receipt.",
+    a: "This can take up to 5 minutes to update. If it hasn't updated after 10 minutes, go to Settings → Restore purchases. Still not working? Email support@monkcubed.com with your payment receipt.",
   },
   {
     group: 'BILLING & SUBSCRIPTIONS',
     q: 'Can I get a refund?',
-    a: "We offer refunds within 14 days of purchase if you haven't used Pro features. Email support@monkmodeapp.com with your order details.",
+    a: "We offer refunds within 14 days of purchase if you haven't used Pro features. Email support@monkcubed.com with your order details.",
   },
   {
     group: 'BILLING & SUBSCRIPTIONS',
@@ -76,11 +73,11 @@ const FAQ_ITEMS = [
   {
     group: 'TECHNICAL',
     q: "Push notifications aren't working.",
-    a: 'Make sure you\'ve allowed notifications for MonkMode in your browser or phone settings. On iOS: Settings → MonkMode → Notifications → Allow.',
+    a: 'Make sure you\'ve allowed notifications for monkcubed in your browser or phone settings. On iOS: Settings → monkcubed → Notifications → Allow.',
   },
   {
     group: 'TECHNICAL',
-    q: 'Can I use MonkMode offline?',
+    q: 'Can I use monkcubed offline?',
     a: 'Yes. The Free plan works fully offline (data saves to your device). Pro cloud sync requires an internet connection, but the app remains usable offline and syncs when you reconnect.',
   },
 ]
@@ -124,10 +121,10 @@ export default function SupportPage() {
               For billing, account issues, and bug reports.
             </p>
             <a
-              href="mailto:support@monkmodeapp.com"
+              href={`mailto:${SUPPORT_EMAIL}`}
               className="mt-4 inline-block text-sm font-medium text-accent hover:underline"
             >
-              support@monkmodeapp.com
+              {SUPPORT_EMAIL}
             </a>
             <p className="mt-2 text-xs text-muted-foreground">Within 24 hours</p>
           </Card>
@@ -136,15 +133,13 @@ export default function SupportPage() {
             <div className="text-3xl">💡</div>
             <h2 className="mt-3 text-lg font-semibold">Request a feature</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Have an idea to make MonkMode better? We read every suggestion.
+              Have an idea to make monkcubed better? We read every suggestion.
             </p>
             <a
               href={FEATURE_REQUEST_URL}
-              target="_blank"
-              rel="noreferrer"
               className="mt-4 inline-block text-sm font-medium text-accent hover:underline"
             >
-              Submit idea
+              Email {SALES_EMAIL}
             </a>
             <p className="mt-2 text-xs text-muted-foreground">
               Most-requested features get prioritised in our roadmap.
@@ -200,9 +195,9 @@ export default function SupportPage() {
 
         <p className="mt-8 text-center text-sm text-muted-foreground">
           Need direct help?{' '}
-          <Link href="mailto:support@monkmodeapp.com" className="text-accent hover:underline">
-            support@monkmodeapp.com
-          </Link>
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent hover:underline">
+            {SUPPORT_EMAIL}
+          </a>
         </p>
       </div>
     </div>

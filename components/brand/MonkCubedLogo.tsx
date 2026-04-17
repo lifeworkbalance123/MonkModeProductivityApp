@@ -7,12 +7,11 @@ type MonkCubedLogoProps = {
 }
 
 /**
- * Wordmark: monk³cubed — reads as “monk cubed” / monkcubed (not MONKMODE).
+ * Wordmark: monk³ (reads as "monk cubed").
  */
 export function MonkCubedLogo({ variant = 'onDark', className }: MonkCubedLogoProps) {
-  const monk = variant === 'onDark' ? '#FFFFFF' : '#1A1A1A'
-  const sup = variant === 'onDark' ? '#F4C84A' : '#E2B53A'
-  const cubed = variant === 'onDark' ? '#E8E8E8' : '#2C2C2C'
+  const monk = variant === 'onDark' ? '#F2D34C' : '#CFA52F'
+  const sup = variant === 'onDark' ? '#F6DD66' : '#D9AF3C'
   return (
     <span
       className={className}
@@ -40,7 +39,6 @@ export function MonkCubedLogo({ variant = 'onDark', className }: MonkCubedLogoPr
       >
         ³
       </sup>
-      <span style={{ color: cubed, fontWeight: 600, marginLeft: '0.06em' }}>cubed</span>
     </span>
   )
 }

@@ -115,7 +115,7 @@ export function PwaInstallButton({ className }: { className?: string }) {
             can add web apps to your home screen.
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
-            monkcubed then opens like an app with the browser chrome hidden.
+            The monkcubed app then opens like an installed app with the browser chrome hidden.
           </p>
         </PopoverContent>
       </Popover>

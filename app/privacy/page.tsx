@@ -7,9 +7,9 @@ import {
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | MonkMode",
+  title: "Privacy Policy | monkcubed",
   description:
-    "How MonkMode collects, uses, and stores your data. Supabase, Stripe, and local storage practices.",
+    "How monkcubed collects, uses, and stores your data. Supabase, Stripe, and local storage practices.",
 }
 
 export default function PrivacyPage() {
@@ -17,9 +17,9 @@ export default function PrivacyPage() {
     <LegalDocumentLayout title="Privacy Policy" lastUpdated="April 2026">
       <LegalSection title="Introduction">
         <p>
-          MonkMode (&quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) operates the MonkMode
+          monkcubed (&quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) operates the monkcubed
           productivity application and website. This Privacy Policy explains what information we
-          collect, how we use it, and your choices. By using MonkMode, you agree to this policy.
+          collect, how we use it, and your choices. By using monkcubed, you agree to this policy.
         </p>
       </LegalSection>
 
@@ -52,7 +52,7 @@ export default function PrivacyPage() {
       <LegalSection title="How we use your data">
         <p>We use the information above to:</p>
         <ul>
-          <li>Provide, maintain, and improve MonkMode features you choose to use.</li>
+          <li>Provide, maintain, and improve monkcubed features you choose to use.</li>
           <li>
             Sync your data across devices when you use Pro or cloud-backed features (via Supabase).
           </li>
@@ -81,7 +81,7 @@ export default function PrivacyPage() {
         <p>
           <strong>Payments:</strong> Payment card details and full payment credentials are handled
           by Stripe according to Stripe&apos;s policies. We do not store your full card data on
-          MonkMode systems.
+          monkcubed systems.
         </p>
       </LegalSection>
 
@@ -136,20 +136,20 @@ export default function PrivacyPage() {
       <LegalSection title="Contact">
         <p>
           For privacy-related requests or questions, email{" "}
-          <a href="mailto:privacy@monkmodeapp.com">privacy@monkmodeapp.com</a>.
+          <a href="mailto:support@monkcubed.com">support@monkcubed.com</a>.
         </p>
       </LegalSection>
 
       <LegalSection title="Changes to this policy">
         <p>
           We may update this Privacy Policy from time to time. We will post the revised version on
-          this page and update the &quot;Last updated&quot; date. Continued use of MonkMode after
+          this page and update the &quot;Last updated&quot; date. Continued use of monkcubed after
           changes constitutes acceptance of the updated policy, where permitted by law.
         </p>
       </LegalSection>
 
       <p className="text-sm text-gray-500 border-t border-gray-700 pt-8">
-        This policy is a practical starting point for MonkMode. Before launching paid tiers or
+        This policy is a practical starting point for monkcubed. Before launching paid tiers or
         operating at scale, you should have it reviewed by a qualified lawyer for compliance with
         GDPR, Australian privacy law, and other regulations that apply to your users.
       </p>

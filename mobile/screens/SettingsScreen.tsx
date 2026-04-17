@@ -91,7 +91,7 @@ export default function SettingsScreen() {
         }}
       >
         <Text style={{ fontSize: 18, fontWeight: '700', color: currentTheme.text, marginBottom: 10 }}>
-          Add MonkMode to your home screen
+          Add monkcubed to your home screen
         </Text>
         <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
           <View
@@ -139,7 +139,7 @@ export default function SettingsScreen() {
         <Text style={{ color: currentTheme.text, opacity: 0.75, fontSize: 12, lineHeight: 18 }}>
           1. Long press on your home screen{'\n'}
           2. Tap the + button (top left){'\n'}
-          3. Search for "MonkMode"{'\n'}
+          3. Search for "monkcubed"{'\n'}
           4. Choose Small or Medium size{'\n'}
           5. Tap Add Widget
         </Text>
@@ -150,7 +150,7 @@ export default function SettingsScreen() {
         <Text style={{ color: currentTheme.text, opacity: 0.75, fontSize: 12, lineHeight: 18 }}>
           1. Long press on your home screen{'\n'}
           2. Tap Widgets{'\n'}
-          3. Find MonkMode in the list{'\n'}
+          3. Find monkcubed in the list{'\n'}
           4. Drag to your home screen
         </Text>
       </View>
@@ -177,11 +177,11 @@ export default function SettingsScreen() {
         }}
       >
         <Text style={{ fontSize: 17, fontWeight: '700', color: currentTheme.text, marginBottom: 10 }}>
-          MonkMode is available on Apple Watch and Wear OS.
+          The monkcubed app is available on Apple Watch and Wear OS.
         </Text>
         <Text style={{ color: currentTheme.text, opacity: 0.75, fontSize: 12, lineHeight: 18 }}>
-          iOS: Open the Watch app on your iPhone and install MonkMode.{'\n'}
-          Android: The MonkMode Wear OS app installs automatically when you install the Android app.
+          iOS: Open the Watch app on your iPhone and install the monkcubed app.{'\n'}
+          Android: The Wear OS companion installs automatically when you install the Android app.
         </Text>
         <View
           style={{

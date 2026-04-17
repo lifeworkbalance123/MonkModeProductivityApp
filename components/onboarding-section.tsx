@@ -257,7 +257,7 @@ export function OnboardingSection() {
                   </div>
                   <h3 className="text-xl font-semibold mb-2">Perfect!</h3>
                   <p className="text-muted-foreground mb-6">
-                    Your personalized MONKMODE experience is ready.
+                    Your personalized monkcubed experience is ready.
                   </p>
                   <div className="flex flex-col sm:flex-row gap-3 justify-center">
                     <Button className="bg-accent text-accent-foreground hover:bg-accent/90" asChild>

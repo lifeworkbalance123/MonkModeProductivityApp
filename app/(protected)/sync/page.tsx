@@ -19,7 +19,7 @@ export default function CloudSyncPage() {
         <div>
           <h1 className="text-2xl font-semibold">Cloud sync</h1>
           <p className="text-sm text-muted-foreground">
-            Back up and sync MonkMode data across your devices.
+            Back up and sync monkcubed data across your devices.
           </p>
         </div>
 
@@ -38,7 +38,7 @@ export default function CloudSyncPage() {
               onClick={() =>
                 openUpgrade({
                   featureContext:
-                    'Keep your MonkMode data backed up and in sync across devices with cloud storage.',
+                    'Keep your monkcubed data backed up and in sync across devices with cloud storage.',
                 })
               }
             >

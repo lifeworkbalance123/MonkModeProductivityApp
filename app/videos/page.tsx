@@ -49,7 +49,7 @@ export default function VideosPage() {
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-semibold sm:text-3xl">Video library</h1>
           <p className="text-sm text-muted-foreground">
-            Curated clips from the MonkMode team.{' '}
+            Curated clips from the monkcubed team.{' '}
             <Link href="/training" className="text-accent underline-offset-4 hover:underline">
               Training hub
             </Link>{' '}

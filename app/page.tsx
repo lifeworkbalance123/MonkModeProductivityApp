@@ -3,6 +3,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import MarketingNav from '@/components/marketing/marketing-nav'
 import HeroMedia from '@/components/landing/HeroMedia'
+import { publicSiteOrigin } from '@/lib/site-contact'
 
 const SocialProofBar = dynamic(() =>
   import('@/components/marketing/landing-sections').then((m) => m.SocialProofBar),
@@ -27,18 +28,17 @@ const MarketingFooter = dynamic(() =>
 )
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://monkmodeapp.com'),
-  title: 'monk³ – Monk Cubed',
+  title: 'monk³ – monkcubed',
   description:
     'Discipline to the third power. Three modes. One practice. Sprint, Transform, Mastery. Structured focus without noisy gamification.',
   keywords:
     'monk cubed, monk3, focus, deep work, productivity, habit transformation, stoic, sprint, mastery, monkcubed',
   openGraph: {
-    title: 'monk³ – Discipline to the third power.',
+    title: 'monk³ – monkcubed',
     description:
       'Three modes. One practice. Sprint (21–60d), Transform (60d), Mastery (90+d). No gamification. Just structured focus.',
     images: ['/og-image.png'],
-    url: 'https://monkmodeapp.com',
+    url: publicSiteOrigin(),
   },
   twitter: {
     card: 'summary_large_image',

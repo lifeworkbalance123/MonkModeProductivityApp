@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Providers } from './providers'
 import './globals.css'
+import { publicSiteOrigin } from '@/lib/site-contact'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -26,7 +27,8 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'monk³ – Monk Cubed',
+  metadataBase: new URL(publicSiteOrigin()),
+  title: 'monk³ – monkcubed',
   description:
     'Discipline to the third power. Three modes. One practice. Sprint. Transform. Mastery.',
   applicationName: 'monkcubed',

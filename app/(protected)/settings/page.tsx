@@ -26,6 +26,7 @@ import { useDataServiceContext } from '@/hooks/use-data-service-context'
 import { resetAllUserData } from '@/lib/dataService'
 import { supabase } from '@/lib/supabase'
 import { captureEvent } from '@/lib/analytics'
+import { mailtoSupport, publicSiteOrigin, SUPPORT_EMAIL } from '@/lib/site-contact'
 
 function formatBillingDate(iso: string | null): string | null {
   if (!iso) return null
@@ -138,13 +139,10 @@ function SyncStatusCard({
   )
 }
 
-const bugReportHref =
-  'mailto:support@monkmodeapp.com?subject=' +
-  encodeURIComponent('Bug Report — MonkMode') +
-  '&body=' +
-  encodeURIComponent(
-    'Page/screen:\nWhat happened:\nWhat I expected:\nDevice & browser:',
-  )
+const bugReportHref = mailtoSupport(
+  'Bug Report — monkcubed',
+  'Page/screen:\nWhat happened:\nWhat I expected:\nDevice & browser:',
+)
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -273,7 +271,7 @@ export default function SettingsPage() {
       }
 
       showToast(
-        'No purchase found for this account. If you believe this is an error, contact support@monkmodeapp.com',
+        `No purchase found for this account. If you believe this is an error, contact ${SUPPORT_EMAIL}`,
         'info',
       )
     } catch {
@@ -389,7 +387,7 @@ export default function SettingsPage() {
               </div>
             ) : null}
             <p className="text-sm text-muted-foreground mb-3">
-              Sign out of MONKMODE on this device.
+              Sign out of monkcubed on this device.
             </p>
             <Button type="button" variant="outline" size="sm" onClick={handleSignOut}>
               Sign out
@@ -646,7 +644,7 @@ export default function SettingsPage() {
               <div className="rounded-md border border-border bg-secondary/30 p-3">
                 <div className="text-xs text-muted-foreground">Referral link</div>
                 <div className="mt-1 break-all font-mono text-xs">
-                  {`monkmodeapp.com/ref/${referralCode || 'YOURCODE'}`}
+                  {`${publicSiteOrigin().replace(/^https?:\/\//, '')}/ref/${referralCode || 'YOURCODE'}`}
                 </div>
                 <div className="mt-2 flex gap-2">
                   <Button
@@ -656,7 +654,7 @@ export default function SettingsPage() {
                     onClick={async () => {
                       if (!referralCode) return
                       await navigator.clipboard.writeText(
-                        `https://monkmodeapp.com/ref/${referralCode}`,
+                        `${publicSiteOrigin()}/ref/${referralCode}`,
                       )
                       showToast('Referral link copied.', 'success')
                     }}
@@ -670,7 +668,7 @@ export default function SettingsPage() {
                       if (!referralCode) return
                       window.open(
                         `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-                          `Join me on MonkMode: https://monkmodeapp.com/ref/${referralCode}`,
+                          `Join me on monkcubed: ${publicSiteOrigin()}/ref/${referralCode}`,
                         )}`,
                         '_blank',
                         'noopener,noreferrer',
@@ -709,10 +707,7 @@ export default function SettingsPage() {
               <Link href="/support" className="text-accent hover:underline">
                 Help & FAQ
               </Link>
-              <a
-                href="mailto:support@monkmodeapp.com"
-                className="text-accent hover:underline"
-              >
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent hover:underline">
                 Email support
               </a>
               <a href={bugReportHref} className="text-accent hover:underline">
@@ -724,7 +719,7 @@ export default function SettingsPage() {
                 rel="noreferrer"
                 className="text-accent hover:underline"
               >
-                Rate MonkMode
+                Rate monkcubed
               </a>
             </div>
           </div>

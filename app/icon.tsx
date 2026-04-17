@@ -18,7 +18,7 @@ export default function Icon() {
           alignItems: 'center',
           justifyContent: 'center',
           background: '#121212',
-          color: '#FFFFFF',
+          color: '#F2D34C',
           fontSize: 144,
           fontWeight: 700,
           letterSpacing: '-0.02em',
@@ -28,15 +28,15 @@ export default function Icon() {
         monk
         <span
           style={{
-            color: '#F4C84A',
-            fontSize: '0.52em',
+            color: '#F6DD66',
+            fontSize: '0.5em',
             marginLeft: 4,
-            transform: 'translateY(-56px)',
+            transform: 'translateY(-60px)',
             fontWeight: 800,
             lineHeight: 1,
           }}
         >
-          3
+          ³
         </span>
       </div>
     ),

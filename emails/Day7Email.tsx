@@ -25,7 +25,7 @@ export function Day7Email({
       <H2>1 week in — here&apos;s what consistent people do differently 🧘</H2>
 
       <P>Hey {name},</P>
-      <P>You&apos;ve been in Monk Mode for 7 days.</P>
+      <P>You&apos;ve been using monkcubed for 7 days.</P>
       <Muted>
         Research shows habits take 21–66 days to automate. You&apos;re already
         further than most people get.

@@ -2,8 +2,9 @@
 
 import { useCallback, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { DEFAULT_PUBLIC_ORIGIN, SUPPORT_EMAIL } from '@/lib/site-contact'
 
-const APP_NAME = 'monk³ – Monk Cubed'
+const APP_NAME = 'monk³ – monkcubed'
 
 const SUBTITLE_IOS = 'Discipline to the third power.'
 
@@ -34,9 +35,9 @@ Download monkcubed, set your first habits, run your first focus session, and tak
 const CATEGORY_PRIMARY = 'Productivity'
 const CATEGORY_SECONDARY = 'Health & Fitness'
 const AGE_RATING = '4+ (no objectionable content)'
-const SUPPORT_URL = 'https://monkmodeapp.com/support'
-const MARKETING_URL = 'https://monkmodeapp.com'
-const PRIVACY_URL = 'https://monkmodeapp.vercel.app/privacy'
+const SUPPORT_URL = `${DEFAULT_PUBLIC_ORIGIN}/support`
+const MARKETING_URL = DEFAULT_PUBLIC_ORIGIN
+const PRIVACY_URL = `${DEFAULT_PUBLIC_ORIGIN}/privacy`
 
 const KIT_TEXT_BUNDLE = [
   `APP NAME\n${APP_NAME}\n`,
@@ -291,7 +292,7 @@ export default function StoreKitPage() {
           </li>
           <li className="flex gap-2">
             <span className="text-muted-foreground">[ ]</span>
-            <span>Support email set up (support@monkmodeapp.com)</span>
+            <span>Support email set up ({SUPPORT_EMAIL})</span>
           </li>
           <li className="flex gap-2">
             <span className="text-muted-foreground">[ ]</span>

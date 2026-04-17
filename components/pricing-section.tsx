@@ -43,7 +43,7 @@ const plans = [
     name: "Lifetime",
     price: "$149",
     period: "one-time",
-    description: "Own MONKMODE forever with all future updates.",
+    description: "Own monkcubed forever with all future updates.",
     features: [
       "Everything in Pro",
       "Lifetime access",

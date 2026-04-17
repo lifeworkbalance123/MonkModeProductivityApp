@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { publicSiteOrigin, SALES_EMAIL } from '@/lib/site-contact'
 
 type FormStatus = 'idle' | 'loading' | 'success' | 'error'
 
@@ -41,7 +42,9 @@ function WaitlistForm({
           </Link>
           <button
             type="button"
-            onClick={() => navigator.clipboard.writeText('https://monkmodeapp.com/waitlist')}
+            onClick={() =>
+              navigator.clipboard.writeText(`${publicSiteOrigin()}/waitlist`)
+            }
             className="text-sm text-accent hover:underline"
           >
             Share the waitlist →
@@ -214,7 +217,7 @@ export function WaitlistPageClient() {
       </section>
 
       <section className="mx-auto max-w-[900px] px-4 py-12 text-center">
-        <h2 className="text-3xl font-bold">Ready to enter Monk Mode?</h2>
+        <h2 className="text-3xl font-bold">Ready to join monkcubed?</h2>
         <p className="mt-2 text-muted-foreground">Join {formatSocialCount(count)} others already on the list.</p>
         <div className="mx-auto mt-6 max-w-xl">
           <WaitlistForm email={email} setEmail={setEmail} status={status} onSubmit={join} error={error} />
@@ -226,7 +229,9 @@ export function WaitlistPageClient() {
         <p className="mt-2">
           <Link href="/privacy" className="hover:text-foreground">Privacy</Link> |{' '}
           <Link href="/terms" className="hover:text-foreground">Terms</Link> |{' '}
-          <a href="mailto:hello@monkmodeapp.com" className="hover:text-foreground">Contact</a>
+          <a href={`mailto:${SALES_EMAIL}`} className="hover:text-foreground">
+            Contact
+          </a>
         </p>
       </footer>
     </main>

@@ -24,7 +24,7 @@ function PaymentSuccessBody() {
   return (
     <div className="mx-auto max-w-lg px-4 pb-16 pt-28 text-center">
       <h1 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
-        {isV2Program ? "You're in the 60-day program." : "You're now on MonkMode Pro."}
+        {isV2Program ? "You're in the 60-day program." : "You're now on monkcubed Pro."}
       </h1>
       <p className="mt-3 text-muted-foreground">
         {isV2Program

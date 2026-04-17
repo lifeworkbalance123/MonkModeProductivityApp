@@ -36,7 +36,7 @@ export async function sendWelcomeEmail(email: string, firstName?: string | null)
   await resend.emails.send({
     from: fromAddress(),
     to: email,
-    subject: '🔥 Welcome to MonkMode — your 14-day Pro trial has started',
+    subject: '🔥 Welcome to monkcubed — your 14-day Pro trial has started',
     react: React.createElement(WelcomeEmail, {
       firstName: firstName ?? undefined,
       appUrl: appUrl(),
@@ -96,7 +96,7 @@ export async function sendTrialExpiryEmail(
   await resend.emails.send({
     from: fromAddress(),
     to: email,
-    subject: '⏰ 2 days left of MonkMode Pro',
+    subject: '⏰ 2 days left of monkcubed Pro',
     react: React.createElement(TrialExpiryEmail, {
       firstName: firstName ?? undefined,
       appUrl: appUrl(),
@@ -118,7 +118,7 @@ export async function sendTrialExpiredEmail(
   await resend.emails.send({
     from: fromAddress(),
     to: email,
-    subject: 'Your MonkMode Pro trial has ended',
+    subject: 'Your monkcubed Pro trial has ended',
     react: React.createElement(TrialExpiredEmail, {
       firstName: firstName ?? undefined,
       appUrl: appUrl(),
@@ -138,7 +138,7 @@ export async function sendPaymentConfirmationEmail(
   await resend.emails.send({
     from: fromAddress(),
     to: email,
-    subject: "You're now on MonkMode Pro 🔥 Receipt inside",
+    subject: "You're now on monkcubed Pro 🔥 Receipt inside",
     react: React.createElement(PaymentConfirmationEmail, {
       firstName: firstName ?? undefined,
       appUrl: appUrl(),
@@ -156,13 +156,13 @@ export async function sendReferralRewardEmail(email: string, firstName?: string 
   await resend.emails.send({
     from: fromAddress(),
     to: email,
-    subject: 'You earned a free month of MonkMode Pro! 🎉',
+    subject: 'You earned a free month of monkcubed Pro! 🎉',
     html: `
       <div style="background:#111827;color:#fff;padding:24px;font-family:Arial,sans-serif">
         <div style="max-width:560px;margin:0 auto;border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:20px;background:#0b1220">
-          <h2 style="margin:0 0 12px;color:#F59E0B">MonkMode</h2>
+          <h2 style="margin:0 0 12px;color:#F59E0B">monkcubed</h2>
           <p>Hey ${name},</p>
-          <p>Your friend just upgraded to MonkMode Pro. As a thank you, we've added 1 free month to your account.</p>
+          <p>Your friend just upgraded to monkcubed Pro. As a thank you, we've added 1 free month to your account.</p>
           <p>Keep sharing — every referral earns you another month.</p>
         </div>
       </div>
@@ -181,9 +181,9 @@ export async function sendWinbackEmail(email: string, firstName?: string | null)
     html: `
       <div style="background:#111827;color:#fff;padding:24px;font-family:Arial,sans-serif">
         <div style="max-width:560px;margin:0 auto;border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:20px;background:#0b1220">
-          <h2 style="margin:0 0 12px;color:#F59E0B">MonkMode</h2>
+          <h2 style="margin:0 0 12px;color:#F59E0B">monkcubed</h2>
           <p>Hey ${name},</p>
-          <p>Your MonkMode Pro subscription has ended.</p>
+          <p>Your monkcubed Pro subscription has ended.</p>
           <p>Everything you built is still here — your habits, goals, and journal entries are safe on the Free plan.</p>
           <p>Whenever you're ready to get back to full focus, your Pro access is one click away.</p>
           <p style="font-size:18px;color:#F59E0B;font-weight:700">$59.99/year — less than $5/month</p>
@@ -201,12 +201,12 @@ export async function sendWaitlistConfirmationEmail(email: string) {
   await resend.emails.send({
     from: fromAddress(),
     to: email,
-    subject: "You're on the MonkMode waitlist 🔥",
+    subject: "You're on the monkcubed waitlist 🔥",
     html: `
       <div style="background:#0F172A;color:#fff;padding:24px;font-family:Arial,sans-serif">
         <div style="max-width:560px;margin:0 auto;border:1px solid rgba(245,158,11,.35);border-radius:12px;padding:20px;background:#111827">
           <h2 style="margin:0 0 12px;color:#F59E0B">You're in.</h2>
-          <p>We'll email you the moment MonkMode launches on iOS and Android.</p>
+          <p>We'll email you the moment monkcubed launches on iOS and Android.</p>
           <p>As a waitlist member, you'll get:</p>
           <ul>
             <li>30-day free Pro trial (vs 14 days for regular signups)</li>
@@ -215,7 +215,7 @@ export async function sendWaitlistConfirmationEmail(email: string) {
             <li>Direct input on features before v2.0 ships</li>
           </ul>
           <p>In the meantime, the web app is live right now:</p>
-          <p><a href="${origin}/auth" style="color:#111827;background:#F59E0B;padding:10px 14px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block">Try MonkMode now →</a></p>
+          <p><a href="${origin}/auth" style="color:#111827;background:#F59E0B;padding:10px 14px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block">Try monkcubed now →</a></p>
           <p>Know someone who should be in Monk Mode? Share your spot:</p>
           <p><a href="${origin}/waitlist" style="color:#F59E0B">${origin}/waitlist</a></p>
           <p>We'll be in touch soon.</p>
