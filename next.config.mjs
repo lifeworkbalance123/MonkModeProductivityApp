@@ -18,8 +18,20 @@ const nextConfig = {
   },
 }
 
-export default withSentryConfig(nextConfig, {
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT ?? 'monkmode',
-  silent: true,
-})
+/**
+ * Only wrap with Sentry when upload credentials exist. Otherwise `next build` on Vercel
+ * can fail (e.g. 401 from expired SENTRY_AUTH_TOKEN) even though the app builds fine.
+ */
+const sentryAuth = (process.env.SENTRY_AUTH_TOKEN ?? '').trim()
+const sentryOrg = (process.env.SENTRY_ORG ?? '').trim()
+const sentryProject = (process.env.SENTRY_PROJECT ?? 'monkmode').trim()
+const enableSentryBuildPlugin = Boolean(sentryAuth && sentryOrg)
+
+export default enableSentryBuildPlugin
+  ? withSentryConfig(nextConfig, {
+      org: sentryOrg,
+      project: sentryProject,
+      authToken: sentryAuth,
+      silent: true,
+    })
+  : nextConfig
