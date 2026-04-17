@@ -11,6 +11,7 @@ const navLinks = [
   { label: 'Users', href: '/admin/users' },
   { label: 'Content', href: '/admin/content' },
   { label: 'Hero', href: '/admin/hero' },
+  { label: 'Blog', href: '/admin/blog' },
   { label: 'Revenue', href: '/admin/revenue' },
   { label: 'Waitlist', href: '/admin/waitlist' },
   { label: 'Store Kit', href: '/admin/store-kit' },

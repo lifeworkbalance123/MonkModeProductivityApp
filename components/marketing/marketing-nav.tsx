@@ -11,6 +11,7 @@ const links = [
   { href: '#pricing', label: 'Pricing' },
   { href: '#training', label: 'Training' },
   { href: '#roadmap', label: 'Roadmap' },
+  { href: '/blog', label: 'Blog' },
   { href: '/waitlist', label: 'Join waitlist' },
 ]
 

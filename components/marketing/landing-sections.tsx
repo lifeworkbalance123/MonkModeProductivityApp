@@ -258,7 +258,7 @@ export function MarketingFooter() {
         <div className="space-y-2 text-sm text-muted-foreground">
           <p className="font-semibold text-foreground">Company</p>
           <Link href="/support">About</Link><br />
-          <a href="YOUR_BLOG_URL">Blog</a><br />
+          <Link href="/blog">Blog</Link><br />
           <a href={`mailto:${SALES_EMAIL}`}>Contact</a>
         </div>
         <div className="space-y-2 text-sm text-muted-foreground">
