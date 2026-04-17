@@ -27,7 +27,7 @@ function PostCard({ post }: { post: BlogPost }) {
         className="overflow-hidden rounded-2xl border border-[#334155] bg-[#1E293B] transition-[border-color,transform] duration-150 hover:-translate-y-0.5 hover:border-amber-500"
       >
         {post.coverImageUrl ? (
-          <img src={post.coverImageUrl} alt="" className="block h-[200px] w-full object-cover" />
+          <img src={post.coverImageUrl} alt={post.title} className="block h-[200px] w-full object-cover" />
         ) : (
           <div className="flex h-[200px] w-full items-center justify-center bg-gradient-to-br from-[#1E293B] to-[#0F172A] text-5xl">
             🔥

@@ -69,7 +69,7 @@ export default function BlogPostClient({ post, related }: Props) {
         {post.coverImageUrl ? (
           <img
             src={post.coverImageUrl}
-            alt=""
+            alt={post.title}
             className="mb-10 block w-full max-h-[400px] rounded-2xl object-cover"
           />
         ) : null}
