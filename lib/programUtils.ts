@@ -189,3 +189,127 @@ export async function markDayComplete(userId: string, dayNumber: number): Promis
 
   return !error
 }
+
+export type ProgramType =
+  | '60day'
+  | 'sprint_standard'
+  | 'sprint_monk'
+  | 'transform'
+  | 'mastery'
+
+export const PROGRAM_DURATIONS: Record<ProgramType, number> = {
+  '60day': 60,
+  sprint_standard: 21,
+  sprint_monk: 21,
+  transform: 56,
+  mastery: 90,
+}
+
+export const PROGRAM_LABELS: Record<ProgramType, string> = {
+  '60day': '60-Day MonkMode',
+  sprint_standard: '21-Day Sprint',
+  sprint_monk: '21-Day MonkMode Sprint',
+  transform: '56-Day Transform',
+  mastery: '90-Day Mastery',
+}
+
+export async function pauseProgram(userId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('program_enrollments')
+    .update({
+      status: 'paused',
+      paused_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('user_id', userId)
+  return !error
+}
+
+export async function resumeProgram(userId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('program_enrollments')
+    .update({
+      status: 'active',
+      paused_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('user_id', userId)
+  return !error
+}
+
+export async function restartProgram(userId: string): Promise<boolean> {
+  const { error: resetError } = await supabase
+    .from('program_enrollments')
+    .update({
+      current_day: 1,
+      phase: 'student',
+      status: 'active',
+      paused_at: null,
+      completed_days: [],
+      start_date: new Date().toISOString().split('T')[0],
+      updated_at: new Date().toISOString(),
+    })
+    .eq('user_id', userId)
+
+  if (resetError) return false
+
+  await supabase
+    .from('users')
+    .update({
+      test_mode_enabled: false,
+      test_day_override: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId)
+
+  return true
+}
+
+export async function getProgramType(userId: string): Promise<ProgramType> {
+  const { data } = await supabase
+    .from('program_enrollments')
+    .select('program_type')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  return (data?.program_type as ProgramType) || '60day'
+}
+
+export async function isProgramPaused(userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('program_enrollments')
+    .select('status')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  return data?.status === 'paused'
+}
+
+export function getMaxDays(programType: ProgramType): number {
+  return PROGRAM_DURATIONS[programType] || 60
+}
+
+export async function advanceDayForProgram(
+  userId: string,
+  programType: ProgramType,
+): Promise<boolean> {
+  const enrollment = await getEnrollment(userId)
+  if (!enrollment) return false
+
+  const maxDays = getMaxDays(programType)
+  const nextDay = enrollment.currentDay + 1
+
+  if (nextDay > maxDays) {
+    await supabase
+      .from('program_enrollments')
+      .update({
+        status: 'completed',
+        current_day: maxDays,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId)
+    return true
+  }
+
+  return markDayComplete(userId, enrollment.currentDay)
+}

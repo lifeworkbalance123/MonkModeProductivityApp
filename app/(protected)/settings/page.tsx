@@ -27,6 +27,7 @@ import { resetAllUserData } from '@/lib/dataService'
 import { supabase } from '@/lib/supabase'
 import { captureEvent } from '@/lib/analytics'
 import { mailtoSupport, publicSiteOrigin, SUPPORT_EMAIL } from '@/lib/site-contact'
+import ProgramControls from '@/components/settings/ProgramControls'
 
 function formatBillingDate(iso: string | null): string | null {
   if (!iso) return null
@@ -613,6 +614,8 @@ export default function SettingsPage() {
             </div>
           </div>
         </Card>
+
+        <ProgramControls />
 
         <Card className="p-4 space-y-4">
           <div>

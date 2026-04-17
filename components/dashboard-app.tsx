@@ -35,6 +35,7 @@ import {
   setHabitCompletion,
 } from '@/lib/dataService'
 import { captureEvent } from '@/lib/analytics'
+import { getWeeklyStreak, getWeekProgressMessage, type StreakData } from '@/lib/streak'
 
 const daysShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -59,6 +60,7 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
   )
   const [trackedMorningJournal, setTrackedMorningJournal] = useState(false)
   const [trackedEveningJournal, setTrackedEveningJournal] = useState(false)
+  const [weekStreak, setWeekStreak] = useState<StreakData | null>(null)
 
   useEffect(() => {
     return () => {
@@ -85,6 +87,21 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
   const dateKey = format(selectedDate, 'yyyy-MM-dd')
   const heading = format(selectedDate, 'EEEE, MMMM d, yyyy')
   const weekNum = getWeek(selectedDate, { weekStartsOn: 1 })
+
+  useEffect(() => {
+    if (!userId) {
+      setWeekStreak(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const weekData = await getWeeklyStreak(userId)
+      if (!cancelled) setWeekStreak(weekData)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [userId, weekOffset, dayIndex])
 
   const streak = computeStreak(data.habitLog)
   const doneToday = data.habits.filter(
@@ -535,6 +552,91 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
                     </Link>
                   ) : null}
                 </div>
+                {weekStreak ? (
+                  <div
+                    style={{
+                      background: '#1E293B',
+                      borderRadius: '12px',
+                      padding: '16px 20px',
+                      border: '1px solid #334155',
+                      marginTop: '12px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '10px',
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: '#94A3B8',
+                          fontSize: '13px',
+                          fontWeight: '500',
+                        }}
+                      >
+                        This week
+                      </span>
+                      <span
+                        style={{
+                          color: '#F59E0B',
+                          fontSize: '14px',
+                          fontWeight: '700',
+                        }}
+                      >
+                        {weekStreak.weeklyStreak > 0 ? `${weekStreak.weeklyStreak} week streak 🔥` : ''}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: '6px',
+                        marginBottom: '8px',
+                      }}
+                    >
+                      {Array.from({ length: 7 }, (_, i) => {
+                        const filled = i < weekStreak.currentWeekCompleted
+                        const isTarget = i === 4
+                        return (
+                          <div
+                            key={i}
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '50%',
+                              background: filled ? '#F59E0B' : '#0F172A',
+                              border: `2px solid ${
+                                filled ? '#F59E0B' : isTarget ? '#F59E0B44' : '#334155'
+                              }`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '10px',
+                            }}
+                          >
+                            {filled ? '✓' : ''}
+                          </div>
+                        )
+                      })}
+                    </div>
+                    {(() => {
+                      const msg = getWeekProgressMessage(weekStreak.currentWeekCompleted)
+                      return (
+                        <p
+                          style={{
+                            color: msg.color,
+                            fontSize: '12px',
+                            margin: 0,
+                          }}
+                        >
+                          {msg.emoji} {msg.message}
+                        </p>
+                      )
+                    })()}
+                  </div>
+                ) : null}
               </div>
               {!analyticsAccess ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/75 backdrop-blur-[2px] px-4 text-center">

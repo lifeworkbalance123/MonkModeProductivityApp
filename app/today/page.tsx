@@ -16,7 +16,18 @@ import {
   getPublishedLessonsForDayAsync,
   type DailyLesson as DailyLessonData,
 } from '@/lib/lessonContent'
+import { supabase } from '@/lib/supabase'
+import {
+  getMaxDays,
+  getProgramType,
+  type ProgramType,
+} from '@/lib/programUtils'
 import { PU } from '@/lib/program-ui-tokens'
+import {
+  getTodayWakeTarget,
+  getWakeComparisonMessage,
+  saveWakeTarget,
+} from '@/lib/wakeProgression'
 
 export default function TodayPage() {
   const { enrollment, loading, enrolled, refresh } = useProgram()
@@ -26,6 +37,14 @@ export default function TodayPage() {
   const [lessonLoading, setLessonLoading] = useState(false)
   const [viewingDay, setViewingDay] = useState<number | null>(null)
   const [actionCompletedCurrent, setActionCompletedCurrent] = useState(false)
+  const [programType, setProgramType] = useState<ProgramType>('60day')
+  const [wakeTimeLogged, setWakeTimeLogged] = useState<string>('')
+  const [wakeTarget, setWakeTarget] = useState<string | null>(null)
+  const [wakeComparison, setWakeComparison] = useState<{
+    onTrack: boolean
+    message: string
+    minutesDiff: number
+  } | null>(null)
 
   const programDay = enrollment?.currentDay ?? 1
   const displayDay = viewingDay ?? programDay
@@ -72,6 +91,36 @@ export default function TodayPage() {
     }
   }, [enrollment, displayDay])
 
+  useEffect(() => {
+    if (!enrollment) {
+      setWakeTarget(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
+      const type = await getProgramType(user.id)
+      if (cancelled) return
+      setProgramType(type)
+      const target = await getTodayWakeTarget(user.id, enrollment.currentDay, type)
+      if (!cancelled) setWakeTarget(target)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [enrollment])
+
+  useEffect(() => {
+    if (!wakeTarget || !wakeTimeLogged) {
+      setWakeComparison(null)
+      return
+    }
+    setWakeComparison(getWakeComparisonMessage(wakeTimeLogged, wakeTarget))
+  }, [wakeTarget, wakeTimeLogged])
+
   const onCompletionLoaded = useCallback((done: boolean) => {
     setActionCompletedCurrent(done)
   }, [])
@@ -102,7 +151,61 @@ export default function TodayPage() {
           </div>
         ) : null}
 
-        {!loading && enrolled && enrollment ? (
+        {!loading && enrolled && enrollment?.status === 'paused' ? (
+          <div
+            style={{
+              minHeight: '60vh',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '24px',
+            }}
+          >
+            <div style={{ maxWidth: '440px', textAlign: 'center' }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏸</div>
+              <h2
+                style={{
+                  color: 'white',
+                  fontSize: '22px',
+                  fontWeight: '600',
+                  margin: '0 0 10px',
+                }}
+              >
+                Program paused
+              </h2>
+              <p
+                style={{
+                  color: '#64748B',
+                  fontSize: '15px',
+                  lineHeight: '1.6',
+                  margin: '0 0 24px',
+                }}
+              >
+                Your streak is frozen and no new days will advance until you resume. You can resume from Settings.
+              </p>
+              <p style={{ color: '#475569', fontSize: '13px', margin: '0 0 20px' }}>
+                Day {enrollment.currentDay} of {getMaxDays(programType)}
+              </p>
+              <Link
+                href="/settings"
+                style={{
+                  display: 'inline-block',
+                  background: '#F59E0B',
+                  color: '#000',
+                  padding: '12px 24px',
+                  borderRadius: '10px',
+                  textDecoration: 'none',
+                  fontSize: '14px',
+                  fontWeight: '700',
+                }}
+              >
+                Go to Settings to resume →
+              </Link>
+            </div>
+          </div>
+        ) : null}
+
+        {!loading && enrolled && enrollment && enrollment.status !== 'paused' ? (
           <>
             {enrollment.isTestMode ? (
               <div
@@ -286,6 +389,115 @@ export default function TodayPage() {
                   onCompletionLoaded={onCompletionLoaded}
                   onComplete={() => void refresh()}
                 />
+                {wakeTarget ? (
+                  <div
+                    style={{
+                      background: '#1E293B',
+                      borderRadius: '12px',
+                      padding: '16px 20px',
+                      border: '1px solid #334155',
+                      marginBottom: '16px',
+                    }}
+                  >
+                    <p
+                      style={{
+                        color: '#94A3B8',
+                        fontSize: '12px',
+                        fontWeight: '500',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        margin: '0 0 8px',
+                      }}
+                    >
+                      Wake time check-in
+                    </p>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <div>
+                        <p style={{ color: '#64748B', fontSize: '11px', margin: '0 0 4px' }}>Target</p>
+                        <p
+                          style={{
+                            color: '#F59E0B',
+                            fontSize: '18px',
+                            fontWeight: '700',
+                            margin: 0,
+                          }}
+                        >
+                          {wakeTarget}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p style={{ color: '#64748B', fontSize: '11px', margin: '0 0 4px' }}>
+                          What time did you wake?
+                        </p>
+                        <input
+                          type="time"
+                          value={wakeTimeLogged}
+                          onChange={(e) => {
+                            const time = e.target.value
+                            setWakeTimeLogged(time)
+                            if (time && wakeTarget) {
+                              const comparison = getWakeComparisonMessage(time, wakeTarget)
+                              setWakeComparison(comparison)
+                              void (async () => {
+                                const {
+                                  data: { user },
+                                } = await supabase.auth.getUser()
+                                if (user && enrollment) {
+                                  await supabase.from('daily_actions').upsert(
+                                    {
+                                      user_id: user.id,
+                                      day_number: enrollment.currentDay,
+                                      wake_time_logged: time,
+                                      program_type: programType,
+                                    },
+                                    { onConflict: 'user_id,day_number' },
+                                  )
+                                  await saveWakeTarget(
+                                    user.id,
+                                    enrollment.currentDay,
+                                    programType,
+                                    wakeTarget,
+                                  )
+                                }
+                              })()
+                            }
+                          }}
+                          style={{
+                            background: '#0F172A',
+                            border: '1px solid #334155',
+                            borderRadius: '8px',
+                            padding: '8px 12px',
+                            color: 'white',
+                            fontSize: '16px',
+                            outline: 'none',
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {wakeComparison ? (
+                      <p
+                        style={{
+                          color: wakeComparison.onTrack ? '#10B981' : '#F59E0B',
+                          fontSize: '13px',
+                          margin: '10px 0 0',
+                          lineHeight: '1.5',
+                        }}
+                      >
+                        {wakeComparison.onTrack ? '✓' : '💡'} {wakeComparison.message}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
                 {actionCompletedCurrent && !viewingDay ? (
                   <NextDayCountdown startDate={enrollment.startDate} currentDay={enrollment.currentDay} />
                 ) : null}
