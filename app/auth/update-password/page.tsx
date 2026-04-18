@@ -8,6 +8,10 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  clearPasswordResetFromCallback,
+  peekPasswordResetFromCallback,
+} from '@/lib/authRecovery'
 import { supabase } from '@/lib/supabase'
 
 function hashLooksLikeRecovery(): boolean {
@@ -47,19 +51,27 @@ export default function UpdatePasswordPage() {
     function markReady() {
       if (cancelled || recoveryRef.current) return
       recoveryRef.current = true
+      clearPasswordResetFromCallback()
       setReady(true)
     }
+
+    const { data: authSub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!cancelled && session) markReady()
+    })
+    unsubs.push(() => authSub.subscription.unsubscribe())
 
     void (async () => {
       const url = new URL(window.location.href)
       const code = url.searchParams.get('code')
       const hadRecoveryHash = hashLooksLikeRecovery()
+      const fromCallbackNav = peekPasswordResetFromCallback()
 
       if (code) {
         const { error: exErr } = await supabase.auth.exchangeCodeForSession(code)
         if (cancelled) return
         if (exErr) {
           setExchangeError(exErr.message)
+          clearPasswordResetFromCallback()
           setShowExpired(true)
           return
         }
@@ -71,6 +83,20 @@ export default function UpdatePasswordPage() {
         )
         markReady()
         return
+      }
+
+      if (fromCallbackNav) {
+        for (let i = 0; i < 80 && !cancelled && !recoveryRef.current; i++) {
+          await delay(100)
+          const { data } = await supabase.auth.getSession()
+          if (data.session) {
+            markReady()
+            return
+          }
+        }
+        if (!recoveryRef.current) {
+          clearPasswordResetFromCallback()
+        }
       }
 
       if (hadRecoveryHash) {
@@ -94,18 +120,6 @@ export default function UpdatePasswordPage() {
         return
       }
 
-      const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-        if (cancelled) return
-        if (event === 'PASSWORD_RECOVERY' && session) {
-          markReady()
-          return
-        }
-        if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
-          markReady()
-        }
-      })
-      unsubs.push(() => sub.subscription.unsubscribe())
-
       for (const ms of [80, 200, 500, 1200, 2500, 5000]) {
         await delay(ms)
         if (cancelled || recoveryRef.current) break
@@ -125,6 +139,7 @@ export default function UpdatePasswordPage() {
           if (session) {
             markReady()
           } else {
+            clearPasswordResetFromCallback()
             setShowExpired(true)
           }
         })
@@ -135,6 +150,7 @@ export default function UpdatePasswordPage() {
       cancelled = true
       if (timeoutId !== undefined) window.clearTimeout(timeoutId)
       unsubs.forEach((u) => u())
+      clearPasswordResetFromCallback()
     }
   }, [])
 

@@ -1,5 +1,38 @@
 import type { Session } from '@supabase/supabase-js'
 
+/**
+ * `/auth/callback` sets this before `router.replace('/auth/update-password')` so the
+ * update-password page can wait for the session to land in storage (client nav race).
+ */
+const PASSWORD_RESET_FROM_CALLBACK_KEY = 'monk_pw_reset_from_callback_v1'
+
+export function setPasswordResetFromCallback(): void {
+  if (typeof window === 'undefined') return
+  try {
+    sessionStorage.setItem(PASSWORD_RESET_FROM_CALLBACK_KEY, '1')
+  } catch {
+    /* private mode / quota */
+  }
+}
+
+export function clearPasswordResetFromCallback(): void {
+  if (typeof window === 'undefined') return
+  try {
+    sessionStorage.removeItem(PASSWORD_RESET_FROM_CALLBACK_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
+export function peekPasswordResetFromCallback(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return sessionStorage.getItem(PASSWORD_RESET_FROM_CALLBACK_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 /** URL hash from Supabase implicit recovery redirect: `#...&type=recovery&...` */
 export function hashFragmentIndicatesRecovery(): boolean {
   if (typeof window === 'undefined') return false

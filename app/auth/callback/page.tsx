@@ -4,7 +4,11 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Session } from '@supabase/supabase-js'
 import { Loader2 } from 'lucide-react'
-import { hashFragmentIndicatesRecovery, sessionHasRecoveryAmr } from '@/lib/authRecovery'
+import {
+  hashFragmentIndicatesRecovery,
+  sessionHasRecoveryAmr,
+  setPasswordResetFromCallback,
+} from '@/lib/authRecovery'
 import { supabase } from '@/lib/supabase'
 
 /**
@@ -107,6 +111,7 @@ export default function AuthCallbackPage() {
         if (!alive) return
         if (immediate) {
           if (shouldCompletePasswordReset(immediate)) {
+            setPasswordResetFromCallback()
             router.replace('/auth/update-password')
             return
           }
@@ -125,6 +130,7 @@ export default function AuthCallbackPage() {
           } = await supabase.auth.getSession()
           if (session) {
             if (shouldCompletePasswordReset(session)) {
+              setPasswordResetFromCallback()
               router.replace('/auth/update-password')
               return
             }
