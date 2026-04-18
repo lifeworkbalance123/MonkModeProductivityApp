@@ -170,6 +170,9 @@ export default function AuthPage() {
   const [signupMessage, setSignupMessage] = useState<string | null>(null)
   const [magicMessage, setMagicMessage] = useState<string | null>(null)
   const [showReferralBanner, setShowReferralBanner] = useState(false)
+  const [forgotOpen, setForgotOpen] = useState(false)
+  const [forgotBusy, setForgotBusy] = useState(false)
+  const [forgotMessage, setForgotMessage] = useState<string | null>(null)
 
   useEffect(() => {
     setShowReferralBanner(new URL(window.location.href).searchParams.get('ref') === '1')
@@ -392,6 +395,54 @@ export default function AuthPage() {
     }
   }
 
+  async function handleForgotPassword() {
+    setForgotMessage(null)
+    setFormError(null)
+    const e = email.trim()
+    if (!e) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        email: 'Enter the email for your account so we can send a reset link.',
+      }))
+      return
+    }
+    if (!EMAIL_RE.test(e)) {
+      setFieldErrors((prev) => ({ ...prev, email: 'Enter a valid email address' }))
+      return
+    }
+    setFieldErrors((prev) => {
+      const { email: _drop, ...rest } = prev
+      return rest
+    })
+
+    setForgotBusy(true)
+    try {
+      if (!isSupabaseConfigured()) {
+        setFormError(friendlySupabaseSetupError())
+        return
+      }
+      const { error } = await supabase.auth.resetPasswordForEmail(e, {
+        redirectTo: `${getAuthCallbackBaseUrl()}/auth/update-password`,
+      })
+      if (error) {
+        setFormError(formatOtpEmailError(error.message))
+        return
+      }
+      setForgotMessage(
+        'If an account exists for that address, you will get an email with a link to choose a new password. Check spam or promotions folders.',
+      )
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (/failed to fetch|networkerror|load failed/i.test(msg)) {
+        setFormError(friendlyAuthNetworkError())
+      } else {
+        setFormError(msg || 'Something went wrong')
+      }
+    } finally {
+      setForgotBusy(false)
+    }
+  }
+
   async function handleMagicLink(e: React.FormEvent) {
     e.preventDefault()
     setMagicMessage(null)
@@ -534,6 +585,8 @@ export default function AuthPage() {
               setFormError(null)
               setSignupMessage(null)
               setFieldErrors({})
+              setForgotOpen(false)
+              setForgotMessage(null)
             }}
           >
             Sign in
@@ -550,6 +603,8 @@ export default function AuthPage() {
               setFormError(null)
               setSignupMessage(null)
               setFieldErrors({})
+              setForgotOpen(false)
+              setForgotMessage(null)
             }}
           >
             Sign up
@@ -573,7 +628,23 @@ export default function AuthPage() {
             ) : null}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="auth-password">Password</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="auth-password">Password</Label>
+              {mode === 'signin' ? (
+                <button
+                  type="button"
+                  className="text-xs text-accent hover:underline shrink-0"
+                  onClick={() => {
+                    setForgotOpen((open) => !open)
+                    setForgotMessage(null)
+                    setFormError(null)
+                  }}
+                  disabled={busy}
+                >
+                  {forgotOpen ? 'Cancel' : 'Forgot password?'}
+                </button>
+              ) : null}
+            </div>
             <Input
               id="auth-password"
               type="password"
@@ -587,6 +658,31 @@ export default function AuthPage() {
             />
             {fieldErrors.password ? (
               <p className="text-xs text-destructive">{fieldErrors.password}</p>
+            ) : null}
+            {mode === 'signin' && forgotOpen ? (
+              <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Use the email above, then we will send a one-time link to set a new password.
+                </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="w-full"
+                  disabled={forgotBusy || busy || googleBusy || magicBusy}
+                  onClick={handleForgotPassword}
+                >
+                  {forgotBusy ? (
+                    <Loader2 className="h-4 w-4 animate-spin shrink-0" aria-hidden />
+                  ) : null}
+                  Send reset link
+                </Button>
+                {forgotMessage ? (
+                  <p className="text-xs text-muted-foreground" role="status">
+                    {forgotMessage}
+                  </p>
+                ) : null}
+              </div>
             ) : null}
           </div>
           {mode === 'signup' ? (
