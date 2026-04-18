@@ -12,15 +12,20 @@ export function getAppOrigin(request: Request): string {
 }
 
 /**
- * Base URL for Supabase magic links and OAuth redirects.
- * Prefer NEXT_PUBLIC_SITE_URL (canonical public origin), then NEXT_PUBLIC_APP_URL.
+ * Base URL for Supabase magic links, OAuth, and password-reset redirects.
+ *
+ * In the browser, the **current tab origin** wins so auth emails match where the
+ * user actually signed in (avoids stale `NEXT_PUBLIC_SITE_URL` on Vercel pointing at
+ * a removed domain). On the server / at build time, uses env then localhost.
  */
 export function getAuthCallbackBaseUrl(): string {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin.replace(/\/$/, '')
+  }
   const site =
     process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '') ||
     process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, '')
   if (site) return site
-  if (typeof window !== 'undefined') return window.location.origin
   return 'http://localhost:3000'
 }
 

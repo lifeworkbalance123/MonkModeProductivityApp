@@ -104,8 +104,6 @@ function formatOtpEmailError(message: string): string {
 }
 
 function authCallbackRedirectUrl(): string {
-  const site = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '')
-  if (site) return `${site}/auth/callback`
   return getAuthCallbackUrl()
 }
 
@@ -302,7 +300,7 @@ export default function AuthPage() {
         email: email.trim(),
         password,
         options: {
-          emailRedirectTo: `${(process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '') || getAuthCallbackBaseUrl())}/auth/callback`,
+          emailRedirectTo: `${getAuthCallbackBaseUrl()}/auth/callback`,
         },
       })
       if (error) {
@@ -459,7 +457,7 @@ export default function AuthPage() {
       const { error } = await supabase.auth.signInWithOtp({
         email: magicEmail.trim(),
         options: {
-          emailRedirectTo: `${(process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '') || getAuthCallbackBaseUrl())}/auth/callback`,
+          emailRedirectTo: `${getAuthCallbackBaseUrl()}/auth/callback`,
           shouldCreateUser: true,
         },
       })
@@ -493,7 +491,7 @@ export default function AuthPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${(process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '') || getAuthCallbackBaseUrl())}/auth/callback`,
+          redirectTo: `${getAuthCallbackBaseUrl()}/auth/callback`,
         },
       })
       if (error) setFormError(error.message)
