@@ -22,11 +22,18 @@ function hashLooksLikeRecovery(): boolean {
   }
 }
 
+function delay(ms: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
+
 export default function UpdatePasswordPage() {
   const router = useRouter()
   const recoveryRef = useRef(false)
   const [ready, setReady] = useState(false)
   const [showExpired, setShowExpired] = useState(false)
+  const [exchangeError, setExchangeError] = useState<string | null>(null)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -34,28 +41,100 @@ export default function UpdatePasswordPage() {
 
   useEffect(() => {
     let cancelled = false
-    if (hashLooksLikeRecovery()) {
+    let timeoutId: ReturnType<typeof window.setTimeout> | undefined
+    const unsubs: Array<() => void> = []
+
+    function markReady() {
+      if (cancelled || recoveryRef.current) return
       recoveryRef.current = true
       setReady(true)
     }
 
-    const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (cancelled) return
-      if (event === 'PASSWORD_RECOVERY') {
-        recoveryRef.current = true
-        setReady(true)
-      }
-    })
+    void (async () => {
+      const url = new URL(window.location.href)
+      const code = url.searchParams.get('code')
+      const hadRecoveryHash = hashLooksLikeRecovery()
 
-    const t = window.setTimeout(() => {
+      if (code) {
+        const { error: exErr } = await supabase.auth.exchangeCodeForSession(code)
+        if (cancelled) return
+        if (exErr) {
+          setExchangeError(exErr.message)
+          setShowExpired(true)
+          return
+        }
+        url.searchParams.delete('code')
+        window.history.replaceState(
+          {},
+          '',
+          `${url.pathname}${url.search}${window.location.hash}`,
+        )
+        markReady()
+        return
+      }
+
+      if (hadRecoveryHash) {
+        for (const ms of [0, 50, 150, 400, 1000]) {
+          if (ms) await delay(ms)
+          if (cancelled) return
+          const { data: h } = await supabase.auth.getSession()
+          if (h.session) {
+            markReady()
+            return
+          }
+        }
+        markReady()
+        return
+      }
+
+      const { data: first } = await supabase.auth.getSession()
+      if (cancelled) return
+      if (first.session) {
+        markReady()
+        return
+      }
+
+      const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+        if (cancelled) return
+        if (event === 'PASSWORD_RECOVERY' && session) {
+          markReady()
+          return
+        }
+        if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+          markReady()
+        }
+      })
+      unsubs.push(() => sub.subscription.unsubscribe())
+
+      for (const ms of [80, 200, 500, 1200, 2500, 5000]) {
+        await delay(ms)
+        if (cancelled || recoveryRef.current) break
+        const { data: snap } = await supabase.auth.getSession()
+        if (snap.session) {
+          markReady()
+          break
+        }
+      }
+
       if (cancelled || recoveryRef.current) return
-      setShowExpired(true)
-    }, 8000)
+
+      timeoutId = window.setTimeout(() => {
+        if (cancelled || recoveryRef.current) return
+        void supabase.auth.getSession().then(({ data: { session } }) => {
+          if (cancelled || recoveryRef.current) return
+          if (session) {
+            markReady()
+          } else {
+            setShowExpired(true)
+          }
+        })
+      }, 18000)
+    })()
 
     return () => {
       cancelled = true
-      window.clearTimeout(t)
-      data.subscription.unsubscribe()
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+      unsubs.forEach((u) => u())
     }
   }, [])
 
@@ -99,6 +178,13 @@ export default function UpdatePasswordPage() {
           <h1 className="text-lg font-semibold text-foreground">Reset link invalid or expired</h1>
           <p className="text-sm text-muted-foreground">
             Open the latest link from your password reset email, or request a new one from the sign-in page.
+            {exchangeError ? (
+              <span className="mt-2 block text-destructive">{exchangeError}</span>
+            ) : null}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            On phones: open the reset email in <strong className="font-medium text-foreground">Chrome or Safari</strong>{' '}
+            (full browser), not only the in-app preview, so the link can finish signing you in.
           </p>
           <Button asChild variant="secondary" className="w-full">
             <Link href="/auth">Back to sign in</Link>
