@@ -13,6 +13,9 @@ next.user-config.*
 !.env.example
 .env*.local
 
+# Supabase CLI local cache (linked project metadata, versions)
+supabase/.temp/
+
 # Common ignores
 node_modules
 .next/
