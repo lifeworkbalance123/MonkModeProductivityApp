@@ -660,9 +660,10 @@ export default function AuthPage() {
             {mode === 'signin' && forgotOpen ? (
               <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
                 <p className="text-xs text-muted-foreground">
-                  Use the email above, then we will send a one-time link to set a new password. On
-                  Android or iPhone, open that link in Chrome or Safari (full browser), not only the
-                  in-app email preview, so sign-in can finish.
+                  We will email a <strong className="font-medium text-foreground">password reset</strong>{' '}
+                  link (not the magic link below). After you open it, choose a new password on the next
+                  screen—then you can sign in with email and password. On phones, open the email in Chrome
+                  or Safari (full browser), not only the in-app preview.
                 </p>
                 <Button
                   type="button"

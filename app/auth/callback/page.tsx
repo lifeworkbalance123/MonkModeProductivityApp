@@ -2,7 +2,9 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import type { Session } from '@supabase/supabase-js'
 import { Loader2 } from 'lucide-react'
+import { hashFragmentIndicatesRecovery, sessionHasRecoveryAmr } from '@/lib/authRecovery'
 import { supabase } from '@/lib/supabase'
 
 /**
@@ -14,6 +16,11 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     let alive = true
+    const fromHashRecovery = hashFragmentIndicatesRecovery()
+
+    function shouldCompletePasswordReset(session: Session | null): boolean {
+      return fromHashRecovery || sessionHasRecoveryAmr(session)
+    }
 
     async function finishSession() {
       const {
@@ -99,6 +106,10 @@ export default function AuthCallbackPage() {
         } = await supabase.auth.getSession()
         if (!alive) return
         if (immediate) {
+          if (shouldCompletePasswordReset(immediate)) {
+            router.replace('/auth/update-password')
+            return
+          }
           await claimReferralIfPresent()
           await claimBuddyIfPresent()
           router.replace('/dashboard')
@@ -113,6 +124,10 @@ export default function AuthCallbackPage() {
             data: { session },
           } = await supabase.auth.getSession()
           if (session) {
+            if (shouldCompletePasswordReset(session)) {
+              router.replace('/auth/update-password')
+              return
+            }
             await claimReferralIfPresent()
             await claimBuddyIfPresent()
             router.replace('/dashboard')
