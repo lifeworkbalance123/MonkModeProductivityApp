@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { getDaysSinceStart } from '@/lib/programUtils'
+import UserTable from '@/components/admin/UserTable'
 
 type UserRow = {
   id: string
@@ -521,6 +522,18 @@ export default function AdminUsersPage() {
       <TestModePanel />
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-foreground">Users</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Program progress, at-risk flags, and support actions. Legacy plan table below.
+        </p>
+      </div>
+
+      <div className="mb-10">
+        <h2 className="mb-3 text-lg font-medium text-foreground">Progress & support</h2>
+        <UserTable />
+      </div>
+
+      <div className="mb-8">
+        <h2 className="text-lg font-medium text-foreground">Plans & trials</h2>
         <p className="mt-1 text-sm text-muted-foreground">{users.length} total users</p>
       </div>
 

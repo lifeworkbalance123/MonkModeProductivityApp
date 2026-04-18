@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
+import BuddyEncouragementSection from '@/components/program/BuddyEncouragementSection'
 import DailyLessonComponent from '@/components/program/DailyLesson'
 import DistractionLog from '@/components/program/DistractionLog'
 import EnergyLog from '@/components/program/EnergyLog'
@@ -243,6 +244,11 @@ export default function TodayPage() {
             ) : null}
 
             <ProgramHeader />
+
+            <BuddyEncouragementSection
+              currentProgramDay={enrollment.currentDay}
+              browsingHistory={browsingHistory}
+            />
 
             {enrollment.currentDay > 1 ? (
               <div

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { addDays, differenceInCalendarDays, startOfDay } from 'date-fns'
+import type { MilestoneCelebrationPayload } from '@/lib/milestoneCelebration'
 import { supabase } from '@/lib/supabase'
 
 function parseLocalDateKey(dateKey: string): Date {
@@ -164,14 +165,21 @@ export async function enrollUser(
   return getEnrollment(userId)
 }
 
-export async function markDayComplete(userId: string, dayNumber: number): Promise<boolean> {
+export type MarkDayCompleteResult =
+  | { ok: true; milestone?: MilestoneCelebrationPayload }
+  | { ok: false }
+
+export async function markDayComplete(
+  userId: string,
+  dayNumber: number,
+): Promise<MarkDayCompleteResult> {
   const { data: current, error: fetchError } = await supabase
     .from('program_enrollments')
     .select('completed_days')
     .eq('user_id', userId)
     .maybeSingle()
 
-  if (fetchError || !current) return false
+  if (fetchError || !current) return { ok: false }
 
   const completedDays = [...((current.completed_days as number[] | null) ?? [])]
   if (!completedDays.includes(dayNumber)) {
@@ -187,7 +195,26 @@ export async function markDayComplete(userId: string, dayNumber: number): Promis
     })
     .eq('user_id', userId)
 
-  return !error
+  if (error) return { ok: false }
+
+  const { tryRecordProgramMilestone } = await import('@/lib/milestoneCelebration')
+  const milestone = await tryRecordProgramMilestone(userId, dayNumber, {
+    completedDaysCount: completedDays.length,
+  })
+
+  const { error: buddyRpcErr } = await supabase.rpc('refresh_buddy_pair_eligibility')
+  if (buddyRpcErr) {
+    console.warn('refresh_buddy_pair_eligibility:', buddyRpcErr.message)
+  }
+
+  const { error: buddyNotifyErr } = await supabase.rpc('notify_buddy_partner_day_complete', {
+    p_completed_day: dayNumber,
+  })
+  if (buddyNotifyErr) {
+    console.warn('notify_buddy_partner_day_complete:', buddyNotifyErr.message)
+  }
+
+  return { ok: true, milestone: milestone ?? undefined }
 }
 
 export type ProgramType =
@@ -311,5 +338,6 @@ export async function advanceDayForProgram(
     return true
   }
 
-  return markDayComplete(userId, enrollment.currentDay)
+  const result = await markDayComplete(userId, enrollment.currentDay)
+  return result.ok
 }

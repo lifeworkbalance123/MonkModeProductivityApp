@@ -9,6 +9,7 @@ import { MonkCubedLogo } from '@/components/brand/MonkCubedLogo'
 const navLinks = [
   { label: 'Overview', href: '/admin' },
   { label: 'Users', href: '/admin/users' },
+  { label: 'Analytics', href: '/admin/analytics' },
   { label: 'Content', href: '/admin/content' },
   { label: 'Hero', href: '/admin/hero' },
   { label: 'Blog', href: '/admin/blog' },

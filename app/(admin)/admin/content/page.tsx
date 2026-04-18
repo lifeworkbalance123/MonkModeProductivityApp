@@ -4,11 +4,15 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/context/ToastContext'
 import MediaUploader, { type MediaType } from '@/components/admin/MediaUploader'
+import DailyProgramLessonsEditor from '@/components/admin/DailyProgramLessonsEditor'
+import LessonList from '@/components/admin/LessonList'
+import { LessonForm } from '@/components/admin/LessonForm'
 
-type Tab = 'lessons' | 'onboarding' | 'habits' | 'training'
+type Tab = 'lessons' | 'programLessons' | 'programLessonsApi' | 'onboarding' | 'habits' | 'training'
 
 export default function AdminContentPage() {
   const [activeTab, setActiveTab] = useState<Tab>('lessons')
+  const [lessonListTick, setLessonListTick] = useState(0)
 
   useEffect(() => {
     void fetch('/api/admin/setup-storage', { method: 'POST' }).catch(() => {})
@@ -40,6 +44,16 @@ export default function AdminContentPage() {
         <button type="button" style={tabStyle('lessons')} onClick={() => setActiveTab('lessons')}>
           Daily Lessons
         </button>
+        <button type="button" style={tabStyle('programLessons')} onClick={() => setActiveTab('programLessons')}>
+          Program tracks
+        </button>
+        <button
+          type="button"
+          style={tabStyle('programLessonsApi')}
+          onClick={() => setActiveTab('programLessonsApi')}
+        >
+          Tracks (API / CSV)
+        </button>
         <button type="button" style={tabStyle('onboarding')} onClick={() => setActiveTab('onboarding')}>
           Onboarding Steps
         </button>
@@ -52,6 +66,13 @@ export default function AdminContentPage() {
       </div>
 
       {activeTab === 'lessons' ? <LessonsEditor /> : null}
+      {activeTab === 'programLessons' ? <DailyProgramLessonsEditor /> : null}
+      {activeTab === 'programLessonsApi' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          <LessonForm onCreated={() => setLessonListTick((t) => t + 1)} />
+          <LessonList key={lessonListTick} />
+        </div>
+      ) : null}
       {activeTab === 'onboarding' ? <OnboardingEditor /> : null}
       {activeTab === 'habits' ? <HabitsEditor /> : null}
       {activeTab === 'training' ? <TrainingVideosEditor /> : null}

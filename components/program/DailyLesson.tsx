@@ -3,7 +3,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { DailyLesson as DailyLessonType } from '@/lib/lessonContent'
-import { markDayComplete } from '@/lib/programUtils'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import type { MilestoneCelebrationPayload } from '@/lib/milestoneCelebration'
+import { markDayComplete, PROGRAM_LABELS } from '@/lib/programUtils'
 import LessonMedia from '@/components/program/LessonMedia'
 import { PU } from '@/lib/program-ui-tokens'
 
@@ -29,6 +37,7 @@ export default function DailyLesson({
   const [completing, setCompleting] = useState(false)
   const [showTip, setShowTip] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [milestone, setMilestone] = useState<MilestoneCelebrationPayload | null>(null)
 
   const checkCompletion = useCallback(async () => {
     setLoading(true)
@@ -91,7 +100,10 @@ export default function DailyLesson({
         return
       }
 
-      await markDayComplete(user.id, dayNumber)
+      const completeResult = await markDayComplete(user.id, dayNumber)
+      if (completeResult.ok && completeResult.milestone) {
+        setMilestone(completeResult.milestone)
+      }
 
       setCompleted(true)
       if (lesson?.tip) setShowTip(true)
@@ -103,6 +115,7 @@ export default function DailyLesson({
   }
 
   return (
+    <>
     <div
       style={{
         background: PU.card,
@@ -335,5 +348,39 @@ export default function DailyLesson({
         ) : null}
       </div>
     </div>
+
+    <Dialog open={milestone !== null} onOpenChange={(open) => !open && setMilestone(null)}>
+      <DialogContent className="border-amber-500/30 sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-xl">
+            <span className="text-2xl" aria-hidden>
+              🏅
+            </span>
+            Milestone unlocked
+          </DialogTitle>
+          <DialogDescription>You reached a program milestone.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 text-left text-sm">
+          <p className="font-semibold text-foreground">{milestone?.milestoneName}</p>
+          <p className="text-muted-foreground">
+            {milestone ? PROGRAM_LABELS[milestone.programType] : ''} · Day {milestone?.milestoneDay}
+          </p>
+          {milestone?.restPeriodEndsAt ? (
+            <p className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-foreground">
+              Optional rest day: take a lighter schedule until{' '}
+              <span className="font-medium">
+                {new Date(milestone.restPeriodEndsAt).toLocaleString(undefined, {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                })}
+              </span>
+              .
+            </p>
+          ) : null}
+          <p className="text-xs text-muted-foreground">Your progress snapshot was saved for analytics.</p>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }

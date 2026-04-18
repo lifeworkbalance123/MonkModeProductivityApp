@@ -195,6 +195,138 @@ export async function sendWinbackEmail(email: string, firstName?: string | null)
   })
 }
 
+/** Queued lifecycle / sequence emails (see `email_queue` + cron). */
+export type LifecycleEmailType =
+  | 'welcome_day1'
+  | 'welcome_day3'
+  | 'welcome_day7'
+  | 'at_risk_2days'
+  | 'at_risk_4days'
+  | 'milestone_21'
+  | 'milestone_40'
+  | 'milestone_60'
+  | 're_engagement_7days'
+  | 're_engagement_14days'
+
+export async function sendLifecycleSequenceEmail(
+  type: LifecycleEmailType,
+  email: string,
+  firstName: string | null | undefined,
+) {
+  const resend = resendClient()
+  const name = (firstName ?? '').trim() || 'there'
+  const origin = appUrl().replace(/\/$/, '')
+  const today = `${origin}/today`
+  const auth = `${origin}/auth`
+
+  const blocks: Record<LifecycleEmailType, { subject: string; html: string }> = {
+    welcome_day1: {
+      subject: 'Day 1 — your Monk Mode journey starts now',
+      html: wrap(
+        name,
+        `<p>Welcome. You&apos;re on <strong>Day 1</strong> — small steps today build the streak that changes everything.</p>
+         <p>Open your daily lesson and mark it complete when you&apos;re done.</p>`,
+        today,
+      ),
+    },
+    welcome_day3: {
+      subject: 'Day 3 check-in — consistency beats intensity',
+      html: wrap(
+        name,
+        `<p>You&apos;re a few days in. The goal isn&apos;t perfection — it&apos;s showing up again today.</p>
+         <p>Your <strong>Day 3</strong> lesson is waiting.</p>`,
+        today,
+      ),
+    },
+    welcome_day7: {
+      subject: "One week in — you're building real momentum",
+      html: wrap(
+        name,
+        `<p><strong>7 days</strong> of showing up is already uncommon. Keep the chain going — open today&apos;s lesson and stay in motion.</p>`,
+        today,
+      ),
+    },
+    at_risk_2days: {
+      subject: 'We noticed a gap — want to get back on track?',
+      html: wrap(
+        name,
+        `<p>It looks like you&apos;ve missed a couple of expected program days. That happens — the next step is simply today&apos;s lesson.</p>
+         <p>No guilt, no catch-up marathon. One day, one win.</p>`,
+        today,
+      ),
+    },
+    at_risk_4days: {
+      subject: "Still here — let's reset with one small win",
+      html: wrap(
+        name,
+        `<p>You&apos;ve been away for a bit longer. Your progress is still saved — open the app and complete <strong>just today</strong> to restart the streak.</p>`,
+        today,
+      ),
+    },
+    milestone_21: {
+      subject: 'Milestone: Day 21',
+      html: wrap(
+        name,
+        `<p>You hit <strong>Day 21</strong>. That&apos;s a real checkpoint — acknowledge it, then keep going.</p>`,
+        today,
+      ),
+    },
+    milestone_40: {
+      subject: 'Milestone: Day 40',
+      html: wrap(
+        name,
+        `<p><strong>Day 40</strong> — you&apos;re deep in the arc now. Take a breath, then take the next daily action.</p>`,
+        today,
+      ),
+    },
+    milestone_60: {
+      subject: 'Milestone: Day 60',
+      html: wrap(
+        name,
+        `<p><strong>Day 60</strong> — huge. Finish strong and carry these habits forward.</p>`,
+        today,
+      ),
+    },
+    re_engagement_7days: {
+      subject: 'We miss you — 60 seconds to get back',
+      html: wrap(
+        name,
+        `<p>It&apos;s been about a week since we saw you. Your account and streak context are still here — tap below to pick up where you left off.</p>`,
+        auth,
+      ),
+    },
+    re_engagement_14days: {
+      subject: 'Still thinking about Monk Mode?',
+      html: wrap(
+        name,
+        `<p>Two weeks quiet — no pressure, just an open door. If you want back in, one login and one daily lesson is enough to restart.</p>`,
+        auth,
+      ),
+    },
+  }
+
+  const { subject, html } = blocks[type]
+  await resend.emails.send({
+    from: fromAddress(),
+    to: email,
+    subject,
+    html,
+  })
+}
+
+function wrap(name: string, body: string, ctaHref: string) {
+  return `
+      <div style="background:#0F172A;color:#fff;padding:24px;font-family:Arial,sans-serif">
+        <div style="max-width:560px;margin:0 auto;border:1px solid rgba(245,158,11,.35);border-radius:12px;padding:20px;background:#111827">
+          <h2 style="margin:0 0 12px;color:#F59E0B">Monk Mode</h2>
+          <p>Hey ${name},</p>
+          ${body}
+          <p style="margin-top:20px"><a href="${ctaHref}" style="color:#111827;background:#F59E0B;padding:10px 14px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block">Open the app</a></p>
+        </div>
+      </div>
+    `
+}
+
 export async function sendWaitlistConfirmationEmail(email: string) {
   const resend = resendClient()
   const origin = appUrl().replace(/\/$/, '')

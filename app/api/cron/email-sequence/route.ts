@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-service'
+import { enqueueLifecycleEmails, processEmailQueue } from '@/lib/emailLifecycle'
 import {
   sendDay3Email,
   sendDay7Email,
@@ -74,11 +75,22 @@ export async function GET(request: Request) {
   const expiredBounds = isoDayBoundsUtc(yesterday)
 
   const summary = {
+    queue: {
+      enqueue: { welcome: 0, atRisk: 0, milestone: 0, reEngage: 0 },
+      drain: { processed: 0, sent: 0, failed: 0 },
+    },
     day3: { attempted: 0, sent: 0, failed: 0 },
     day7: { attempted: 0, sent: 0, failed: 0 },
     expiry: { attempted: 0, sent: 0, failed: 0 },
     expired: { attempted: 0, sent: 0, failed: 0 },
     winback: { attempted: 0, sent: 0, failed: 0 },
+  }
+
+  try {
+    summary.queue.enqueue = await enqueueLifecycleEmails(admin)
+    summary.queue.drain = await processEmailQueue(admin)
+  } catch (e) {
+    console.error('email_queue lifecycle:', e)
   }
 
   // Day 3

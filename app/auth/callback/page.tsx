@@ -45,6 +45,28 @@ export default function AuthCallbackPage() {
       }
     }
 
+    async function claimBuddyIfPresent() {
+      const inviteCode = localStorage.getItem('buddy_invite_code')
+      if (!inviteCode) return
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+      try {
+        await fetch('/api/buddy/accept', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ inviteCode }),
+        })
+      } finally {
+        localStorage.removeItem('buddy_invite_code')
+      }
+    }
+
     void (async () => {
       try {
         const url = new URL(window.location.href)
@@ -78,6 +100,7 @@ export default function AuthCallbackPage() {
         if (!alive) return
         if (immediate) {
           await claimReferralIfPresent()
+          await claimBuddyIfPresent()
           router.replace('/dashboard')
           return
         }
@@ -91,6 +114,7 @@ export default function AuthCallbackPage() {
           } = await supabase.auth.getSession()
           if (session) {
             await claimReferralIfPresent()
+            await claimBuddyIfPresent()
             router.replace('/dashboard')
             return
           }

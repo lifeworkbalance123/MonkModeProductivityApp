@@ -22,6 +22,9 @@ ALTER TABLE public.program_enrollments
 ALTER TABLE public.program_enrollments
   ADD COLUMN IF NOT EXISTS program_type TEXT DEFAULT '60day';
 
+ALTER TABLE public.program_enrollments
+  DROP CONSTRAINT IF EXISTS program_enrollments_program_type_check;
+
 UPDATE public.program_enrollments
 SET program_type = CASE program_type
   WHEN 'legacy' THEN '60day'
@@ -29,9 +32,6 @@ SET program_type = CASE program_type
   ELSE program_type
 END
 WHERE program_type IN ('legacy', 'sprint') OR program_type IS NULL;
-
-ALTER TABLE public.program_enrollments
-  DROP CONSTRAINT IF EXISTS program_enrollments_program_type_check;
 
 ALTER TABLE public.program_enrollments
   ADD CONSTRAINT program_enrollments_program_type_check

@@ -329,6 +329,58 @@ export async function POST(request: Request) {
         break
       }
 
+      case 'payment_intent.amount_capturable_updated': {
+        const pi = event.data.object as Stripe.PaymentIntent
+        if (pi.metadata?.purpose !== 'financial_stake') {
+          await logWebhook(admin, eventType, eventId, null, true)
+          break
+        }
+        const userId = pi.metadata?.supabase_user_id ?? null
+        const programType = (pi.metadata?.program_type ?? '60day').trim() || '60day'
+        if (!userId || !pi.id) {
+          await logWebhook(admin, eventType, eventId, null, false)
+          break
+        }
+        const amount =
+          typeof pi.amount === 'number' ? pi.amount : Number(pi.amount_received ?? pi.amount ?? 0)
+        if (!Number.isFinite(amount) || amount < 1) {
+          await logWebhook(admin, eventType, eventId, userId, false)
+          break
+        }
+        const { error } = await admin.from('financial_stakes').upsert(
+          {
+            user_id: userId,
+            program_type: programType,
+            amount,
+            stripe_payment_intent_id: pi.id,
+            status: 'pending',
+          },
+          { onConflict: 'stripe_payment_intent_id' },
+        )
+        await logWebhook(admin, eventType, eventId, userId, !error)
+        break
+      }
+
+      case 'payment_intent.canceled': {
+        const pi = event.data.object as Stripe.PaymentIntent
+        if (pi.metadata?.purpose !== 'financial_stake' || !pi.id) {
+          await logWebhook(admin, eventType, eventId, null, true)
+          break
+        }
+        const userId = pi.metadata?.supabase_user_id ?? null
+        const { error } = await admin
+          .from('financial_stakes')
+          .update({
+            status: 'success',
+            resolved_at: new Date().toISOString(),
+            failure_reason: null,
+          })
+          .eq('stripe_payment_intent_id', pi.id)
+          .eq('status', 'pending')
+        await logWebhook(admin, eventType, eventId, userId, !error)
+        break
+      }
+
       default:
         await logWebhook(admin, eventType, eventId, null, true)
     }

@@ -91,6 +91,18 @@ function formatSignInError(error: AuthError, email: string): string {
   return raw
 }
 
+/** Magic link / OTP email errors from signInWithOtp */
+function formatOtpEmailError(message: string): string {
+  const lower = message.toLowerCase()
+  if (lower.includes('rate limit') || lower.includes('too many requests')) {
+    return (
+      'Too many sign-in emails were sent to this address. Wait a while (Supabase often limits to a handful per hour), then request one new magic link. ' +
+      'Use only the latest email — older links stop working when you request a new one.'
+    )
+  }
+  return message
+}
+
 function authCallbackRedirectUrl(): string {
   const site = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '')
   if (site) return `${site}/auth/callback`
@@ -244,6 +256,41 @@ export default function AuthPage() {
         captureEvent('user_logged_in', {
           plan: 'unknown',
         })
+        const {
+          data: { session: signInSession },
+        } = await supabase.auth.getSession()
+        if (signInSession?.access_token) {
+          const referralCode = localStorage.getItem('referral_code')
+          if (referralCode) {
+            try {
+              await fetch('/api/referral/claim', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${signInSession.access_token}`,
+                },
+                body: JSON.stringify({ referralCode }),
+              })
+            } finally {
+              localStorage.removeItem('referral_code')
+            }
+          }
+          const buddyInviteCode = localStorage.getItem('buddy_invite_code')
+          if (buddyInviteCode) {
+            try {
+              await fetch('/api/buddy/accept', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${signInSession.access_token}`,
+                },
+                body: JSON.stringify({ inviteCode: buddyInviteCode }),
+              })
+            } finally {
+              localStorage.removeItem('buddy_invite_code')
+            }
+          }
+        }
         router.replace('/dashboard')
         return
       }
@@ -311,6 +358,21 @@ export default function AuthPage() {
             localStorage.removeItem('referral_code')
           }
         }
+        const buddyInviteCode = localStorage.getItem('buddy_invite_code')
+        if (buddyInviteCode) {
+          try {
+            await fetch('/api/buddy/accept', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({ inviteCode: buddyInviteCode }),
+            })
+          } finally {
+            localStorage.removeItem('buddy_invite_code')
+          }
+        }
         router.replace('/dashboard')
         return
       }
@@ -351,7 +413,7 @@ export default function AuthPage() {
         },
       })
       if (error) {
-        setFormError(error.message)
+        setFormError(formatOtpEmailError(error.message))
         return
       }
       setMagicMessage(

@@ -375,6 +375,17 @@ export default function SettingsPage() {
         <SyncStatusCard isPro={isPro} planLoading={planLoading} />
         <Card className="p-4 space-y-4">
           <div>
+            <h2 className="font-medium mb-1">Weekly coaching</h2>
+            <p className="text-sm text-muted-foreground mb-3">
+              Optional add-on: 15-minute calls. Subscribe or pay once, then book on Calendly.
+            </p>
+            <Button type="button" size="sm" variant="outline" asChild>
+              <Link href="/coach">Open coaching</Link>
+            </Button>
+          </div>
+        </Card>
+        <Card className="p-4 space-y-4">
+          <div>
             <h2 className="font-medium mb-1">Account</h2>
             {accountLabel ? (
               <div className="mb-3 rounded-md border border-border bg-secondary/30 px-3 py-2.5">

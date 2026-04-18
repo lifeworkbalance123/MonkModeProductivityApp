@@ -9,6 +9,7 @@ import { SentryErrorBoundary } from '@/components/SentryErrorBoundary'
 import { CookieBanner } from '@/components/CookieBanner'
 import { SupportFloatingButton } from '@/components/SupportFloatingButton'
 import { PostHogBootstrap } from '@/lib/posthog'
+import { AuthHashRedirect } from '@/components/AuthHashRedirect'
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -16,6 +17,7 @@ export function Providers({ children }: { children: ReactNode }) {
       <AuthProvider>
         <ColorThemeProvider>
           <PostHogBootstrap />
+          <AuthHashRedirect />
           <ToastProvider>
             <UpgradeOfferProvider>
               {children}
