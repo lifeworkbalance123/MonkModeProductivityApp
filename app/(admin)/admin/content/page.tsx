@@ -10,12 +10,50 @@ import { LessonForm } from '@/components/admin/LessonForm'
 
 type Tab = 'lessons' | 'programLessons' | 'programLessonsApi' | 'onboarding' | 'habits' | 'training'
 
+const TAB_STORAGE_KEY = 'admin-content-manager-tab'
+
+function isTab(s: string | null | undefined): s is Tab {
+  return (
+    s === 'lessons' ||
+    s === 'programLessons' ||
+    s === 'programLessonsApi' ||
+    s === 'onboarding' ||
+    s === 'habits' ||
+    s === 'training'
+  )
+}
+
 export default function AdminContentPage() {
   const [activeTab, setActiveTab] = useState<Tab>('lessons')
+  /** Tabs that have been opened stay mounted so switching tabs does not wipe unsaved edits. */
+  const [mountedTabs, setMountedTabs] = useState<Set<Tab>>(() => new Set(['lessons']))
   const [lessonListTick, setLessonListTick] = useState(0)
 
   useEffect(() => {
     void fetch('/api/admin/setup-storage', { method: 'POST' }).catch(() => {})
+  }, [])
+
+  /** Restore last-open sub-tab when returning to this page (same browser tab session). */
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(TAB_STORAGE_KEY)
+      if (isTab(stored)) {
+        setActiveTab(stored)
+        setMountedTabs((prev) => new Set(prev).add(stored))
+      }
+    } catch {
+      /* private mode */
+    }
+  }, [])
+
+  const selectTab = useCallback((tab: Tab) => {
+    setActiveTab(tab)
+    setMountedTabs((prev) => new Set(prev).add(tab))
+    try {
+      sessionStorage.setItem(TAB_STORAGE_KEY, tab)
+    } catch {
+      /* private mode */
+    }
   }, [])
 
   const tabStyle = (tab: Tab) =>
@@ -41,41 +79,89 @@ export default function AdminContentPage() {
       </div>
 
       <div style={{ display: 'flex', gap: '8px', marginBottom: '28px', flexWrap: 'wrap' }}>
-        <button type="button" style={tabStyle('lessons')} onClick={() => setActiveTab('lessons')}>
+        <button type="button" style={tabStyle('lessons')} onClick={() => selectTab('lessons')}>
           Daily Lessons
         </button>
-        <button type="button" style={tabStyle('programLessons')} onClick={() => setActiveTab('programLessons')}>
+        <button type="button" style={tabStyle('programLessons')} onClick={() => selectTab('programLessons')}>
           Program tracks
         </button>
         <button
           type="button"
           style={tabStyle('programLessonsApi')}
-          onClick={() => setActiveTab('programLessonsApi')}
+          onClick={() => selectTab('programLessonsApi')}
         >
           Tracks (API / CSV)
         </button>
-        <button type="button" style={tabStyle('onboarding')} onClick={() => setActiveTab('onboarding')}>
+        <button type="button" style={tabStyle('onboarding')} onClick={() => selectTab('onboarding')}>
           Onboarding Steps
         </button>
-        <button type="button" style={tabStyle('habits')} onClick={() => setActiveTab('habits')}>
+        <button type="button" style={tabStyle('habits')} onClick={() => selectTab('habits')}>
           Default Habits
         </button>
-        <button type="button" style={tabStyle('training')} onClick={() => setActiveTab('training')}>
+        <button type="button" style={tabStyle('training')} onClick={() => selectTab('training')}>
           🎬 Training Videos
         </button>
       </div>
 
-      {activeTab === 'lessons' ? <LessonsEditor /> : null}
-      {activeTab === 'programLessons' ? <DailyProgramLessonsEditor /> : null}
-      {activeTab === 'programLessonsApi' ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {mountedTabs.has('lessons') ? (
+        <div
+          role="tabpanel"
+          aria-hidden={activeTab !== 'lessons'}
+          style={{ display: activeTab === 'lessons' ? 'block' : 'none' }}
+        >
+          <LessonsEditor />
+        </div>
+      ) : null}
+      {mountedTabs.has('programLessons') ? (
+        <div
+          role="tabpanel"
+          aria-hidden={activeTab !== 'programLessons'}
+          style={{ display: activeTab === 'programLessons' ? 'block' : 'none' }}
+        >
+          <DailyProgramLessonsEditor />
+        </div>
+      ) : null}
+      {mountedTabs.has('programLessonsApi') ? (
+        <div
+          role="tabpanel"
+          aria-hidden={activeTab !== 'programLessonsApi'}
+          style={{
+            display: activeTab === 'programLessonsApi' ? 'flex' : 'none',
+            flexDirection: 'column',
+            gap: 24,
+          }}
+        >
           <LessonForm onCreated={() => setLessonListTick((t) => t + 1)} />
           <LessonList key={lessonListTick} />
         </div>
       ) : null}
-      {activeTab === 'onboarding' ? <OnboardingEditor /> : null}
-      {activeTab === 'habits' ? <HabitsEditor /> : null}
-      {activeTab === 'training' ? <TrainingVideosEditor /> : null}
+      {mountedTabs.has('onboarding') ? (
+        <div
+          role="tabpanel"
+          aria-hidden={activeTab !== 'onboarding'}
+          style={{ display: activeTab === 'onboarding' ? 'block' : 'none' }}
+        >
+          <OnboardingEditor />
+        </div>
+      ) : null}
+      {mountedTabs.has('habits') ? (
+        <div
+          role="tabpanel"
+          aria-hidden={activeTab !== 'habits'}
+          style={{ display: activeTab === 'habits' ? 'block' : 'none' }}
+        >
+          <HabitsEditor />
+        </div>
+      ) : null}
+      {mountedTabs.has('training') ? (
+        <div
+          role="tabpanel"
+          aria-hidden={activeTab !== 'training'}
+          style={{ display: activeTab === 'training' ? 'block' : 'none' }}
+        >
+          <TrainingVideosEditor />
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -158,6 +244,9 @@ type LessonRow = {
   media_type?: string | null
   media_url?: string | null
   media_storage_path?: string | null
+  companion_media_type?: string | null
+  companion_media_url?: string | null
+  companion_media_storage_path?: string | null
   is_bonus?: boolean
   parent_day_number?: number | null
 }
@@ -313,6 +402,9 @@ function LessonsEditor() {
       media_type: row.media_type || null,
       media_url: row.media_url || null,
       media_storage_path: row.media_storage_path || null,
+      companion_media_type: row.companion_media_type || null,
+      companion_media_url: row.companion_media_url || null,
+      companion_media_storage_path: row.companion_media_storage_path || null,
       is_bonus: isBonus,
       parent_day_number: isBonus ? (row.parent_day_number ?? row.day_number) : null,
       updated_at: new Date().toISOString(),
@@ -444,6 +536,9 @@ function LessonsEditor() {
       media_type: null,
       media_url: '',
       media_storage_path: '',
+      companion_media_type: null,
+      companion_media_url: '',
+      companion_media_storage_path: '',
     })
   }
 
@@ -463,6 +558,9 @@ function LessonsEditor() {
       media_type: null,
       media_url: '',
       media_storage_path: '',
+      companion_media_type: null,
+      companion_media_url: '',
+      companion_media_storage_path: '',
     })
   }
 
@@ -658,12 +756,20 @@ function LessonsEditor() {
               currentType={(editing.media_type as MediaType) ?? null}
               currentUrl={editing.media_url ?? ''}
               currentStoragePath={editing.media_storage_path ?? ''}
+              companionType={(editing.companion_media_type as 'image' | 'audio' | null | undefined) ?? null}
+              companionUrl={editing.companion_media_url ?? ''}
+              companionStoragePath={editing.companion_media_storage_path ?? ''}
               onMediaChange={(data) =>
                 setEditing({
                   ...editing,
                   media_type: data.type,
                   media_url: data.url,
                   media_storage_path: data.storagePath,
+                  companion_media_type: data.companionType,
+                  companion_media_url: data.companionUrl?.trim() ? data.companionUrl : null,
+                  companion_media_storage_path: data.companionStoragePath?.trim()
+                    ? data.companionStoragePath
+                    : null,
                 })
               }
               context="lesson"
@@ -819,6 +925,9 @@ function LessonsEditor() {
                   media_type: primary.media_type ?? null,
                   media_url: primary.media_url ?? '',
                   media_storage_path: primary.media_storage_path ?? '',
+                  companion_media_type: primary.companion_media_type ?? null,
+                  companion_media_url: primary.companion_media_url ?? '',
+                  companion_media_storage_path: primary.companion_media_storage_path ?? '',
                   is_bonus: !!primary.is_bonus,
                   parent_day_number: primary.parent_day_number ?? null,
                 })
@@ -828,6 +937,9 @@ function LessonsEditor() {
                   media_type: bonus.media_type ?? null,
                   media_url: bonus.media_url ?? '',
                   media_storage_path: bonus.media_storage_path ?? '',
+                  companion_media_type: bonus.companion_media_type ?? null,
+                  companion_media_url: bonus.companion_media_url ?? '',
+                  companion_media_storage_path: bonus.companion_media_storage_path ?? '',
                   is_bonus: true,
                   parent_day_number: bonus.parent_day_number ?? day,
                 })
@@ -1000,6 +1112,9 @@ function LessonsEditor() {
                           media_type: bonus.media_type ?? null,
                           media_url: bonus.media_url ?? '',
                           media_storage_path: bonus.media_storage_path ?? '',
+                          companion_media_type: bonus.companion_media_type ?? null,
+                          companion_media_url: bonus.companion_media_url ?? '',
+                          companion_media_storage_path: bonus.companion_media_storage_path ?? '',
                           is_bonus: true,
                           parent_day_number: bonus.parent_day_number ?? day,
                         })
@@ -1117,6 +1232,9 @@ type OnboardingContentStep = {
   media_type?: string | null
   media_url?: string | null
   media_storage_path?: string | null
+  companion_media_type?: string | null
+  companion_media_url?: string | null
+  companion_media_storage_path?: string | null
 }
 
 function onboardingStepSerialize(s: OnboardingContentStep) {
@@ -1130,6 +1248,9 @@ function onboardingStepSerialize(s: OnboardingContentStep) {
     media_type: s.media_type ?? null,
     media_url: s.media_url ?? '',
     media_storage_path: s.media_storage_path ?? '',
+    companion_media_type: s.companion_media_type ?? null,
+    companion_media_url: s.companion_media_url ?? '',
+    companion_media_storage_path: s.companion_media_storage_path ?? '',
   })
 }
 
@@ -1243,6 +1364,9 @@ function OnboardingEditor() {
         media_type: null,
         media_url: null,
         media_storage_path: null,
+        companion_media_type: null,
+        companion_media_url: null,
+        companion_media_storage_path: null,
       })
       if (error) throw error
       setShowAddOnboarding(false)
@@ -1280,6 +1404,9 @@ function OnboardingEditor() {
           media_type: step.media_type || null,
           media_url: step.media_url || null,
           media_storage_path: step.media_storage_path || null,
+          companion_media_type: step.companion_media_type || null,
+          companion_media_url: step.companion_media_url || null,
+          companion_media_storage_path: step.companion_media_storage_path || null,
           updated_at: new Date().toISOString(),
         })
         .eq('step_key', step.step_key)
@@ -1368,6 +1495,9 @@ function OnboardingEditor() {
         media_type: editingStep.media_type || null,
         media_url: editingStep.media_url || null,
         media_storage_path: editingStep.media_storage_path || null,
+        companion_media_type: editingStep.companion_media_type || null,
+        companion_media_url: editingStep.companion_media_url || null,
+        companion_media_storage_path: editingStep.companion_media_storage_path || null,
         updated_at: new Date().toISOString(),
       })
       .eq('step_key', editingStep.step_key)
@@ -1478,12 +1608,20 @@ function OnboardingEditor() {
               currentType={(editingStep.media_type as MediaType) ?? null}
               currentUrl={editingStep.media_url ?? ''}
               currentStoragePath={editingStep.media_storage_path ?? ''}
+              companionType={(editingStep.companion_media_type as 'image' | 'audio' | null | undefined) ?? null}
+              companionUrl={editingStep.companion_media_url ?? ''}
+              companionStoragePath={editingStep.companion_media_storage_path ?? ''}
               onMediaChange={(data) =>
                 setEditingStep({
                   ...editingStep,
                   media_type: data.type,
                   media_url: data.url,
                   media_storage_path: data.storagePath,
+                  companion_media_type: data.companionType,
+                  companion_media_url: data.companionUrl?.trim() ? data.companionUrl : null,
+                  companion_media_storage_path: data.companionStoragePath?.trim()
+                    ? data.companionStoragePath
+                    : null,
                 })
               }
               context="onboarding"
