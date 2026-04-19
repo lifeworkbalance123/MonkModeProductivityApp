@@ -150,7 +150,6 @@ export default function UpdatePasswordPage() {
       cancelled = true
       if (timeoutId !== undefined) window.clearTimeout(timeoutId)
       unsubs.forEach((u) => u())
-      clearPasswordResetFromCallback()
     }
   }, [])
 
@@ -172,7 +171,12 @@ export default function UpdatePasswordPage() {
         setError(upErr.message)
         return
       }
-      router.replace('/dashboard')
+      try {
+        await supabase.auth.signOut()
+      } catch {
+        /* still send user to sign-in */
+      }
+      router.replace('/auth?password_updated=1')
     } finally {
       setBusy(false)
     }
@@ -215,7 +219,9 @@ export default function UpdatePasswordPage() {
       <Card className="w-full max-w-md p-6 space-y-4 border-border">
         <div className="space-y-1 text-center">
           <h1 className="text-xl font-semibold tracking-tight">Choose a new password</h1>
-          <p className="text-sm text-muted-foreground">Enter it twice, then continue to the app.</p>
+          <p className="text-sm text-muted-foreground">
+            Enter it twice, then you will return to sign in with your new password.
+          </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -253,7 +259,7 @@ export default function UpdatePasswordPage() {
             disabled={busy}
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-            Update password and continue
+            Update password
           </Button>
         </form>
         <p className="text-center text-sm text-muted-foreground">

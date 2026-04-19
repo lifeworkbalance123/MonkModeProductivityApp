@@ -77,7 +77,7 @@ export function SupportFloatingButton() {
         type="button"
         aria-label="Open support"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F59E0B] text-base font-bold text-white shadow-[0_8px_20px_rgba(0,0,0,0.35)]"
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-base font-bold text-primary-foreground shadow-[0_8px_20px_rgba(0,0,0,0.35)]"
       >
         ?
       </button>

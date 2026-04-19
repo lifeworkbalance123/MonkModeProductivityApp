@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Clock, Play, Video } from 'lucide-react'
 import VideoModal from '@/components/training/VideoModal'
-import { Navigation } from '@/components/navigation'
+import { AppPageChrome } from '@/components/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -43,9 +43,9 @@ export default function VideosPage() {
   }, [load])
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 pt-24 sm:px-6 lg:px-8">
+    <AppPageChrome>
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-semibold sm:text-3xl">Video library</h1>
           <p className="text-sm text-muted-foreground">
@@ -128,17 +128,18 @@ export default function VideosPage() {
         )}
       </div>
 
-      {active ? (
-        <VideoModal
-          isOpen
-          onClose={() => setActive(null)}
-          title={active.title}
-          description={active.description ?? ''}
-          youtubeUrl={active.video_url}
-          duration=""
-          category={active.category}
-        />
-      ) : null}
-    </div>
+        {active ? (
+          <VideoModal
+            isOpen
+            onClose={() => setActive(null)}
+            title={active.title}
+            description={active.description ?? ''}
+            youtubeUrl={active.video_url}
+            duration=""
+            category={active.category}
+          />
+        ) : null}
+      </div>
+    </AppPageChrome>
   )
 }

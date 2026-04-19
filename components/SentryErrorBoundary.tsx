@@ -34,7 +34,7 @@ export class SentryErrorBoundary extends React.Component<Props, State> {
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="rounded-md bg-[#F59E0B] px-4 py-2 text-sm font-semibold text-[#111827] hover:bg-[#F59E0B]/90"
+              className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
             >
               Refresh page
             </button>

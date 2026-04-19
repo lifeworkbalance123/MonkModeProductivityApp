@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Navigation } from '@/components/navigation'
+import { AppPageChrome } from '@/components/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useAuth } from '@/context/AuthContext'
@@ -78,9 +78,9 @@ export default function SharePage() {
     encodeURIComponent(origin)
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <div className="mx-auto max-w-2xl px-4 py-8 pt-24">
+    <AppPageChrome>
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto max-w-2xl px-4 py-8">
         <h1 className="text-2xl font-semibold">Share your streak</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Share your progress and invite friends to monkcubed.
@@ -114,7 +114,8 @@ export default function SharePage() {
           </div>
         </Card>
       </div>
-    </div>
+      </div>
+    </AppPageChrome>
   )
 }
 

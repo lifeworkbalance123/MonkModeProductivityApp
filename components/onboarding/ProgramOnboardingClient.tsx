@@ -15,6 +15,7 @@ import {
 } from '@/lib/onboardingSteps'
 import { youtubeEmbedFromUrl } from '@/lib/morning-video'
 import { MonkCubedLogo } from '@/components/brand/MonkCubedLogo'
+import LessonMedia from '@/components/program/LessonMedia'
 
 const BG = '#121212'
 const SURFACE = '#1E1E1E'
@@ -50,6 +51,16 @@ const DEFAULT_HABITS_STATIC = [
 ] as const
 
 type Goal = 'sprint' | 'transform' | 'mastery'
+
+function StepMedia({ step }: { step: OnboardingStepRow }) {
+  if (step.media_url && step.media_type) {
+    return <LessonMedia mediaType={step.media_type} mediaUrl={step.media_url} />
+  }
+  if (step.video_url) {
+    return <VideoBlock url={step.video_url} title={step.title} />
+  }
+  return null
+}
 
 function VideoBlock({ url, title }: { url: string; title: string }) {
   const embed = youtubeEmbedFromUrl(url)
@@ -343,7 +354,7 @@ export default function ProgramOnboardingClient() {
             >
               {step.title}
             </h1>
-            {step.video_url ? <VideoBlock url={step.video_url} title={step.title} /> : null}
+            <StepMedia step={step} />
             <p
               style={{
                 color: MUTED,
@@ -394,7 +405,7 @@ export default function ProgramOnboardingClient() {
             >
               {step.title}
             </h2>
-            {step.video_url ? <VideoBlock url={step.video_url} title={step.title} /> : null}
+            <StepMedia step={step} />
             <p style={{ color: MUTED, fontSize: '15px', lineHeight: 1.5, margin: '0 0 20px', whiteSpace: 'pre-line' }}>
               {step.description ?? ''}
             </p>
@@ -436,7 +447,7 @@ export default function ProgramOnboardingClient() {
         {step.step_kind === 'conditional' ? (
           <div>
             <h2 style={{ color: TEXT, fontSize: '22px', fontWeight: 600, margin: '0 0 16px' }}>{conditionalTitle}</h2>
-            {step.video_url ? <VideoBlock url={step.video_url} title={step.title} /> : null}
+            <StepMedia step={step} />
             {step.description ? (
               <p style={{ color: MUTED, fontSize: '15px', lineHeight: 1.5, margin: '0 0 16px', whiteSpace: 'pre-line' }}>
                 {step.description}
@@ -488,7 +499,7 @@ export default function ProgramOnboardingClient() {
               return (
                 <>
                   <h2 style={{ color: TEXT, fontSize: '22px', fontWeight: 600, margin: '0 0 8px' }}>{step.title}</h2>
-                  {step.video_url ? <VideoBlock url={step.video_url} title={step.title} /> : null}
+                  <StepMedia step={step} />
                   <p style={{ color: MUTED, fontSize: '15px', lineHeight: 1.5, margin: '0 0 20px' }}>{intro}</p>
                 </>
               )
@@ -566,7 +577,7 @@ export default function ProgramOnboardingClient() {
                   >
                     {step.title}
                   </h2>
-                  {step.video_url ? <VideoBlock url={step.video_url} title={step.title} /> : null}
+                  <StepMedia step={step} />
                   <p style={{ color: MUTED, fontSize: '15px', lineHeight: 1.5, margin: '0 0 24px' }}>{intro}</p>
                   <div
                     style={{
@@ -594,7 +605,7 @@ export default function ProgramOnboardingClient() {
         {step.step_kind === 'commitment' ? (
           <div>
             <h2 style={{ color: TEXT, fontSize: '22px', fontWeight: 600, margin: '0 0 16px' }}>{step.title}</h2>
-            {step.video_url ? <VideoBlock url={step.video_url} title={step.title} /> : null}
+            <StepMedia step={step} />
             <p style={{ color: MUTED, fontSize: '15px', lineHeight: 1.5, margin: '0 0 24px' }}>
               {parseCommitmentDescription(step.description).intro}
             </p>
@@ -651,7 +662,7 @@ export default function ProgramOnboardingClient() {
         {step.step_kind === 'wake' ? (
           <div>
             <h2 style={{ color: TEXT, fontSize: '22px', fontWeight: 600, margin: '0 0 8px' }}>{step.title}</h2>
-            {step.video_url ? <VideoBlock url={step.video_url} title={step.title} /> : null}
+            <StepMedia step={step} />
             {(() => {
               const { intro, wakeLabel, habitsBlock } = parseWakeDescription(step.description)
               const habitLines = habitsBlock
@@ -724,7 +735,7 @@ export default function ProgramOnboardingClient() {
 
         {step.step_kind === 'ready' ? (
           <div style={{ textAlign: 'center' }}>
-            {step.video_url ? <VideoBlock url={step.video_url} title={step.title} /> : null}
+            <StepMedia step={step} />
             {(() => {
               const { intro, wakeLabel, habitsBlock } = parseWakeDescription(step.description)
               const habitLines = habitsBlock
@@ -832,7 +843,7 @@ export default function ProgramOnboardingClient() {
             >
               {step.title}
             </h2>
-            {step.video_url ? <VideoBlock url={step.video_url} title={step.title} /> : null}
+            <StepMedia step={step} />
             {step.description ? (
               <p style={{ color: MUTED, fontSize: '15px', lineHeight: 1.5, margin: '0 0 24px', whiteSpace: 'pre-line' }}>
                 {step.description}

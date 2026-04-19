@@ -23,7 +23,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { Navigation } from '@/components/navigation'
 import { ErrorBanner } from '@/components/ErrorBanner'
 import { HabitHeatmap } from '@/components/analytics/HabitHeatmap'
 import { Button } from '@/components/ui/button'
@@ -132,40 +131,40 @@ function MetricCards({
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      <Card className="border-border bg-[#1F2937] p-5 text-white shadow-sm">
-        <p className="text-4xl font-bold text-[#F59E0B]">{stats.currentStreak}</p>
-        <p className="mt-1 text-sm font-medium text-white">Day streak 🔥</p>
-        <p className="mt-2 text-xs text-white/60">
+      <Card className="border-border bg-card p-5 text-foreground shadow-sm">
+        <p className="text-4xl font-bold text-primary">{stats.currentStreak}</p>
+        <p className="mt-1 text-sm font-medium text-foreground">Day streak 🔥</p>
+        <p className="mt-2 text-xs text-muted-foreground">
           Best ever: {stats.bestStreak} days
         </p>
       </Card>
-      <Card className="border-border bg-[#1F2937] p-5 text-white shadow-sm">
-        <p className="text-4xl font-bold text-[#F59E0B]">
+      <Card className="border-border bg-card p-5 text-foreground shadow-sm">
+        <p className="text-4xl font-bold text-primary">
           {stats.habitsCompletedThisWeek}
         </p>
-        <p className="mt-1 text-sm font-medium text-white">Habits completed</p>
-        <p className="mt-2 text-xs text-white/60">
+        <p className="mt-1 text-sm font-medium text-foreground">Habits completed</p>
+        <p className="mt-2 text-xs text-muted-foreground">
           out of {stats.habitsTotalThisWeek} possible
         </p>
         <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/10">
           <div
-            className="h-full rounded-full bg-[#F59E0B] transition-all"
+            className="h-full rounded-full bg-primary transition-all"
             style={{ width: `${habitBarPct}%` }}
           />
         </div>
       </Card>
-      <Card className="border-border bg-[#1F2937] p-5 text-white shadow-sm">
-        <p className="text-4xl font-bold text-[#F59E0B]">{goalPct}%</p>
-        <p className="mt-1 text-sm font-medium text-white">Goals hit rate</p>
-        <p className="mt-2 text-xs text-white/60">
+      <Card className="border-border bg-card p-5 text-foreground shadow-sm">
+        <p className="text-4xl font-bold text-primary">{goalPct}%</p>
+        <p className="mt-1 text-sm font-medium text-foreground">Goals hit rate</p>
+        <p className="mt-2 text-xs text-muted-foreground">
           {stats.goalsHitThisMonth} / {stats.goalsTotalThisMonth} goals
         </p>
       </Card>
-      <Card className="border-border bg-[#1F2937] p-5 text-white shadow-sm">
-        <p className="text-4xl font-bold text-[#F59E0B]">
+      <Card className="border-border bg-card p-5 text-foreground shadow-sm">
+        <p className="text-4xl font-bold text-primary">
           {stats.deepWorkHoursThisWeek.toFixed(1)}
         </p>
-        <p className="mt-1 text-sm font-medium text-white">Deep work hours</p>
+        <p className="mt-1 text-sm font-medium text-foreground">Deep work hours</p>
         <p
           className={cn(
             'mt-2 text-xs font-medium',
@@ -195,13 +194,13 @@ function InsightsBlock({ items }: { items: InsightItem[] }) {
           <Card
             key={i}
             className={cn(
-              'border border-border bg-[#1F2937] p-4 pl-5 text-white',
+              'border border-border bg-card p-4 pl-5 text-foreground',
               'border-l-4',
               border[it.type],
             )}
           >
             <p className="text-2xl leading-none">{it.icon}</p>
-            <p className="mt-2 text-[14px] leading-snug text-white">{it.text}</p>
+            <p className="mt-2 text-[14px] leading-snug text-foreground">{it.text}</p>
           </Card>
         ))}
       </div>
@@ -381,9 +380,8 @@ export function AnalyticsPageClient() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
       {loadError ? (
-        <div className="mx-auto max-w-xl px-4 pb-2 pt-20">
+        <div className="mx-auto max-w-xl px-4 pb-2 pt-4 md:pt-2">
           <ErrorBanner message={loadError} onRetry={() => void reload()} />
         </div>
       ) : null}
@@ -393,7 +391,7 @@ export function AnalyticsPageClient() {
         </div>
       ) : null}
       {ready && !planLoading ? (
-        <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 pt-24">
+        <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 pt-4 md:pt-2">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h1 className="text-2xl font-semibold">Analytics</h1>
@@ -428,7 +426,7 @@ export function AnalyticsPageClient() {
                 variant={period === p ? 'default' : 'outline'}
                 size="sm"
                 className={
-                  period === p ? 'bg-[#F59E0B] text-[#111827] hover:bg-[#F59E0B]/90' : ''
+                  period === p ? 'bg-primary text-primary-foreground hover:bg-primary/90' : ''
                 }
                 onClick={() => setPeriod(p)}
               >
@@ -457,7 +455,7 @@ export function AnalyticsPageClient() {
                     based on your real data.
                   </p>
                   <Button
-                    className="mt-4 bg-[#F59E0B] font-semibold text-[#111827] hover:bg-[#F59E0B]/90"
+                    className="mt-4 bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
                     asChild
                   >
                     <Link href="/upgrade">Unlock Analytics — Upgrade to Pro</Link>
@@ -506,7 +504,7 @@ export function AnalyticsPageClient() {
                         <Tooltip
                           formatter={(value: number) => [`${value}% complete`, '']}
                           contentStyle={{
-                            background: '#1F2937',
+                            background: '#1e1e1e',
                             border: '1px solid #374151',
                           }}
                         />
@@ -518,7 +516,7 @@ export function AnalyticsPageClient() {
                         />
                         <Bar
                           dataKey="percentage"
-                          fill="#F59E0B"
+                          fill="#d4af37"
                           radius={[4, 4, 0, 0]}
                         />
                       </BarChart>
@@ -588,14 +586,14 @@ export function AnalyticsPageClient() {
                         />
                         <Tooltip
                           contentStyle={{
-                            background: '#1F2937',
+                            background: '#1e1e1e',
                             border: '1px solid #374151',
                           }}
                         />
                         <Line
                           type="monotone"
                           dataKey="percentage"
-                          stroke="#F59E0B"
+                          stroke="#d4af37"
                           strokeWidth={2}
                           dot={false}
                         />
@@ -622,7 +620,7 @@ export function AnalyticsPageClient() {
                           cy="50"
                           r="44"
                           fill="none"
-                          stroke="#F59E0B"
+                          stroke="#d4af37"
                           strokeWidth="8"
                           strokeDasharray={ringCirc}
                           strokeDashoffset={dashOffset}
@@ -630,7 +628,7 @@ export function AnalyticsPageClient() {
                         />
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                        <span className="text-lg font-bold text-[#F59E0B]">
+                        <span className="text-lg font-bold text-primary">
                           {Math.round(ringPct * 100)}%
                         </span>
                         <span className="text-[10px] text-muted-foreground">
@@ -671,13 +669,13 @@ export function AnalyticsPageClient() {
                         <Tooltip
                           formatter={(v: number) => [`${v} hrs`, 'Deep work']}
                           contentStyle={{
-                            background: '#1F2937',
+                            background: '#1e1e1e',
                             border: '1px solid #374151',
                           }}
                         />
                         <Bar
                           dataKey="hours"
-                          fill="#F59E0B"
+                          fill="#d4af37"
                           radius={[4, 4, 0, 0]}
                         />
                       </BarChart>
@@ -713,15 +711,15 @@ export function AnalyticsPageClient() {
                         <YAxis stroke="#9CA3AF" fontSize={12} />
                         <Tooltip
                           contentStyle={{
-                            background: '#1F2937',
+                            background: '#1e1e1e',
                             border: '1px solid #374151',
                           }}
                         />
                         <Area
                           type="monotone"
                           dataKey="streak"
-                          stroke="#F59E0B"
-                          fill="#F59E0B"
+                          stroke="#d4af37"
+                          fill="#d4af37"
                           fillOpacity={0.15}
                         />
                       </AreaChart>

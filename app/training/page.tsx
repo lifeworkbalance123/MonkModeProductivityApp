@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import AddVideoModal from '@/components/training/AddVideoModal'
 import TrainingCard from '@/components/training/TrainingCard'
 import VideoModal from '@/components/training/VideoModal'
-import { Navigation } from '@/components/navigation'
+import { AppPageChrome } from '@/components/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -488,9 +488,9 @@ export default function TrainingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 space-y-16">
+    <AppPageChrome>
+      <div className="min-h-screen bg-background">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-16">
         <section className="space-y-8">
           <div className="text-center space-y-1 max-w-2xl mx-auto">
             <h1 className="text-2xl sm:text-3xl font-semibold">monkcubed training</h1>
@@ -769,6 +769,7 @@ export default function TrainingPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </AppPageChrome>
   )
 }

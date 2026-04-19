@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Navigation } from '@/components/navigation'
+import { AppPageChrome } from '@/components/navigation'
 import { UpgradeOfferContent } from '@/components/upgrade/upgrade-offer-content'
 
 function UpgradeBody() {
@@ -14,17 +14,18 @@ function UpgradeBody() {
 
 export default function UpgradePage() {
   return (
-    <div className="min-h-screen">
-      <Navigation />
-      <Suspense
-        fallback={
-          <div className="flex min-h-[40vh] items-center justify-center pt-24 text-sm text-muted-foreground">
-            Loading…
-          </div>
-        }
-      >
-        <UpgradeBody />
-      </Suspense>
-    </div>
+    <AppPageChrome>
+      <div className="min-h-screen">
+        <Suspense
+          fallback={
+            <div className="flex min-h-[40vh] items-center justify-center pt-8 text-sm text-muted-foreground">
+              Loading…
+            </div>
+          }
+        >
+          <UpgradeBody />
+        </Suspense>
+      </div>
+    </AppPageChrome>
   )
 }

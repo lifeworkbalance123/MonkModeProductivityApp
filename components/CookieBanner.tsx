@@ -14,15 +14,15 @@ export function CookieBanner() {
   if (!visible) return null
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[120] border-t border-[#D4AF37]/30 bg-[#121212] px-4 py-3">
+    <div className="fixed inset-x-0 bottom-0 z-[120] border-t border-primary/30 bg-background px-4 py-3">
       <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-3 sm:flex-row">
-        <p className="text-sm text-gray-200">
+        <p className="text-sm text-foreground/90">
           monkcubed uses cookies to improve your experience.
         </p>
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className="rounded-md bg-[#D4AF37] px-3 py-1.5 text-sm font-medium text-[#121212] hover:bg-[#c9a432]"
+            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             onClick={() => {
               applyConsentMode('accepted')
               setVisible(false)
@@ -32,7 +32,7 @@ export function CookieBanner() {
           </button>
           <button
             type="button"
-            className="rounded-md border border-white/15 px-3 py-1.5 text-sm text-gray-300 hover:bg-white/5"
+            className="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-secondary"
             onClick={() => {
               applyConsentMode('declined')
               setVisible(false)

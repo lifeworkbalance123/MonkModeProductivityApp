@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Navigation } from '@/components/navigation'
+import { AppPageChrome } from '@/components/navigation'
 import { supabase } from '@/lib/supabase'
 import { usePlan } from '@/hooks/usePlan'
 
@@ -126,9 +126,9 @@ export function DebugPageClient() {
     !plan.isLoading && plan.isPro ? 'YES' : plan.isLoading ? '…' : 'NO'
 
   return (
-    <div className="min-h-screen bg-[#0b0f14] text-white">
-      <Navigation />
-      <div className="mx-auto max-w-3xl space-y-8 px-4 py-10 pt-24 font-mono text-sm">
+    <AppPageChrome>
+      <div className="min-h-screen bg-background text-foreground">
+        <div className="mx-auto max-w-3xl space-y-8 px-4 py-10 pt-4 font-mono text-sm md:pt-2">
         <h1 className="text-lg font-semibold text-amber-200">
           /debug — entitlement diagnostic
         </h1>
@@ -259,6 +259,7 @@ export function DebugPageClient() {
           </button>
         </section>
       </div>
-    </div>
+      </div>
+    </AppPageChrome>
   )
 }

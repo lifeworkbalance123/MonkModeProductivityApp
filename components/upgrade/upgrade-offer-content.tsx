@@ -132,41 +132,41 @@ export function UpgradeOfferContent({
   return (
     <div
       className={cn(
-        'upgrade-offer-scope text-white',
-        variant === 'page' ? 'min-h-screen bg-[#111827]' : 'bg-[#111827]',
+        'upgrade-offer-scope text-foreground',
+        variant === 'page' ? 'min-h-screen bg-background' : 'bg-background',
         padding,
       )}
     >
       {featureContext ? (
-        <div className="mb-6 rounded-xl border border-[#F59E0B]/25 bg-[#F59E0B]/10 px-4 py-3 text-sm text-amber-100/95">
+        <div className="mb-6 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-sm text-foreground/95">
           {featureContext}
         </div>
       ) : null}
 
       {/* Hero */}
       <header className="mx-auto max-w-3xl text-center">
-        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-[#F59E0B]/25 to-[#F59E0B]/5 ring-1 ring-[#F59E0B]/40">
+        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/25 to-primary/5 ring-1 ring-primary/40">
           <Flame
-            className="upgrade-flame-pulse h-11 w-11 text-[#F59E0B]"
+            className="upgrade-flame-pulse h-11 w-11 text-primary"
             aria-hidden
           />
         </div>
         {trialExpired ? (
           <>
-            <h1 className="font-serif text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+            <h1 className="font-serif text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               Your Pro Trial Has Ended
             </h1>
-            <p className="mt-3 text-base text-gray-300 sm:text-lg">
+            <p className="mt-3 text-base text-muted-foreground sm:text-lg">
               Everything you built over the last 14 days is still here — upgrade
               to keep going.
             </p>
           </>
         ) : (
           <>
-            <h1 className="font-serif text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+            <h1 className="font-serif text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               Unlock Your Full Potential
             </h1>
-            <p className="mt-3 text-base text-gray-300 sm:text-lg">
+            <p className="mt-3 text-base text-muted-foreground sm:text-lg">
               You&apos;ve experienced what monkcubed Pro can do. Don&apos;t go
               back to ordinary.
             </p>
@@ -176,7 +176,7 @@ export function UpgradeOfferContent({
           <div className="mt-6">
             <Button
               asChild
-              className="bg-[#F59E0B] font-semibold text-[#111827] hover:bg-[#F59E0B]/90 hover:scale-[1.02] transition-transform"
+              className="bg-primary font-semibold text-primary-foreground hover:bg-primary/90 hover:scale-[1.02] transition-transform"
             >
               <Link href="/auth">Sign in to upgrade</Link>
             </Button>
@@ -193,7 +193,7 @@ export function UpgradeOfferContent({
         ].map((t) => (
           <div
             key={t}
-            className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-gray-200 sm:text-sm"
+            className="rounded-full border border-border bg-muted/40 px-3 py-1.5 text-xs text-foreground/90 sm:text-sm"
           >
             {t}
           </div>
@@ -201,7 +201,7 @@ export function UpgradeOfferContent({
       </div>
 
       {isLifetime ? (
-        <div className="mx-auto mt-10 max-w-xl rounded-2xl border border-[#F59E0B]/40 bg-[#F59E0B]/10 px-4 py-4 text-center text-sm text-amber-50">
+        <div className="mx-auto mt-10 max-w-xl rounded-2xl border border-primary/40 bg-primary/10 px-4 py-4 text-center text-sm text-foreground/95">
           You have <span className="font-semibold">Lifetime</span> access.
           Thank you for supporting monkcubed.
         </div>
@@ -212,16 +212,16 @@ export function UpgradeOfferContent({
         {/* Free */}
         <div
           className={cn(
-            'flex flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-6 opacity-90',
-            !isPro && !planLoading ? 'ring-1 ring-white/5' : '',
+            'flex flex-col rounded-2xl border border-border bg-card/50 p-6 opacity-90',
+            !isPro && !planLoading ? 'ring-1 ring-border/50' : '',
           )}
         >
-          <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             {!isPro && !isLifetime ? 'Your current plan' : 'Free'}
           </p>
-          <h2 className="mt-1 text-xl font-semibold text-white">Free</h2>
-          <p className="mt-1 text-sm text-gray-400">Core habits & dashboard</p>
-          <ul className="mt-6 space-y-2.5 text-sm text-gray-300">
+          <h2 className="mt-1 text-xl font-semibold text-foreground">Free</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Core habits & dashboard</p>
+          <ul className="mt-6 space-y-2.5 text-sm text-muted-foreground">
             {FREE_LIMITS.map((line) => (
               <li key={line} className="flex gap-2">
                 <span className="text-red-400/90" aria-hidden>
@@ -236,27 +236,27 @@ export function UpgradeOfferContent({
         {/* Pro */}
         <div
           className={cn(
-            'upgrade-pro-glow relative flex flex-col rounded-2xl border-2 border-[#F59E0B]/55 bg-gradient-to-b from-[#1f2937] to-[#111827] p-6',
+            'upgrade-pro-glow relative flex flex-col rounded-2xl border-2 border-primary/55 bg-gradient-to-b from-card to-background p-6',
           )}
         >
-          <div className="absolute right-4 top-4 rounded-full bg-[#F59E0B] px-2.5 py-0.5 text-xs font-bold text-[#111827]">
+          <div className="absolute right-4 top-4 rounded-full bg-primary px-2.5 py-0.5 text-xs font-bold text-primary-foreground">
             Most Popular
           </div>
-          <p className="text-xs font-medium uppercase tracking-wider text-[#F59E0B]">
+          <p className="text-xs font-medium uppercase tracking-wider text-primary">
             Recommended
           </p>
-          <h2 className="mt-1 text-xl font-semibold text-white">Pro</h2>
-          <p className="mt-1 text-sm text-gray-300">Everything serious focus needs</p>
+          <h2 className="mt-1 text-xl font-semibold text-foreground">Pro</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Everything serious focus needs</p>
 
           {!isMonthlyPro ? (
-            <div className="mt-5 flex items-center justify-between gap-3 rounded-full border border-[#F59E0B]/30 bg-black/25 p-1">
+            <div className="mt-5 flex items-center justify-between gap-3 rounded-full border border-primary/30 bg-black/25 p-1">
               <button
                 type="button"
                 className={cn(
                   'flex-1 rounded-full py-2 text-sm font-medium transition',
                   !annual
-                    ? 'bg-[#F59E0B] text-[#111827]'
-                    : 'text-gray-400 hover:text-white',
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
                 )}
                 onClick={() => setAnnual(false)}
               >
@@ -267,8 +267,8 @@ export function UpgradeOfferContent({
                 className={cn(
                   'relative flex-1 rounded-full py-2 text-sm font-medium transition',
                   annual
-                    ? 'bg-[#F59E0B] text-[#111827]'
-                    : 'text-gray-400 hover:text-white',
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
                 )}
                 onClick={() => setAnnual(true)}
               >
@@ -285,10 +285,10 @@ export function UpgradeOfferContent({
             </p>
           )}
 
-          <ul className="mt-6 flex-1 space-y-2.5 text-sm text-gray-100">
+          <ul className="mt-6 flex-1 space-y-2.5 text-sm text-foreground/95">
             {PRO_FEATURES.map((line) => (
               <li key={line} className="flex gap-2">
-                <span className="text-[#F59E0B]" aria-hidden>
+                <span className="text-primary" aria-hidden>
                   ✓
                 </span>
                 {line}
@@ -298,15 +298,15 @@ export function UpgradeOfferContent({
 
           {!isMonthlyPro && !isLifetime ? (
             <>
-              <div className="relative mt-3 min-h-[56px] overflow-hidden rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+              <div className="relative mt-3 min-h-[56px] overflow-hidden rounded-lg border border-border bg-black/20 px-3 py-2">
                 <div
                   className={cn(
                     'absolute inset-0 px-3 py-2 transition-all duration-300',
                     annual ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0',
                   )}
                 >
-                  <p className="text-2xl font-bold text-white">$4.99/mo</p>
-                  <p className="text-xs text-gray-400">billed as $59.99/year</p>
+                  <p className="text-2xl font-bold text-foreground">$4.99/mo</p>
+                  <p className="text-xs text-muted-foreground">billed as $59.99/year</p>
                 </div>
                 <div
                   className={cn(
@@ -314,7 +314,7 @@ export function UpgradeOfferContent({
                     annual ? '-translate-y-2 opacity-0' : 'translate-y-0 opacity-100',
                   )}
                 >
-                  <p className="text-2xl font-bold text-white">$9.99/mo</p>
+                  <p className="text-2xl font-bold text-foreground">$9.99/mo</p>
                 </div>
               </div>
               <Button
@@ -323,7 +323,7 @@ export function UpgradeOfferContent({
                 onClick={() =>
                   void checkout(annual ? 'annual' : 'monthly')
                 }
-                className="mt-8 h-12 w-full bg-[#F59E0B] text-base font-bold text-[#111827] hover:bg-[#F59E0B]/90 hover:scale-[1.02] transition-transform"
+                className="mt-8 h-12 w-full bg-primary text-base font-bold text-primary-foreground hover:bg-primary/90 hover:scale-[1.02] transition-transform"
               >
                 {busy === 'monthly' || busy === 'annual' ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -331,7 +331,7 @@ export function UpgradeOfferContent({
                   proCtaLabel
                 )}
               </Button>
-              <p className="mt-2 text-center text-xs text-gray-400">
+              <p className="mt-2 text-center text-xs text-muted-foreground">
                 Cancel anytime. No hidden fees.
               </p>
               {annual ? (
@@ -346,27 +346,27 @@ export function UpgradeOfferContent({
 
       {/* Lifetime */}
       {!isLifetime ? (
-        <div className="mx-auto mt-10 max-w-5xl rounded-2xl border-l-4 border-[#F59E0B] bg-white/[0.04] p-6 sm:p-8">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#F59E0B]">
+        <div className="mx-auto mt-10 max-w-5xl rounded-2xl border-l-4 border-primary bg-card/80 p-6 sm:p-8">
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
             Best value — Own it forever
           </p>
-          <h3 className="mt-2 text-2xl font-semibold text-white">
+          <h3 className="mt-2 text-2xl font-semibold text-foreground">
             Lifetime Access — $149
           </h3>
-          <p className="mt-2 max-w-2xl text-sm text-gray-300">
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
             Pay once. Get every future feature. No subscriptions, ever.
           </p>
-          <ul className="mt-4 space-y-1.5 text-sm text-gray-200">
+          <ul className="mt-4 space-y-1.5 text-sm text-foreground/90">
             <li className="flex gap-2">
-              <span className="text-[#F59E0B]">✓</span>
+              <span className="text-primary">✓</span>
               Everything in Pro + future features
             </li>
             <li className="flex gap-2">
-              <span className="text-[#F59E0B]">✓</span>
+              <span className="text-primary">✓</span>
               API access (as released)
             </li>
             <li className="flex gap-2">
-              <span className="text-[#F59E0B]">✓</span>
+              <span className="text-primary">✓</span>
               Founder support
             </li>
           </ul>
@@ -375,7 +375,7 @@ export function UpgradeOfferContent({
             variant="outline"
             disabled={busy !== null || !user || planLoading}
             onClick={() => void checkout('lifetime')}
-            className="mt-6 h-11 w-full border-2 border-[#F59E0B] bg-transparent font-semibold text-[#F59E0B] hover:bg-[#F59E0B]/10 hover:scale-[1.02] transition-transform sm:w-auto sm:min-w-[240px]"
+            className="mt-6 h-11 w-full border-2 border-primary bg-transparent font-semibold text-primary hover:bg-primary/10 hover:scale-[1.02] transition-transform sm:w-auto sm:min-w-[240px]"
           >
             {busy === 'lifetime' ? (
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -387,14 +387,14 @@ export function UpgradeOfferContent({
       ) : null}
 
       {/* Trust */}
-      <div className="mx-auto mt-12 flex max-w-4xl flex-wrap justify-center gap-6 text-center text-xs text-gray-400 sm:text-sm">
+      <div className="mx-auto mt-12 flex max-w-4xl flex-wrap justify-center gap-6 text-center text-xs text-muted-foreground sm:text-sm">
         <div>🔒 Payments secured by Stripe</div>
         <div>🔄 Cancel or change anytime</div>
         <div>
           💬 Support at{' '}
           <a
             href="mailto:support@monkcubed.com"
-            className="text-[#F59E0B] hover:underline"
+            className="text-primary hover:underline"
           >
             support@monkcubed.com
           </a>
@@ -403,20 +403,20 @@ export function UpgradeOfferContent({
 
       {/* FAQ */}
       <div className="mx-auto mt-12 max-w-2xl">
-        <h3 className="mb-4 text-center text-lg font-semibold text-white">
+        <h3 className="mb-4 text-center text-lg font-semibold text-foreground">
           Questions
         </h3>
         <Accordion
           type="single"
           collapsible
-          className="rounded-xl border border-white/10 bg-white/[0.03] px-4"
+          className="rounded-xl border border-border bg-card/40 px-4"
         >
           {FAQ.map((item, i) => (
-            <AccordionItem key={item.q} value={`q-${i}`} className="border-white/10">
-              <AccordionTrigger className="text-left text-white hover:no-underline">
+            <AccordionItem key={item.q} value={`q-${i}`} className="border-border">
+              <AccordionTrigger className="text-left text-foreground hover:no-underline">
                 {item.q}
               </AccordionTrigger>
-              <AccordionContent className="text-gray-300 transition-all duration-300 ease-out">
+              <AccordionContent className="text-muted-foreground transition-all duration-300 ease-out">
                 {item.a}
               </AccordionContent>
             </AccordionItem>
@@ -425,22 +425,22 @@ export function UpgradeOfferContent({
       </div>
 
       {variant === 'modal' ? (
-        <p className="mx-auto mt-8 max-w-md text-center text-xs text-gray-500">
-          <Link href="/terms" className="underline hover:text-gray-400">
+        <p className="mx-auto mt-8 max-w-md text-center text-xs text-muted-foreground">
+          <Link href="/terms" className="underline hover:text-foreground">
             Terms
           </Link>
           {' · '}
-          <Link href="/privacy" className="underline hover:text-gray-400">
+          <Link href="/privacy" className="underline hover:text-foreground">
             Privacy
           </Link>
         </p>
       ) : null}
 
       {trialExpired ? (
-        <p className="mx-auto mt-4 max-w-md text-center text-xs text-gray-400">
+        <p className="mx-auto mt-4 max-w-md text-center text-xs text-muted-foreground">
           <button
             type="button"
-            className="underline hover:text-gray-300"
+            className="underline hover:text-foreground"
             onClick={() => {
               captureEvent('user_churned')
               window.location.href = '/dashboard'
@@ -458,12 +458,12 @@ export function UpgradeOfferContent({
           if (!open) setPendingCheckoutKind(null)
         }}
       >
-        <DialogContent className="border-[#F59E0B]/30 bg-[#111827] text-white sm:max-w-md">
+        <DialogContent className="border-primary/30 bg-background text-foreground sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-white">
+            <DialogTitle className="text-foreground">
               Payment couldn&apos;t be started
             </DialogTitle>
-            <DialogDescription className="text-gray-300">
+            <DialogDescription className="text-muted-foreground">
               Something went wrong on our end. Please try again or contact
               support@monkcubed.com
             </DialogDescription>
@@ -471,7 +471,7 @@ export function UpgradeOfferContent({
           <DialogFooter className="flex-col gap-3 sm:flex-col">
             <Button
               type="button"
-              className="w-full bg-[#F59E0B] font-semibold text-[#111827] hover:bg-[#F59E0B]/90"
+              className="w-full bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
               disabled={busy !== null || !pendingCheckoutKind}
               onClick={() => {
                 if (pendingCheckoutKind) void checkout(pendingCheckoutKind)
@@ -485,7 +485,7 @@ export function UpgradeOfferContent({
             </Button>
             <a
               href="mailto:support@monkcubed.com"
-              className="text-center text-sm text-[#F59E0B] hover:underline"
+              className="text-center text-sm text-primary hover:underline"
             >
               Contact support
             </a>

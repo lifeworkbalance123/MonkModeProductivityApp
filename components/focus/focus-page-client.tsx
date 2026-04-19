@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Navigation } from '@/components/navigation'
 import { DeepWorkModeCard } from '@/components/focus/deep-work-mode-card'
 import { DeepWorkStatsStrip } from '@/components/focus/deep-work-stats-strip'
 import { PomodoroTimerCard } from '@/components/focus/pomodoro-timer-card'
@@ -44,8 +43,7 @@ export function FocusPageClient() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
-      <div className="mx-auto max-w-xl space-y-8 px-4 py-8 pt-24">
+      <div className="mx-auto max-w-xl space-y-8 px-4 py-8 pt-4 md:pt-2">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
             Focus & Deep Work

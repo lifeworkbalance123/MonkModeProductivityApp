@@ -1,6 +1,5 @@
 'use client'
 
-import { Navigation } from '@/components/navigation'
 import { ErrorBanner } from '@/components/ErrorBanner'
 import { KanbanBoard } from '@/components/kanban/kanban-board'
 import { KanbanFreePreview } from '@/components/kanban/kanban-free-preview'
@@ -20,9 +19,8 @@ export function KanbanPageClient() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
       {loadError ? (
-        <div className="mx-auto max-w-xl px-4 pb-2 pt-20">
+        <div className="mx-auto max-w-xl px-4 pb-2 pt-4 md:pt-2">
           <ErrorBanner message={loadError} onRetry={() => void reload()} />
         </div>
       ) : null}
@@ -36,7 +34,7 @@ export function KanbanPageClient() {
         </div>
       ) : null}
       {ready && !planLoading ? (
-        <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 pt-24">
+        <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 pt-4 md:pt-2">
           <div>
             <h1 className="text-2xl font-semibold">Kanban</h1>
             <p className="text-sm text-muted-foreground">

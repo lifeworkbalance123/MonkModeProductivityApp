@@ -4,18 +4,40 @@ import { ensureSiteMediaBucket } from '@/lib/site-media-storage'
 
 export const dynamic = 'force-dynamic'
 
+const LESSON_MEDIA_ALLOWED_MIME = [
+  'audio/mpeg',
+  'audio/mp3',
+  'video/mp4',
+  'video/quicktime',
+  'video/webm',
+  'image/png',
+  'image/jpeg',
+]
+
+const LESSON_MEDIA_BUCKET_OPTIONS = {
+  public: true,
+  allowedMimeTypes: LESSON_MEDIA_ALLOWED_MIME,
+  fileSizeLimit: 52428800,
+}
+
 export async function POST() {
   try {
     const supabase = createServiceRoleClient()
 
     const { error } = await supabase.storage.createBucket('lesson-media', {
-      public: true,
-      allowedMimeTypes: ['audio/mpeg', 'audio/mp3', 'video/mp4', 'video/quicktime', 'video/webm'],
-      fileSizeLimit: 52428800,
+      ...LESSON_MEDIA_BUCKET_OPTIONS,
     })
 
     if (error && !/already exists|duplicate/i.test(error.message)) {
       return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    const { error: lessonUpdateErr } = await supabase.storage.updateBucket(
+      'lesson-media',
+      { ...LESSON_MEDIA_BUCKET_OPTIONS },
+    )
+    if (lessonUpdateErr) {
+      console.warn('lesson-media bucket update:', lessonUpdateErr.message)
     }
 
     const siteErrMsg = await ensureSiteMediaBucket(supabase)

@@ -3,7 +3,7 @@
 import { Suspense, useEffect } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { Navigation } from '@/components/navigation'
+import { AppPageChrome } from '@/components/navigation'
 import { Button } from '@/components/ui/button'
 import { captureEvent } from '@/lib/analytics'
 
@@ -22,7 +22,7 @@ function PaymentSuccessBody() {
   }, [plan, searchParams])
 
   return (
-    <div className="mx-auto max-w-lg px-4 pb-16 pt-28 text-center">
+    <div className="mx-auto max-w-lg px-4 pb-16 pt-8 text-center md:pt-4">
       <h1 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
         {isV2Program ? "You're in the 60-day program." : "You're now on monkcubed Pro."}
       </h1>
@@ -45,17 +45,18 @@ function PaymentSuccessBody() {
 
 export default function PaymentSuccessPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Navigation />
-      <Suspense
-        fallback={
-          <div className="mx-auto max-w-lg px-4 pt-28 text-center text-muted-foreground text-sm">
-            Loading…
-          </div>
-        }
-      >
-        <PaymentSuccessBody />
-      </Suspense>
-    </div>
+    <AppPageChrome>
+      <div className="min-h-screen bg-background text-foreground">
+        <Suspense
+          fallback={
+            <div className="mx-auto max-w-lg px-4 pt-8 text-center text-muted-foreground text-sm md:pt-4">
+              Loading…
+            </div>
+          }
+        >
+          <PaymentSuccessBody />
+        </Suspense>
+      </div>
+    </AppPageChrome>
   )
 }

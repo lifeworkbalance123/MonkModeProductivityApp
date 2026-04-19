@@ -92,5 +92,32 @@ export default function LessonMedia({ mediaType, mediaUrl }: LessonMediaProps) {
     )
   }
 
+  if (mediaType === 'image') {
+    return (
+      <div
+        style={{
+          borderRadius: '10px',
+          overflow: 'hidden',
+          marginBottom: '16px',
+          border: `1px solid ${PU.border}`,
+          background: PU.bg,
+          aspectRatio: '16 / 9',
+          maxHeight: 'min(56vh, 420px)',
+        }}
+      >
+        <img
+          src={mediaUrl}
+          alt=""
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            display: 'block',
+          }}
+        />
+      </div>
+    )
+  }
+
   return null
 }

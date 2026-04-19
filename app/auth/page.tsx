@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/context/AuthContext'
 import { getAuthCallbackBaseUrl, getAuthCallbackUrl } from '@/lib/app-origin'
+import { sessionHasRecoveryAmr } from '@/lib/authRecovery'
 import type { AuthError } from '@supabase/supabase-js'
 import { getSupabaseConfigProblem, isSupabaseConfigured, supabase } from '@/lib/supabase'
 import { captureEvent } from '@/lib/analytics'
@@ -50,7 +51,12 @@ function clearPendingConfirmEmail() {
   }
 }
 
+function normalizeAuthEmail(raw: string): string {
+  return raw.trim().toLowerCase()
+}
+
 function formatSignInError(error: AuthError, email: string): string {
+  const normalizedEmail = normalizeAuthEmail(email)
   const raw = error.message
   const lower = raw.toLowerCase()
   const code =
@@ -69,7 +75,7 @@ function formatSignInError(error: AuthError, email: string): string {
   }
 
   const pending = readPendingConfirmEmail()
-  const sameEmail = pending === email.trim().toLowerCase()
+  const sameEmail = pending === normalizedEmail
   const looksInvalidLogin =
     lower.includes('invalid login credentials') ||
     lower.includes('invalid credentials')
@@ -84,6 +90,7 @@ function formatSignInError(error: AuthError, email: string): string {
   if (looksInvalidLogin) {
     return (
       `${raw} If you recently registered, confirm your email from the signup message before signing in. ` +
+      'If you recently reset your password, your browser may still autofill the old one—clear the field and type the new password, or update the saved entry. ' +
       'Otherwise check your password or use “Email me a magic link”.'
     )
   }
@@ -171,6 +178,7 @@ export default function AuthPage() {
   const [forgotOpen, setForgotOpen] = useState(false)
   const [forgotBusy, setForgotBusy] = useState(false)
   const [forgotMessage, setForgotMessage] = useState<string | null>(null)
+  const [passwordUpdatedBanner, setPasswordUpdatedBanner] = useState(false)
 
   useEffect(() => {
     setShowReferralBanner(new URL(window.location.href).searchParams.get('ref') === '1')
@@ -189,15 +197,30 @@ export default function AuthPage() {
   }, [])
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('password_updated') !== '1') return
+    setPasswordUpdatedBanner(true)
+    setPassword('')
+    const clean = new URL(window.location.href)
+    clean.searchParams.delete('password_updated')
+    window.history.replaceState({}, '', clean.pathname + clean.search)
+  }, [])
+
+  useEffect(() => {
     if (authBootstrapping) return
     if (session) {
+      if (sessionHasRecoveryAmr(session)) {
+        router.replace('/auth/update-password')
+        return
+      }
       router.replace('/dashboard')
     }
   }, [authBootstrapping, session, router])
 
   function validatePasswordForm(flow: 'signin' | 'signup'): boolean {
     const next: typeof fieldErrors = {}
-    const e = email.trim()
+    const e = normalizeAuthEmail(email)
     if (!e) next.email = 'Email is required'
     else if (!EMAIL_RE.test(e)) next.email = 'Enter a valid email address'
     if (!password) next.password = 'Password is required'
@@ -214,7 +237,7 @@ export default function AuthPage() {
   }
 
   function validateMagicEmail(): boolean {
-    const e = magicEmail.trim()
+    const e = normalizeAuthEmail(magicEmail)
     const next: typeof fieldErrors = {}
     if (!e) next.magicEmail = 'Email is required'
     else if (!EMAIL_RE.test(e)) next.magicEmail = 'Enter a valid email address'
@@ -245,12 +268,13 @@ export default function AuthPage() {
         return
       }
       if (flow === 'signin') {
+        const authEmail = normalizeAuthEmail(email)
         const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
+          email: authEmail,
           password,
         })
         if (error) {
-          setFormError(formatSignInError(error, email.trim()))
+          setFormError(formatSignInError(error, authEmail))
           return
         }
         clearPendingConfirmEmail()
@@ -296,8 +320,9 @@ export default function AuthPage() {
         return
       }
 
+      const authEmail = normalizeAuthEmail(email)
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
+        email: authEmail,
         password,
         options: {
           emailRedirectTo: `${getAuthCallbackBaseUrl()}/auth/callback`,
@@ -320,7 +345,7 @@ export default function AuthPage() {
       }
 
       try {
-        const to = data.user?.email ?? email.trim()
+        const to = data.user?.email ?? authEmail
         if (to) {
           await fetch('/api/email/welcome', {
             method: 'POST',
@@ -377,7 +402,7 @@ export default function AuthPage() {
         router.replace('/dashboard')
         return
       }
-      setPendingConfirmEmail(email.trim())
+      setPendingConfirmEmail(authEmail)
       setSignupMessage(
         'We sent a confirmation email. Open the link in that message before you sign in with email and password—login stays disabled until your address is confirmed.',
       )
@@ -396,7 +421,7 @@ export default function AuthPage() {
   async function handleForgotPassword() {
     setForgotMessage(null)
     setFormError(null)
-    const e = email.trim()
+    const e = normalizeAuthEmail(email)
     if (!e) {
       setFieldErrors((prev) => ({
         ...prev,
@@ -420,7 +445,8 @@ export default function AuthPage() {
         return
       }
       const { error } = await supabase.auth.resetPasswordForEmail(e, {
-        redirectTo: `${getAuthCallbackBaseUrl()}/auth/update-password`,
+        /* PKCE link must hit /auth/callback — ?recovery=1 forces “choose new password” when JWT omits amr.recovery (common). Add this exact URL in Supabase → Auth → URL Configuration → Redirect URLs. */
+        redirectTo: `${getAuthCallbackBaseUrl()}/auth/callback?recovery=1`,
       })
       if (error) {
         setFormError(formatOtpEmailError(error.message))
@@ -455,7 +481,7 @@ export default function AuthPage() {
         return
       }
       const { error } = await supabase.auth.signInWithOtp({
-        email: magicEmail.trim(),
+        email: normalizeAuthEmail(magicEmail),
         options: {
           emailRedirectTo: `${getAuthCallbackBaseUrl()}/auth/callback`,
           shouldCreateUser: true,
@@ -538,6 +564,16 @@ export default function AuthPage() {
           <div className="rounded-lg border border-accent/35 bg-accent/10 px-3 py-2 text-sm text-foreground">
             You were invited to monkcubed! Sign up free — your friend gets a reward
             when you join.
+          </div>
+        ) : null}
+        {passwordUpdatedBanner ? (
+          <div
+            className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-foreground"
+            role="status"
+          >
+            Password updated. Sign in with your <strong className="font-medium">new</strong> password. If the
+            password field was autofilled, it may still be your old one—clear it and type the new password, or
+            update the saved password in your browser.
           </div>
         ) : null}
         <div className="text-center space-y-1">

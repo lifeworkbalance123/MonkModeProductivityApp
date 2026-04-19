@@ -11,7 +11,6 @@ import NextDayCountdown from '@/components/program/NextDayCountdown'
 import OneBigTask from '@/components/program/OneBigTask'
 import ProgramHeader from '@/components/program/ProgramHeader'
 import WeeklyReview, { isReviewDay } from '@/components/program/WeeklyReview'
-import { Navigation } from '@/components/navigation'
 import { useProgram } from '@/hooks/useProgram'
 import {
   getPublishedLessonsForDayAsync,
@@ -128,8 +127,7 @@ export default function TodayPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
-      <div className="mx-auto max-w-[680px] px-6 pb-16 pt-24">
+      <div className="mx-auto max-w-[680px] px-6 pb-16 pt-4 md:pt-6">
         {loading ? (
           <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin" aria-hidden />

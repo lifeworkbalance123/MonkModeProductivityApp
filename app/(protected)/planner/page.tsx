@@ -1,7 +1,6 @@
 'use client'
 
 import { Loader2 } from 'lucide-react'
-import { Navigation } from '@/components/navigation'
 import { WeeklyPlannerApp } from '@/components/weekly-planner-app'
 import { EmptyState } from '@/components/EmptyState'
 import { ErrorBanner } from '@/components/ErrorBanner'
@@ -60,9 +59,8 @@ export default function PlannerPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
       {loadError ? (
-        <div className="max-w-7xl mx-auto px-4 pt-20 pb-2">
+        <div className="max-w-7xl mx-auto px-4 pt-4 pb-2 md:pt-2">
           <ErrorBanner
             message={loadError}
             onRetry={() => void reload()}

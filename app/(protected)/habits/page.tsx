@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
-import { Navigation } from '@/components/navigation'
 import { useUpgradeOffer } from '@/context/UpgradeOfferContext'
 import { useToast } from '@/context/ToastContext'
 import { Button } from '@/components/ui/button'
@@ -199,9 +198,8 @@ export default function HabitsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
       {loadError ? (
-        <div className="max-w-xl mx-auto px-4 pt-20 pb-2">
+        <div className="max-w-xl mx-auto px-4 pt-4 pb-2 md:pt-2">
           <ErrorBanner
             message={loadError}
             onRetry={() => void reload()}

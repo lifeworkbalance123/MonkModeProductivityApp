@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Navigation } from '@/components/navigation'
+import { AppPageChrome } from '@/components/navigation'
 
 export function CoachPageClient() {
   const searchParams = useSearchParams()
@@ -19,9 +19,9 @@ export function CoachPageClient() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <div className="mx-auto max-w-lg px-6 pb-16 pt-24">
+    <AppPageChrome>
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto max-w-lg px-6 pb-16 pt-4 md:pt-2">
         <h1 className="text-2xl font-semibold text-foreground">Weekly coaching</h1>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
           Optional add-on: 15-minute calls each week. Pay once or subscribe, then schedule with our
@@ -68,6 +68,7 @@ export function CoachPageClient() {
           </Link>
         </p>
       </div>
-    </div>
+      </div>
+    </AppPageChrome>
   )
 }

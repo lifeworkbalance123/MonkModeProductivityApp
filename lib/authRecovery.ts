@@ -67,11 +67,13 @@ export function sessionHasRecoveryAmr(session: Session | null): boolean {
   const payload = parseJwtPayload(session.access_token)
   const amr = payload?.amr
   if (!Array.isArray(amr)) return false
-  return amr.some(
-    (e) =>
+  return amr.some((e) => {
+    if (typeof e === 'string') return e === 'recovery'
+    return (
       typeof e === 'object' &&
       e !== null &&
       'method' in e &&
-      (e as { method: string }).method === 'recovery',
-  )
+      (e as { method: string }).method === 'recovery'
+    )
+  })
 }

@@ -16,7 +16,7 @@ const typeStyles: Record<
 > = {
   success: { bar: 'bg-emerald-500', text: 'text-emerald-50' },
   error: { bar: 'bg-red-500', text: 'text-red-50' },
-  warning: { bar: 'bg-[#F59E0B]', text: 'text-[#111827]' },
+  warning: { bar: 'bg-primary', text: 'text-primary-foreground' },
   info: { bar: 'bg-blue-500', text: 'text-blue-50' },
 }
 
@@ -45,7 +45,7 @@ function ToastItem({
     <div
       role="status"
       className={cn(
-        'pointer-events-auto flex max-w-md min-w-[240px] overflow-hidden rounded-lg border border-white/10 bg-[#1f2937] shadow-lg transition-all duration-300 ease-out',
+        'pointer-events-auto flex max-w-md min-w-[240px] overflow-hidden rounded-lg border border-border bg-card shadow-lg transition-all duration-300 ease-out',
         leaving ? 'translate-y-2 opacity-0' : 'translate-y-0 opacity-100',
       )}
     >
@@ -59,7 +59,7 @@ function ToastItem({
           setLeaving(true)
           setTimeout(() => onDismiss(toast.id), 200)
         }}
-        className="shrink-0 px-2 text-xs text-white/60 hover:text-white"
+        className="shrink-0 px-2 text-xs text-muted-foreground hover:text-foreground"
         aria-label="Dismiss"
       >
         ×

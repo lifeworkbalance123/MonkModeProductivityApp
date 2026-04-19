@@ -31,18 +31,18 @@ export default function BlogPostClient({ post, related }: Props) {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[#0F172A]">
+    <div className="min-h-[calc(100vh-4rem)] bg-background">
       <div className="mx-auto max-w-[740px] px-6 py-12 md:py-16">
-        <Link href="/blog" className="mb-8 inline-block text-sm text-[#64748B] no-underline hover:text-amber-500">
+        <Link href="/blog" className="mb-8 inline-block text-sm text-muted-foreground no-underline hover:text-primary">
           ← Back to blog
         </Link>
 
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <span className="rounded bg-amber-500/15 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-amber-500">
+          <span className="rounded bg-primary/15 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-primary">
             {post.category}
           </span>
-          <span className="text-[13px] text-[#475569]">{post.readTimeMinutes} min read</span>
-          <span className="text-[13px] text-[#475569]">
+          <span className="text-[13px] text-muted-foreground">{post.readTimeMinutes} min read</span>
+          <span className="text-[13px] text-muted-foreground">
             {post.publishedAt
               ? new Date(post.publishedAt).toLocaleDateString('en-AU', {
                   day: 'numeric',
@@ -53,17 +53,17 @@ export default function BlogPostClient({ post, related }: Props) {
           </span>
         </div>
 
-        <h1 className="mb-4 text-3xl font-extrabold leading-tight text-white md:text-4xl">{post.title}</h1>
+        <h1 className="mb-4 text-3xl font-extrabold leading-tight text-foreground md:text-4xl">{post.title}</h1>
 
         {post.excerpt ? (
-          <p className="mb-8 text-lg italic leading-relaxed text-[#94A3B8]">{post.excerpt}</p>
+          <p className="mb-8 text-lg italic leading-relaxed text-muted-foreground">{post.excerpt}</p>
         ) : null}
 
-        <div className="mb-8 flex items-center gap-2.5 border-b border-[#334155] pb-8">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-black">
+        <div className="mb-8 flex items-center gap-2.5 border-b border-border pb-8">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
             {post.authorName.charAt(0)}
           </div>
-          <span className="text-sm text-[#94A3B8]">{post.authorName}</span>
+          <span className="text-sm text-muted-foreground">{post.authorName}</span>
         </div>
 
         {post.coverImageUrl ? (
@@ -80,49 +80,49 @@ export default function BlogPostClient({ post, related }: Props) {
         />
 
         <style>{`
-          .blog-content h1 { color: white; font-size: 28px; font-weight: 700; margin: 32px 0 16px; line-height: 1.3; }
-          .blog-content h2 { color: white; font-size: 22px; font-weight: 600; margin: 28px 0 12px; line-height: 1.3; }
-          .blog-content h3 { color: white; font-size: 18px; font-weight: 600; margin: 20px 0 10px; }
-          .blog-content p { color: #CBD5E1; margin: 0 0 16px; font-size: 17px; line-height: 1.8; }
-          .blog-content ul, .blog-content ol { color: #CBD5E1; padding-left: 24px; margin: 0 0 16px; font-size: 17px; }
+          .blog-content h1 { color: var(--foreground); font-size: 28px; font-weight: 700; margin: 32px 0 16px; line-height: 1.3; }
+          .blog-content h2 { color: var(--foreground); font-size: 22px; font-weight: 600; margin: 28px 0 12px; line-height: 1.3; }
+          .blog-content h3 { color: var(--foreground); font-size: 18px; font-weight: 600; margin: 20px 0 10px; }
+          .blog-content p { color: var(--muted-foreground); margin: 0 0 16px; font-size: 17px; line-height: 1.8; }
+          .blog-content ul, .blog-content ol { color: var(--muted-foreground); padding-left: 24px; margin: 0 0 16px; font-size: 17px; }
           .blog-content li { margin-bottom: 6px; line-height: 1.7; }
           .blog-content blockquote {
-            border-left: 3px solid #F59E0B; padding: 16px 20px; margin: 24px 0; background: #1E293B;
-            border-radius: 0 8px 8px 0; color: #94A3B8; font-style: italic; font-size: 18px;
+            border-left: 3px solid var(--primary); padding: 16px 20px; margin: 24px 0; background: var(--card);
+            border-radius: 0 8px 8px 0; color: var(--muted-foreground); font-style: italic; font-size: 18px;
           }
-          .blog-content pre { background: #1E293B; border: 1px solid #334155; border-radius: 10px; padding: 20px; overflow-x: auto; margin: 24px 0; }
-          .blog-content code { color: #F59E0B; font-family: ui-monospace, monospace; font-size: 14px; }
-          .blog-content hr { border: none; border-top: 1px solid #334155; margin: 32px 0; }
-          .blog-content a { color: #F59E0B; text-decoration: underline; }
+          .blog-content pre { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; overflow-x: auto; margin: 24px 0; }
+          .blog-content code { color: var(--primary); font-family: ui-monospace, monospace; font-size: 14px; }
+          .blog-content hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+          .blog-content a { color: var(--primary); text-decoration: underline; }
           .blog-content img { max-width: 100%; height: auto; border-radius: 10px; margin: 24px 0; display: block; }
-          .blog-content strong { color: white; }
+          .blog-content strong { color: var(--foreground); }
         `}</style>
 
-        <div className="mb-12 flex flex-wrap items-center gap-2.5 border-y border-[#334155] py-5">
-          <span className="text-[13px] text-[#64748B]">Share:</span>
+        <div className="mb-12 flex flex-wrap items-center gap-2.5 border-y border-border py-5">
+          <span className="text-[13px] text-muted-foreground">Share:</span>
           <button
             type="button"
             onClick={shareToTwitter}
-            className="rounded-md border border-[#334155] bg-[#1E293B] px-3.5 py-1.5 text-[13px] text-[#94A3B8] hover:border-amber-500/40"
+            className="rounded-md border border-border bg-card px-3.5 py-1.5 text-[13px] text-muted-foreground hover:border-primary/40"
           >
             Share on X
           </button>
           <button
             type="button"
             onClick={copyLink}
-            className="rounded-md border border-[#334155] bg-[#1E293B] px-3.5 py-1.5 text-[13px] text-[#94A3B8] hover:border-amber-500/40"
+            className="rounded-md border border-border bg-card px-3.5 py-1.5 text-[13px] text-muted-foreground hover:border-primary/40"
           >
             Copy link
           </button>
         </div>
 
-        <div className="mb-12 rounded-2xl border border-amber-500/30 bg-[#1E293B] p-8 text-center">
-          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-500">Ready to go further?</p>
-          <h3 className="mb-2.5 text-xl font-bold text-white">Start the 60-day monk mode program</h3>
-          <p className="mb-5 text-[15px] text-[#64748B]">One lesson per day. One action. 60 days to build real discipline.</p>
+        <div className="mb-12 rounded-2xl border border-primary/30 bg-card p-8 text-center">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-primary">Ready to go further?</p>
+          <h3 className="mb-2.5 text-xl font-bold text-foreground">Start the 60-day monk mode program</h3>
+          <p className="mb-5 text-[15px] text-muted-foreground">One lesson per day. One action. 60 days to build real discipline.</p>
           <Link
             href="/join"
-            className="inline-block rounded-lg bg-amber-500 px-7 py-3 text-[15px] font-bold text-black no-underline hover:opacity-95"
+            className="inline-block rounded-lg bg-primary px-7 py-3 text-[15px] font-bold text-primary-foreground no-underline hover:opacity-95"
           >
             Join for $19 →
           </Link>
@@ -130,20 +130,20 @@ export default function BlogPostClient({ post, related }: Props) {
 
         {related.length > 0 ? (
           <div>
-            <h3 className="mb-5 text-xl font-semibold text-white">Related articles</h3>
+            <h3 className="mb-5 text-xl font-semibold text-foreground">Related articles</h3>
             <div className="flex flex-col gap-3">
               {related.map((rp) => (
                 <Link
                   key={rp.id}
                   href={`/blog/${rp.slug}`}
-                  className="flex items-center gap-4 rounded-lg border border-[#334155] bg-[#1E293B] p-3.5 no-underline transition-colors hover:border-amber-500"
+                  className="flex items-center gap-4 rounded-lg border border-border bg-card p-3.5 no-underline transition-colors hover:border-primary"
                 >
                   {rp.coverImageUrl ? (
                     <img src={rp.coverImageUrl} alt="" className="h-[60px] w-[60px] shrink-0 rounded-lg object-cover" />
                   ) : null}
                   <div className="min-w-0">
-                    <p className="mb-1 text-sm font-medium leading-snug text-white">{rp.title}</p>
-                    <p className="m-0 text-xs text-[#64748B]">
+                    <p className="mb-1 text-sm font-medium leading-snug text-foreground">{rp.title}</p>
+                    <p className="m-0 text-xs text-muted-foreground">
                       {rp.readTimeMinutes} min read · {rp.category}
                     </p>
                   </div>

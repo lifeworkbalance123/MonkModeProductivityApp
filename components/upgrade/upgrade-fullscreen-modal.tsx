@@ -43,7 +43,7 @@ export function UpgradeFullscreenModal({
     >
       <button
         type="button"
-        className="absolute top-3 right-3 z-[70] flex h-10 w-10 items-center justify-center rounded-full border border-[#F59E0B]/40 bg-[#111827]/90 text-white shadow-lg transition hover:bg-[#1f2937] hover:scale-105"
+        className="absolute top-3 right-3 z-[70] flex h-10 w-10 items-center justify-center rounded-full border border-primary/40 bg-background/90 text-foreground shadow-lg transition hover:bg-card hover:scale-105"
         onClick={onClose}
         aria-label="Close"
       >
@@ -57,7 +57,7 @@ export function UpgradeFullscreenModal({
         onClick={onClose}
       />
       <div
-        className="relative z-10 flex max-h-[94vh] w-full flex-col overflow-hidden rounded-t-3xl border border-[#F59E0B]/35 bg-[#111827] shadow-[0_0_48px_rgba(245,158,11,0.15)] animate-in slide-in-from-bottom duration-300 sm:mx-auto sm:max-h-[90vh] sm:max-w-5xl sm:rounded-3xl sm:zoom-in-95"
+        className="relative z-10 flex max-h-[94vh] w-full flex-col overflow-hidden rounded-t-3xl border border-primary/35 bg-background shadow-2xl animate-in slide-in-from-bottom duration-300 sm:mx-auto sm:max-h-[90vh] sm:max-w-5xl sm:rounded-3xl sm:zoom-in-95"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">

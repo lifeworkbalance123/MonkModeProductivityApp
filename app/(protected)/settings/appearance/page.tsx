@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { Loader2, Palette } from 'lucide-react'
-import { Navigation } from '@/components/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -60,8 +59,7 @@ export default function AppearanceSettingsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
-      <div className="mx-auto max-w-lg space-y-6 px-4 pb-16 pt-24">
+      <div className="mx-auto max-w-lg space-y-6 px-4 pb-16 pt-4 md:pt-2">
         <div>
           <Link
             href="/settings"

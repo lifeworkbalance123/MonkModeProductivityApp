@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { Navigation } from '@/components/navigation'
+import { AppPageChrome } from '@/components/navigation'
 import { SALES_EMAIL } from '@/lib/site-contact'
 
 const contactEmail = SALES_EMAIL
@@ -24,9 +24,9 @@ function Section({
 
 export default function LearnMorePage() {
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 pt-24 pb-20">
+    <AppPageChrome>
+      <div className="min-h-screen bg-background">
+        <main className="max-w-2xl mx-auto px-4 sm:px-6 pt-4 pb-20 md:pt-2">
         <p className="text-sm text-muted-foreground mb-10">
           <Link href="/" className="text-accent hover:underline">
             ← Home
@@ -141,6 +141,7 @@ export default function LearnMorePage() {
           </Section>
         </div>
       </main>
-    </div>
+      </div>
+    </AppPageChrome>
   )
 }

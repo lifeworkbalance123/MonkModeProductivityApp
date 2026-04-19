@@ -146,6 +146,9 @@ export async function enrollProgramForUser(
       completed_days: [],
       last_active_date: date,
       updated_at: new Date().toISOString(),
+      // Required: CHECK (program_type IN ('legacy','sprint','transform','mastery')).
+      // Older migrations left DEFAULT '60day' on the column; omitting this caused inserts to fail in production.
+      program_type: 'legacy',
     },
     { onConflict: 'user_id' },
   )

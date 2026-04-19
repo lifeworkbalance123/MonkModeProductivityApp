@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { Navigation } from '@/components/navigation'
 import { Card } from '@/components/ui/card'
 import { ProBadge } from '@/components/pro-badge'
 import { useUpgradeOffer } from '@/context/UpgradeOfferContext'
@@ -14,8 +13,7 @@ export default function CloudSyncPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
-      <div className="max-w-lg mx-auto px-4 py-8 pt-24 space-y-6">
+      <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
         <div>
           <h1 className="text-2xl font-semibold">Cloud sync</h1>
           <p className="text-sm text-muted-foreground">

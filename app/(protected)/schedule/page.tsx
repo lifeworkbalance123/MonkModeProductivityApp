@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useMemo } from 'react'
 import { startOfWeek } from 'date-fns'
 import { Loader2 } from 'lucide-react'
-import { Navigation } from '@/components/navigation'
 import { TimeScheduleCard } from '@/components/time-schedule-card'
 import { EmptyState } from '@/components/EmptyState'
 import { ErrorBanner } from '@/components/ErrorBanner'
@@ -101,9 +100,8 @@ export default function SchedulePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
       {loadError ? (
-        <div className="max-w-3xl mx-auto px-4 pt-20 pb-2">
+        <div className="max-w-3xl mx-auto px-4 pt-4 pb-2 md:pt-2">
           <ErrorBanner
             message={loadError}
             onRetry={() => void reload()}

@@ -31,6 +31,11 @@ export default function AuthCallbackPage() {
         data: { session },
       } = await supabase.auth.getSession()
       if (!alive) return
+      if (session && sessionHasRecoveryAmr(session)) {
+        setPasswordResetFromCallback()
+        router.replace('/auth/update-password')
+        return
+      }
       router.replace(session ? '/dashboard' : '/auth')
     }
 
@@ -81,6 +86,7 @@ export default function AuthCallbackPage() {
     void (async () => {
       try {
         const url = new URL(window.location.href)
+        const recoveryFromEmail = url.searchParams.get('recovery') === '1'
         const oauthErr = url.searchParams.get('error_description') ?? url.searchParams.get('error')
         if (oauthErr) {
           if (alive) {
@@ -92,6 +98,7 @@ export default function AuthCallbackPage() {
         }
 
         const code = url.searchParams.get('code')
+        const hadCodeExchange = !!code
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code)
           if (error) {
@@ -110,7 +117,10 @@ export default function AuthCallbackPage() {
         } = await supabase.auth.getSession()
         if (!alive) return
         if (immediate) {
-          if (shouldCompletePasswordReset(immediate)) {
+          const isRecoveryFlow =
+            shouldCompletePasswordReset(immediate) ||
+            (recoveryFromEmail && hadCodeExchange && !!immediate)
+          if (isRecoveryFlow) {
             setPasswordResetFromCallback()
             router.replace('/auth/update-password')
             return
@@ -129,7 +139,10 @@ export default function AuthCallbackPage() {
             data: { session },
           } = await supabase.auth.getSession()
           if (session) {
-            if (shouldCompletePasswordReset(session)) {
+            if (
+              shouldCompletePasswordReset(session) ||
+              (recoveryFromEmail && hadCodeExchange && session)
+            ) {
               setPasswordResetFromCallback()
               router.replace('/auth/update-password')
               return

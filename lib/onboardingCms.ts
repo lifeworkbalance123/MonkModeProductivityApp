@@ -9,6 +9,9 @@ export type OnboardingContentRow = {
   highlight_text: string | null
   display_order?: number
   updated_at: string
+  media_type?: string | null
+  media_url?: string | null
+  media_storage_path?: string | null
 }
 
 export type OnboardingHabitRow = {
@@ -67,6 +70,8 @@ function rowToWizardStep(
       title: row.heading?.trim() || 'Step',
       description: (row.body ?? '').trim(),
       video_url: null,
+      media_type: row.media_type ?? null,
+      media_url: row.media_url ?? null,
       action_label: row.cta_label?.trim() || 'Next',
       step_kind: 'content',
       created_at: t,
@@ -130,6 +135,8 @@ function rowToWizardStep(
     title: heading,
     description,
     video_url: null,
+    media_type: row.media_type ?? null,
+    media_url: row.media_url ?? null,
     action_label: cta,
     step_kind,
     created_at: t,

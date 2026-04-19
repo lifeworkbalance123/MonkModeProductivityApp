@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react'
 import { Loader2 } from 'lucide-react'
-import { Navigation } from '@/components/navigation'
 import { DashboardApp } from '@/components/dashboard-app'
 import { ErrorBanner } from '@/components/ErrorBanner'
 import { useMonkData } from '@/hooks/use-monk-data'
@@ -29,9 +28,8 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
       {loadError ? (
-        <div className="max-w-7xl mx-auto px-4 pt-20 pb-2">
+        <div className="max-w-7xl mx-auto px-4 pt-4 pb-2 md:pt-2">
           <ErrorBanner
             message={loadError}
             onRetry={() => void reload()}

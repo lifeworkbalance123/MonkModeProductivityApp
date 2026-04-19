@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
-export type MediaType = 'youtube' | 'audio' | 'video' | null
+export type MediaType = 'youtube' | 'audio' | 'video' | 'image' | null
 
 type MediaUploaderProps = {
   currentType: MediaType
@@ -35,7 +35,7 @@ export default function MediaUploader({
     if (currentType === 'youtube') {
       setYoutubeInput(currentUrl)
       setPreviewUrl(currentUrl)
-    } else if (currentUrl && (currentType === 'audio' || currentType === 'video')) {
+    } else if (currentUrl && (currentType === 'audio' || currentType === 'video' || currentType === 'image')) {
       setYoutubeInput('')
       setPreviewUrl(currentUrl)
     } else {
@@ -67,6 +67,14 @@ export default function MediaUploader({
     }
   }
 
+  function classifyUpload(file: File): MediaType | null {
+    if (file.type.startsWith('audio/')) return 'audio'
+    if (file.type.startsWith('video/')) return 'video'
+    if (file.type === 'image/png' || file.type === 'image/jpeg') return 'image'
+    if (file.type === 'image/jpg') return 'image'
+    return null
+  }
+
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -76,6 +84,12 @@ export default function MediaUploader({
     setUploadProgress(0)
 
     try {
+      const mediaType = classifyUpload(file)
+      if (!mediaType) {
+        setUploadError('Use PNG or JPG for images, MP3 for audio, or MP4/MOV/WebM for video.')
+        return
+      }
+
       const fileExt = file.name.split('.').pop()
       const fileName = `${context}-${contextId}-${Date.now()}.${fileExt}`
       const storagePath = `${context}/${fileName}`
@@ -95,8 +109,8 @@ export default function MediaUploader({
       const publicUrl = urlData.publicUrl
       setPreviewUrl(publicUrl)
       setUploadProgress(100)
+      setSelectedType(mediaType)
 
-      const mediaType: MediaType = file.type.startsWith('audio/') ? 'audio' : 'video'
       onMediaChange({ type: mediaType, url: publicUrl, storagePath })
     } catch (err: unknown) {
       setUploadError(err instanceof Error ? err.message : String(err))
@@ -164,6 +178,11 @@ export default function MediaUploader({
           (shown before the action button)
         </span>
       </p>
+      <p style={{ color: '#64748B', fontSize: '11px', lineHeight: 1.45, margin: '0 0 12px' }}>
+        <strong style={{ color: '#94A3B8' }}>Images (PNG/JPG):</strong> full-width desktop banners work best at{' '}
+        <strong style={{ color: '#CBD5E1' }}>1920×1080</strong> (16:9). For mobile-focused banners, consider{' '}
+        <strong style={{ color: '#CBD5E1' }}>1280×720</strong> (16:9). Same ratio as Hero / marketing assets.
+      </p>
 
       <div style={{ display: 'flex', gap: '6px', marginBottom: '14px', flexWrap: 'wrap' }}>
         <button type="button" onClick={() => void selectNone()} style={tabStyle('none')}>
@@ -196,16 +215,22 @@ export default function MediaUploader({
         >
           🎬 Video (MP4)
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedType('image')
+            fileInputRef.current?.click()
+          }}
+          style={tabStyle('image')}
+        >
+          🖼 Image (PNG/JPG)
+        </button>
       </div>
 
       <input
         ref={fileInputRef}
         type="file"
-        accept={
-          selectedType === 'audio'
-            ? 'audio/mpeg,audio/mp3,.mp3'
-            : 'video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm'
-        }
+        accept="audio/mpeg,audio/mp3,.mp3,video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm,image/png,image/jpeg,.jpg,.jpeg,.png"
         onChange={(e) => void handleFileUpload(e)}
         style={{ display: 'none' }}
       />
@@ -278,42 +303,68 @@ export default function MediaUploader({
       ) : null}
 
       {!uploading && previewUrl && selectedType !== 'youtube' ? (
-        <div
-          style={{
-            background: '#1E293B',
-            borderRadius: '8px',
-            padding: '10px 14px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            marginBottom: '8px',
-          }}
-        >
-          <span style={{ fontSize: '16px' }}>{selectedType === 'audio' ? '🎵' : '🎬'}</span>
-          <span
+        <div style={{ marginBottom: '8px' }}>
+          {selectedType === 'image' ? (
+            <div
+              style={{
+                borderRadius: '8px',
+                overflow: 'hidden',
+                border: '1px solid #334155',
+                maxWidth: '100%',
+                aspectRatio: '16 / 9',
+                background: '#0f172a',
+              }}
+            >
+              <img
+                src={previewUrl}
+                alt="Uploaded banner preview"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
+            </div>
+          ) : null}
+          <div
             style={{
-              color: '#94A3B8',
-              fontSize: '12px',
-              flex: 1,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
+              background: '#1E293B',
+              borderRadius: '8px',
+              padding: '10px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              marginTop: selectedType === 'image' ? '8px' : 0,
             }}
           >
-            {selectedType === 'audio' ? 'Audio file uploaded' : 'Video file uploaded'}
-          </span>
-          <a
-            href={previewUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              color: '#F59E0B',
-              fontSize: '11px',
-              textDecoration: 'none',
-            }}
-          >
-            Preview
-          </a>
+            <span style={{ fontSize: '16px' }}>
+              {selectedType === 'audio' ? '🎵' : selectedType === 'image' ? '🖼' : '🎬'}
+            </span>
+            <span
+              style={{
+                color: '#94A3B8',
+                fontSize: '12px',
+                flex: 1,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {selectedType === 'audio'
+                ? 'Audio file uploaded'
+                : selectedType === 'image'
+                  ? 'Image uploaded'
+                  : 'Video file uploaded'}
+            </span>
+            <a
+              href={previewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: '#F59E0B',
+                fontSize: '11px',
+                textDecoration: 'none',
+              }}
+            >
+              Preview
+            </a>
+          </div>
         </div>
       ) : null}
 

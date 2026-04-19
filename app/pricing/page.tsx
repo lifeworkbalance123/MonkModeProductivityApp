@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Navigation } from '@/components/navigation'
+import { AppPageChrome } from '@/components/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { captureEvent } from '@/lib/analytics'
@@ -14,9 +14,9 @@ export default function PricingPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <div className="max-w-3xl mx-auto px-4 py-8 pt-24 space-y-6 text-center">
+    <AppPageChrome>
+      <div className="min-h-screen bg-background">
+        <div className="max-w-3xl mx-auto px-4 py-8 space-y-6 text-center">
         <h1 className="text-3xl font-semibold tracking-tight">Simple, honest pricing</h1>
         <p className="text-sm text-muted-foreground">
           Start free. Upgrade when you&apos;re ready. Cancel anytime.
@@ -107,6 +107,7 @@ export default function PricingPage() {
           Back to home
         </Link>
       </div>
-    </div>
+      </div>
+    </AppPageChrome>
   )
 }

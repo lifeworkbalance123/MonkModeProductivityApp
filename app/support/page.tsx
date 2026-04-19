@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Navigation } from '@/components/navigation'
+import { AppPageChrome } from '@/components/navigation'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {
@@ -95,9 +95,9 @@ export default function SupportPage() {
   }, [query])
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Navigation />
-      <div className="mx-auto max-w-6xl px-4 pb-16 pt-24">
+    <AppPageChrome>
+      <div className="min-h-screen bg-background text-foreground">
+        <div className="mx-auto max-w-6xl px-4 pb-16 pt-4 md:pt-2">
         <div className="mx-auto max-w-2xl text-center">
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
             How can we help?
@@ -200,7 +200,8 @@ export default function SupportPage() {
           </a>
         </p>
       </div>
-    </div>
+      </div>
+    </AppPageChrome>
   )
 }
 

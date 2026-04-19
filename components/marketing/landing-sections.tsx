@@ -241,7 +241,7 @@ export function MarketingFooter() {
     <footer className="border-t border-border bg-background">
       <div className="mx-auto grid max-w-[1100px] gap-8 px-4 py-12 md:grid-cols-4">
         <div>
-          <div className="flex items-center gap-2 text-white">
+          <div className="flex items-center gap-2 text-foreground">
             <MonkCubedLogo variant="onDark" className="text-lg" />
           </div>
           <p className="mt-2 text-sm text-muted-foreground">{MONKCUBED_TAGLINE}</p>
