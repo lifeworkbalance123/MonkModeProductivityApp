@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { TimeScheduleCard } from '@/components/time-schedule-card'
+import TemplateSetupModal from '@/components/dashboard/TemplateSetupModal'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -20,7 +21,14 @@ import {
   Video,
 } from 'lucide-react'
 import { addDays, addWeeks, format, getWeek, startOfWeek } from 'date-fns'
-import type { MonkData } from '@/lib/monk-types'
+import type { MonkData, TimeSlot } from '@/lib/monk-types'
+import {
+  applyTemplateToDate,
+  applyTemplateToWeek,
+  categoryToColorClass,
+  getTemplate,
+  type ScheduleTemplate,
+} from '@/lib/scheduleTemplate'
 import { computeStreak, habitWeekProgress } from '@/lib/monk-streak'
 import { youtubeEmbedFromUrl } from '@/lib/morning-video'
 import { usePlan } from '@/hooks/usePlan'
@@ -30,9 +38,14 @@ import ProgramHeader from '@/components/program/ProgramHeader'
 import type { DataServiceContext } from '@/lib/dataService'
 import {
   applyTimeBlockToPlannerWeek,
+  loadDashboardDayJournal,
+  loadPlannerSlotsForDate,
   newTimeSlotClientId,
+  replacePlannerSlotsForDate,
+  saveDashboardDayJournal,
   saveGoal,
   setHabitCompletion,
+  shouldSyncToCloud,
 } from '@/lib/dataService'
 import { captureEvent } from '@/lib/analytics'
 import { getWeeklyStreak, getWeekProgressMessage, type StreakData } from '@/lib/streak'
@@ -87,6 +100,119 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
   const dateKey = format(selectedDate, 'yyyy-MM-dd')
   const heading = format(selectedDate, 'EEEE, MMMM d, yyyy')
   const weekNum = getWeek(selectedDate, { weekStartsOn: 1 })
+  const todayKey = format(new Date(), 'yyyy-MM-dd')
+
+  const [dayGratitude, setDayGratitude] = useState<string[]>(['', '', ''])
+  const [dayAchievements, setDayAchievements] = useState<string[]>(['', '', ''])
+  const [dayTimeSlots, setDayTimeSlots] = useState<TimeSlot[]>([])
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [currentTemplate, setCurrentTemplate] = useState<ScheduleTemplate | null>(null)
+  const [showSaved, setShowSaved] = useState(false)
+  const [todayGratitudeSnapshot, setTodayGratitudeSnapshot] = useState<string[]>([
+    '',
+    '',
+    '',
+  ])
+
+  const prevDateKeyRef = useRef<string | null>(null)
+  const slotsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const gratitudeRef = useRef<string[]>(dayGratitude)
+  const achievementsRef = useRef<string[]>(dayAchievements)
+  const slotsRef = useRef<TimeSlot[]>(dayTimeSlots)
+  const dateKeyRef = useRef(dateKey)
+
+  gratitudeRef.current = dayGratitude
+  achievementsRef.current = dayAchievements
+  slotsRef.current = dayTimeSlots
+  dateKeyRef.current = dateKey
+
+  const saveJournalOnly = useCallback(
+    async (date: string) => {
+      await saveDashboardDayJournal(
+        dataContext,
+        date,
+        gratitudeRef.current as [string, string, string],
+        achievementsRef.current as [string, string, string],
+      )
+      setShowSaved(true)
+      setTimeout(() => setShowSaved(false), 2000)
+    },
+    [dataContext],
+  )
+
+  const loadDayData = useCallback(
+    async (date: string) => {
+      const j = await loadDashboardDayJournal(dataContext, date)
+      if (date !== dateKeyRef.current) return
+      setDayGratitude([...j.morning])
+      setDayAchievements([...j.evening])
+
+      let slots = await loadPlannerSlotsForDate(dataContext, date)
+      if (date !== dateKeyRef.current) return
+
+      if (userId && shouldSyncToCloud(dataContext)) {
+        const template = await getTemplate(userId)
+        if (date !== dateKeyRef.current) return
+        setCurrentTemplate(template)
+
+        if (slots.length === 0 && template?.blocks?.length) {
+          const ok = await applyTemplateToDate(userId, date, template, false)
+          if (date !== dateKeyRef.current) return
+          if (ok) {
+            slots = await loadPlannerSlotsForDate(dataContext, date)
+          }
+          if (date !== dateKeyRef.current) return
+          if (slots.length === 0) {
+            slots = template.blocks.map((b, i) => ({
+              id: `temp-${b.time}-${i}`,
+              time: b.time,
+              category: b.category,
+              activity: b.label,
+              colorClass: categoryToColorClass(b.category),
+            }))
+          }
+        }
+      } else {
+        setCurrentTemplate(null)
+      }
+
+      if (date !== dateKeyRef.current) return
+      setDayTimeSlots(slots)
+    },
+    [dataContext, userId],
+  )
+
+  useEffect(() => {
+    if (dateKey === todayKey) {
+      setTodayGratitudeSnapshot([...dayGratitude])
+    }
+  }, [dateKey, todayKey, dayGratitude])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const prev = prevDateKeyRef.current
+      if (prev !== null && prev !== dateKey) {
+        if (slotsDebounceRef.current) {
+          clearTimeout(slotsDebounceRef.current)
+          slotsDebounceRef.current = null
+        }
+        await saveDashboardDayJournal(
+          dataContext,
+          prev,
+          gratitudeRef.current as [string, string, string],
+          achievementsRef.current as [string, string, string],
+        )
+        const r = await replacePlannerSlotsForDate(dataContext, prev, slotsRef.current)
+        if (!cancelled && r.slots) setDayTimeSlots(r.slots)
+      }
+      prevDateKeyRef.current = dateKey
+      await loadDayData(dateKey)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [dateKey, loadDayData, dataContext])
 
   useEffect(() => {
     if (!userId) {
@@ -109,9 +235,11 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
   ).length
 
   const setGratitude = (i: number, value: string) => {
-    const g = [...data.gratitude]
-    g[i] = value
-    onChange({ ...data, gratitude: g })
+    setDayGratitude((prev) => {
+      const g = [...prev]
+      g[i] = value
+      return g
+    })
     if (!trackedMorningJournal && value.trim().length > 0) {
       setTrackedMorningJournal(true)
       captureEvent('journal_entry_saved', { type: 'morning' })
@@ -119,9 +247,11 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
   }
 
   const setAchievement = (i: number, value: string) => {
-    const a = [...data.achievements]
-    a[i] = value
-    onChange({ ...data, achievements: a })
+    setDayAchievements((prev) => {
+      const a = [...prev]
+      a[i] = value
+      return a
+    })
     if (!trackedEveningJournal && value.trim().length > 0) {
       setTrackedEveningJournal(true)
       captureEvent('journal_entry_saved', { type: 'evening' })
@@ -221,7 +351,10 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
 
   return (
     <div className="mx-auto min-w-0 max-w-7xl px-4 py-8 pt-24 sm:px-6 lg:px-8">
-      <GettingStartedChecklist data={data} />
+      <GettingStartedChecklist
+        data={data}
+        morningGratitudeFields={todayGratitudeSnapshot}
+      />
       <div className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-2xl sm:p-6">
         <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
           <div>
@@ -248,7 +381,12 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <div className="flex min-w-0 flex-1 flex-wrap justify-center gap-1 md:flex-none md:justify-start">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-1 md:flex-none md:justify-start">
+              {showSaved ? (
+                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 shrink-0 md:order-last md:ml-1">
+                  ✓ Saved
+                </span>
+              ) : null}
               {daysShort.map((day, idx) => (
                 <button
                   key={day}
@@ -296,8 +434,9 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
                       {i + 1}.
                     </span>
                     <Input
-                      value={data.gratitude[i] ?? ''}
+                      value={dayGratitude[i] ?? ''}
                       onChange={(e) => setGratitude(i, e.target.value)}
+                      onBlur={() => void saveJournalOnly(dateKey)}
                       className="inline-flex max-w-md h-8 text-sm bg-background/60 border-border"
                       placeholder="…"
                     />
@@ -379,11 +518,65 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
 
             <TimeScheduleCard
               className="max-md:order-30"
-              timeSlots={data.timeSlots}
-              onTimeSlotsChange={(timeSlots) =>
-                onChange({ ...data, timeSlots })
-              }
+              timeSlots={dayTimeSlots}
+              onTimeSlotsChange={(next) => {
+                setDayTimeSlots(next)
+                slotsRef.current = next
+                if (slotsDebounceRef.current) clearTimeout(slotsDebounceRef.current)
+                slotsDebounceRef.current = setTimeout(() => {
+                  void (async () => {
+                    const d = dateKeyRef.current
+                    const r = await replacePlannerSlotsForDate(
+                      dataContext,
+                      d,
+                      slotsRef.current,
+                    )
+                    if (r.slots) setDayTimeSlots(r.slots)
+                    setShowSaved(true)
+                    setTimeout(() => setShowSaved(false), 2000)
+                  })()
+                }, 400)
+              }}
               getNewSlotId={() => newTimeSlotClientId(dataContext)}
+              headerActions={
+                <>
+                  {currentTemplate && shouldSyncToCloud(dataContext) ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (
+                          !window.confirm(
+                            "Reset this day's schedule to your weekly template? Current entries will be replaced.",
+                          )
+                        )
+                          return
+                        void (async () => {
+                          if (!userId || !currentTemplate) return
+                          const ok = await applyTemplateToDate(
+                            userId,
+                            dateKey,
+                            currentTemplate,
+                            true,
+                          )
+                          if (ok) await loadDayData(dateKey)
+                        })()
+                      }}
+                      className="rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-secondary"
+                    >
+                      ↺ Reset day
+                    </button>
+                  ) : null}
+                  {shouldSyncToCloud(dataContext) ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowTemplateModal(true)}
+                      className="rounded-md border border-accent/30 px-2 py-1 text-[11px] font-medium text-accent hover:bg-accent/10"
+                    >
+                      Weekly template
+                    </button>
+                  ) : null}
+                </>
+              }
               onApplyTimeBlockToWeek={async (block, dayIndices) => {
                 const r = await applyTimeBlockToPlannerWeek(
                   dataContext,
@@ -421,8 +614,9 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
                       {i + 1}.
                     </span>
                     <Input
-                      value={data.achievements[i] ?? ''}
+                      value={dayAchievements[i] ?? ''}
                       onChange={(e) => setAchievement(i, e.target.value)}
+                      onBlur={() => void saveJournalOnly(dateKey)}
                       disabled={!journalEvening}
                       className="inline-flex max-w-md h-8 text-sm bg-background/60 border-border"
                       placeholder="…"
@@ -656,6 +850,25 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
           </div>
         </div>
       </div>
+
+      <TemplateSetupModal
+        isOpen={showTemplateModal}
+        onClose={() => setShowTemplateModal(false)}
+        onSaved={async (template) => {
+          setCurrentTemplate(template)
+          if (
+            !window.confirm(
+              'Apply this template to the entire current week? Days that already have entries will not be changed.',
+            )
+          ) {
+            return
+          }
+          if (!userId) return
+          const weekStartStr = format(weekStart, 'yyyy-MM-dd')
+          await applyTemplateToWeek(userId, weekStartStr, template, false)
+          await loadDayData(dateKey)
+        }}
+      />
     </div>
   )
 }

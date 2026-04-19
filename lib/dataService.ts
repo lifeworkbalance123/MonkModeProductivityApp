@@ -16,6 +16,14 @@ import {
   loadDeepWorkSessionsLocal,
   type DeepWorkSession,
 } from '@/lib/deep-work-sessions'
+import { loadDayLocal, saveDayPartial } from '@/lib/dashboard-day-local'
+import {
+  saveTemplate as upsertWeeklyScheduleTemplate,
+  timeSlotsFromTemplate,
+  scheduleTemplateFromTimeSlots,
+  type ScheduleTemplate,
+  type TemplateBlock,
+} from '@/lib/scheduleTemplate'
 
 export type DataServiceContext = {
   userId: string | null
@@ -95,13 +103,15 @@ function isCloudDatasetEmpty(
   completions: number,
   slots: number,
   journal: number,
+  templateBlocks: number,
 ): boolean {
   return (
     habits === 0 &&
     goals === 0 &&
     completions === 0 &&
     slots === 0 &&
-    journal === 0
+    journal === 0 &&
+    templateBlocks === 0
   )
 }
 
@@ -168,7 +178,7 @@ export async function loadFullMonkData(
 
   const uid = ctx.userId
 
-  const [habitsRes, compRes, goalsRes, slotsRes, journalRes] = await Promise.all([
+  const [habitsRes, compRes, goalsRes, slotsRes, journalRes, templateRes] = await Promise.all([
     supabase.from('habits').select('id,name,icon').eq('user_id', uid),
     supabase.from('habit_completions').select('habit_id,date,completed').eq('user_id', uid),
     supabase
@@ -182,6 +192,11 @@ export async function loadFullMonkData(
       .eq('user_id', uid)
       .eq('date', SCHEDULE_ANCHOR_DATE),
     supabase.from('journal_entries').select('*').eq('user_id', uid),
+    supabase
+      .from('schedule_templates')
+      .select('start_time,increment_minutes,block_count,blocks')
+      .eq('user_id', uid)
+      .maybeSingle(),
   ])
 
   const habitsN = habitsRes.data?.length ?? 0
@@ -189,6 +204,9 @@ export async function loadFullMonkData(
   const compN = compRes.data?.length ?? 0
   const slotsN = slotsRes.data?.length ?? 0
   const journalN = journalRes.data?.length ?? 0
+  const templateBlocksN = Array.isArray(templateRes.data?.blocks)
+    ? (templateRes.data!.blocks as unknown[]).length
+    : 0
 
   const local = loadMonk()
   const hadLocalPersisted =
@@ -196,7 +214,7 @@ export async function loadFullMonkData(
     !!window.localStorage.getItem('monk-mode-mvp-v1')
 
   if (
-    isCloudDatasetEmpty(habitsN, goalsN, compN, slotsN, journalN) &&
+    isCloudDatasetEmpty(habitsN, goalsN, compN, slotsN, journalN, templateBlocksN) &&
     hadLocalPersisted &&
     (local.habits.length > 0 || local.goals.length > 0)
   ) {
@@ -210,7 +228,8 @@ export async function loadFullMonkData(
     compRes.error ||
     goalsRes.error ||
     slotsRes.error ||
-    journalRes.error
+    journalRes.error ||
+    templateRes.error
   ) {
     console.error('monkcubed cloud load error', {
       habitsRes,
@@ -218,6 +237,7 @@ export async function loadFullMonkData(
       goalsRes,
       slotsRes,
       journalRes,
+      templateRes,
     })
     return {
       data: mergeVideoFields(local),
@@ -240,13 +260,30 @@ export async function loadFullMonkData(
     completed: r.completed,
   }))
 
-  const timeSlots: TimeSlot[] = (slotsRes.data ?? []).map((r) => ({
-    id: r.id,
-    time: r.time_slot,
-    category: r.category,
-    activity: r.activity,
-    colorClass: r.colour,
-  }))
+  let timeSlots: TimeSlot[]
+  const tplRow = templateRes.data
+  if (
+    tplRow &&
+    Array.isArray(tplRow.blocks) &&
+    (tplRow.blocks as unknown[]).length > 0
+  ) {
+    const st: ScheduleTemplate = {
+      userId: uid,
+      startTime: tplRow.start_time,
+      incrementMinutes: tplRow.increment_minutes,
+      blockCount: tplRow.block_count,
+      blocks: tplRow.blocks as TemplateBlock[],
+    }
+    timeSlots = timeSlotsFromTemplate(st)
+  } else {
+    timeSlots = (slotsRes.data ?? []).map((r) => ({
+      id: r.id,
+      time: r.time_slot,
+      category: r.category,
+      activity: r.activity,
+      colorClass: r.colour,
+    }))
+  }
 
   let gratitude: string[] = ['', '', '']
   let achievements: string[] = ['', '', '']
@@ -335,29 +372,18 @@ export async function persistFullMonkData(
     }
   }
 
+  const weeklyTpl = scheduleTemplateFromTimeSlots(uid, normalized.timeSlots)
+  const tplSaved = await upsertWeeklyScheduleTemplate(weeklyTpl)
+  if (!tplSaved) {
+    console.error('schedule_templates upsert')
+    failures.push('schedule_templates')
+  }
+
   await supabase
     .from('planner_slots')
     .delete()
     .eq('user_id', uid)
     .eq('date', SCHEDULE_ANCHOR_DATE)
-
-  const slotRows = normalized.timeSlots.map((t) => ({
-    id: t.id,
-    user_id: uid,
-    date: SCHEDULE_ANCHOR_DATE,
-    time_slot: t.time,
-    activity: t.activity,
-    category: t.category,
-    colour: t.colorClass,
-  }))
-
-  if (slotRows.length) {
-    const { error: pErr } = await supabase.from('planner_slots').insert(slotRows)
-    if (pErr) {
-      console.error('planner_slots insert', pErr)
-      failures.push(pErr.message)
-    }
-  }
 
   const g0 = normalized.gratitude[0] ?? ''
   const g1 = normalized.gratitude[1] ?? ''
@@ -445,6 +471,7 @@ export async function resetAllUserData(ctx: DataServiceContext): Promise<void> {
     await supabase.from('habits').delete().eq('user_id', uid)
     await supabase.from('goals').delete().eq('user_id', uid)
     await supabase.from('planner_slots').delete().eq('user_id', uid)
+    await supabase.from('schedule_templates').delete().eq('user_id', uid)
     await supabase.from('journal_entries').delete().eq('user_id', uid)
     await supabase.from('streaks').delete().eq('user_id', uid)
   }
@@ -565,6 +592,26 @@ export async function deleteGoal(ctx: DataServiceContext, id: string): Promise<v
 
 export async function getPlannerSlots(ctx: DataServiceContext): Promise<TimeSlot[]> {
   if (shouldSyncToCloud(ctx) && ctx.userId) {
+    const { data: tplRow, error: tErr } = await supabase
+      .from('schedule_templates')
+      .select('start_time,increment_minutes,block_count,blocks')
+      .eq('user_id', ctx.userId)
+      .maybeSingle()
+    if (
+      !tErr &&
+      tplRow &&
+      Array.isArray(tplRow.blocks) &&
+      tplRow.blocks.length > 0
+    ) {
+      const st: ScheduleTemplate = {
+        userId: ctx.userId,
+        startTime: tplRow.start_time,
+        incrementMinutes: tplRow.increment_minutes,
+        blockCount: tplRow.block_count,
+        blocks: tplRow.blocks as TemplateBlock[],
+      }
+      return timeSlotsFromTemplate(st)
+    }
     const { data, error } = await supabase
       .from('planner_slots')
       .select('id,time_slot,activity,category,colour')
@@ -590,22 +637,23 @@ export async function savePlannerSlot(
   slot: TimeSlot,
 ): Promise<{ error: string | null }> {
   if (!shouldSyncToCloud(ctx) || !ctx.userId) return { error: null }
-  const { error } = await supabase.from('planner_slots').upsert(
-    {
-      id: slot.id,
-      user_id: ctx.userId,
-      date: SCHEDULE_ANCHOR_DATE,
-      time_slot: slot.time,
-      activity: slot.activity,
-      category: slot.category,
-      colour: slot.colorClass,
-    },
-    { onConflict: 'id' },
-  )
-  if (error) {
-    console.error(error)
-    return { error: error.message }
+  let slots = await getPlannerSlots(ctx)
+  const ix = slots.findIndex((s) => s.time === slot.time)
+  if (ix >= 0) {
+    const next = [...slots]
+    next[ix] = slot
+    slots = next
+  } else {
+    slots = [...slots, slot]
   }
+  const tpl = scheduleTemplateFromTimeSlots(ctx.userId, slots)
+  const ok = await upsertWeeklyScheduleTemplate(tpl)
+  if (!ok) return { error: 'Could not save schedule' }
+  await supabase
+    .from('planner_slots')
+    .delete()
+    .eq('user_id', ctx.userId)
+    .eq('date', SCHEDULE_ANCHOR_DATE)
   return { error: null }
 }
 
@@ -614,7 +662,196 @@ export async function deletePlannerSlot(
   id: string,
 ): Promise<void> {
   if (!shouldSyncToCloud(ctx) || !ctx.userId) return
-  await supabase.from('planner_slots').delete().eq('id', id).eq('user_id', ctx.userId)
+  let slots = await getPlannerSlots(ctx)
+  slots = slots.filter((s) => s.id !== id)
+  const tpl = scheduleTemplateFromTimeSlots(ctx.userId, slots)
+  await upsertWeeklyScheduleTemplate(tpl)
+  await supabase
+    .from('planner_slots')
+    .delete()
+    .eq('user_id', ctx.userId)
+    .eq('date', SCHEDULE_ANCHOR_DATE)
+}
+
+/** Journal for a real calendar day (dashboard). Free tier uses localStorage. */
+export async function loadDashboardDayJournal(
+  ctx: DataServiceContext,
+  date: string,
+): Promise<{
+  morning: [string, string, string]
+  evening: [string, string, string]
+}> {
+  const z = (): [string, string, string] => ['', '', '']
+  if (!shouldSyncToCloud(ctx) || !ctx.userId) {
+    const d = loadDayLocal(date)
+    return {
+      morning: (d?.gratitude ?? z()) as [string, string, string],
+      evening: (d?.achievements ?? z()) as [string, string, string],
+    }
+  }
+  const uid = ctx.userId
+  const { data, error } = await supabase
+    .from('journal_entries')
+    .select('type,entry_1,entry_2,entry_3')
+    .eq('user_id', uid)
+    .eq('date', date)
+  if (error) {
+    console.error('loadDashboardDayJournal', error)
+    return { morning: z(), evening: z() }
+  }
+  let morning = z()
+  let evening = z()
+  for (const row of data ?? []) {
+    if (row.type === 'morning') {
+      morning = [row.entry_1 ?? '', row.entry_2 ?? '', row.entry_3 ?? '']
+    } else if (row.type === 'evening') {
+      evening = [row.entry_1 ?? '', row.entry_2 ?? '', row.entry_3 ?? '']
+    }
+  }
+  return { morning, evening }
+}
+
+export async function saveDashboardDayJournal(
+  ctx: DataServiceContext,
+  date: string,
+  morning: [string, string, string],
+  evening: [string, string, string],
+): Promise<void> {
+  if (!shouldSyncToCloud(ctx) || !ctx.userId) {
+    saveDayPartial(date, {
+      gratitude: [...morning],
+      achievements: [...evening],
+    })
+    return
+  }
+  const uid = ctx.userId
+  const [m1, m2, m3] = morning
+  const [e1, e2, e3] = evening
+  const now = new Date().toISOString()
+
+  if (m1.trim() || m2.trim() || m3.trim()) {
+    const { error } = await supabase.from('journal_entries').upsert(
+      {
+        user_id: uid,
+        date,
+        type: 'morning' as const,
+        entry_1: m1,
+        entry_2: m2,
+        entry_3: m3,
+        updated_at: now,
+      },
+      { onConflict: 'user_id,date,type' },
+    )
+    if (error) console.error('saveDashboardDayJournal morning', error)
+  } else {
+    await supabase
+      .from('journal_entries')
+      .delete()
+      .eq('user_id', uid)
+      .eq('date', date)
+      .eq('type', 'morning')
+  }
+
+  if (e1.trim() || e2.trim() || e3.trim()) {
+    const { error } = await supabase.from('journal_entries').upsert(
+      {
+        user_id: uid,
+        date,
+        type: 'evening' as const,
+        entry_1: e1,
+        entry_2: e2,
+        entry_3: e3,
+        updated_at: now,
+      },
+      { onConflict: 'user_id,date,type' },
+    )
+    if (error) console.error('saveDashboardDayJournal evening', error)
+  } else {
+    await supabase
+      .from('journal_entries')
+      .delete()
+      .eq('user_id', uid)
+      .eq('date', date)
+      .eq('type', 'evening')
+  }
+}
+
+/** Planner slots for a real calendar day (dashboard). */
+export async function loadPlannerSlotsForDate(
+  ctx: DataServiceContext,
+  date: string,
+): Promise<TimeSlot[]> {
+  if (!shouldSyncToCloud(ctx) || !ctx.userId) {
+    return loadDayLocal(date)?.timeSlots ?? []
+  }
+  const { data, error } = await supabase
+    .from('planner_slots')
+    .select('id,time_slot,activity,category,colour')
+    .eq('user_id', ctx.userId)
+    .eq('date', date)
+    .order('time_slot', { ascending: true })
+  if (error) {
+    console.error('loadPlannerSlotsForDate', error)
+    return []
+  }
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    time: r.time_slot,
+    category: r.category ?? 'Personal',
+    activity: r.activity ?? '',
+    colorClass: r.colour ?? 'bg-muted',
+  }))
+}
+
+export async function replacePlannerSlotsForDate(
+  ctx: DataServiceContext,
+  date: string,
+  slots: TimeSlot[],
+): Promise<{ error: string | null; slots: TimeSlot[] }> {
+  if (!shouldSyncToCloud(ctx) || !ctx.userId) {
+    saveDayPartial(date, { timeSlots: slots })
+    return { error: null, slots }
+  }
+  const uid = ctx.userId
+  const { error: delErr } = await supabase
+    .from('planner_slots')
+    .delete()
+    .eq('user_id', uid)
+    .eq('date', date)
+  if (delErr) {
+    console.error('replacePlannerSlotsForDate delete', delErr)
+    return { error: delErr.message, slots }
+  }
+  if (slots.length === 0) return { error: null, slots: [] }
+
+  const rows = slots.map((t) => ({
+    id: isUuid(t.id) ? t.id : crypto.randomUUID(),
+    user_id: uid,
+    date,
+    time_slot: t.time,
+    activity: t.activity,
+    category: t.category,
+    colour: t.colorClass,
+  }))
+
+  const { data: inserted, error } = await supabase
+    .from('planner_slots')
+    .insert(rows)
+    .select('id,time_slot,activity,category,colour')
+
+  if (error) {
+    console.error('replacePlannerSlotsForDate insert', error)
+    return { error: error.message, slots }
+  }
+
+  const mapped: TimeSlot[] = (inserted ?? []).map((r) => ({
+    id: r.id,
+    time: r.time_slot,
+    category: r.category ?? 'Personal',
+    activity: r.activity ?? '',
+    colorClass: r.colour ?? 'bg-muted',
+  }))
+  return { error: null, slots: mapped }
 }
 
 /**

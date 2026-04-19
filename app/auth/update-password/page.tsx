@@ -45,7 +45,7 @@ export default function UpdatePasswordPage() {
 
   useEffect(() => {
     let cancelled = false
-    let timeoutId: ReturnType<typeof window.setTimeout> | undefined
+    let timeoutId: number | undefined
     const unsubs: Array<() => void> = []
 
     function markReady() {

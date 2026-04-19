@@ -30,7 +30,14 @@ function writeState(next: ChecklistState) {
   }
 }
 
-export function GettingStartedChecklist({ data }: { data: MonkData }) {
+export function GettingStartedChecklist({
+  data,
+  morningGratitudeFields,
+}: {
+  data: MonkData
+  /** When set (e.g. calendar-today snapshot from dashboard), use for gratitude check. */
+  morningGratitudeFields?: string[]
+}) {
   const { showToast } = useToast()
   const [hydrated, setHydrated] = useState(false)
   const [dismissed, setDismissed] = useState(false)
@@ -45,7 +52,8 @@ export function GettingStartedChecklist({ data }: { data: MonkData }) {
   const hasHabit = data.habits.length > 0
   const hasGoal = data.goals.length > 0
   const hasSlot = data.timeSlots.length > 0
-  const hasGratitude = data.gratitude.some((g) => g.trim().length > 0)
+  const gratitudeForCheck = morningGratitudeFields ?? data.gratitude
+  const hasGratitude = gratitudeForCheck.some((g) => g.trim().length > 0)
 
   const allDone = hasHabit && hasGoal && hasSlot && hasGratitude
 

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import { addMinutes, format, parse } from 'date-fns'
 import { Clock, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
@@ -152,6 +152,8 @@ type Props = {
   ) => Promise<{ error: string | null }>
   /** Show link to weekly planner in the card header */
   showPlannerLink?: boolean
+  /** Optional controls next to the title (e.g. weekly template). */
+  headerActions?: ReactNode
   className?: string
 }
 
@@ -161,6 +163,7 @@ export function TimeScheduleCard({
   getNewSlotId,
   onApplyTimeBlockToWeek,
   showPlannerLink = true,
+  headerActions,
   className,
 }: Props) {
   const [increment, setIncrement] = useState<TimeScheduleIncrement>(() =>
@@ -320,9 +323,12 @@ export function TimeScheduleCard({
       ) : null}
 
       <div className="mb-3 flex flex-col gap-2 pr-16 md:flex-row md:items-start md:justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Clock className="w-4 h-4 text-accent shrink-0" />
           <span className="font-medium">Time Schedule</span>
+          {headerActions ? (
+            <span className="flex flex-wrap items-center gap-1.5">{headerActions}</span>
+          ) : null}
         </div>
         {showPlannerLink ? (
           <Link
