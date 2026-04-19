@@ -203,8 +203,9 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
           gratitudeRef.current as [string, string, string],
           achievementsRef.current as [string, string, string],
         )
-        const r = await replacePlannerSlotsForDate(dataContext, prev, slotsRef.current)
-        if (!cancelled && r.slots) setDayTimeSlots(r.slots)
+        await replacePlannerSlotsForDate(dataContext, prev, slotsRef.current)
+        // Do not setDayTimeSlots from the save response: local state is already
+        // correct, and replacing rows remounts inputs (cursor jump / lost keys).
       }
       prevDateKeyRef.current = dateKey
       await loadDayData(dateKey)
@@ -518,20 +519,26 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
 
             <TimeScheduleCard
               className="max-md:order-30"
+              selectedDateKey={dateKey}
               timeSlots={dayTimeSlots}
               onTimeSlotsChange={(next) => {
-                setDayTimeSlots(next)
-                slotsRef.current = next
+                setDayTimeSlots((prev) => {
+                  const resolved =
+                    typeof next === 'function' ? next(prev) : next
+                  slotsRef.current = resolved
+                  return resolved
+                })
                 if (slotsDebounceRef.current) clearTimeout(slotsDebounceRef.current)
                 slotsDebounceRef.current = setTimeout(() => {
                   void (async () => {
                     const d = dateKeyRef.current
-                    const r = await replacePlannerSlotsForDate(
+                    await replacePlannerSlotsForDate(
                       dataContext,
                       d,
                       slotsRef.current,
                     )
-                    if (r.slots) setDayTimeSlots(r.slots)
+                    // Keep planner slot state from local edits only; applying
+                    // DB rows here remounts list items and breaks text caret.
                     setShowSaved(true)
                     setTimeout(() => setShowSaved(false), 2000)
                   })()

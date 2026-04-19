@@ -1,7 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  memo,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { addMinutes, format, parse } from 'date-fns'
 import { Clock, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
@@ -127,22 +134,186 @@ function coerceTimeValue(raw: string, options: { value: string; label: string }[
   return options[0]?.value ?? '09:00'
 }
 
-const TIME_SLOT_ACTIVITY_MIN_CH = 28
-const TIME_SLOT_ACTIVITY_MAX_CH = 120
-
-function timeSlotActivityWidthCh(text: string): number {
-  const n = text.length + 4
-  return Math.min(
-    TIME_SLOT_ACTIVITY_MAX_CH,
-    Math.max(TIME_SLOT_ACTIVITY_MIN_CH, n),
-  )
-}
-
 type RepeatPref = { enabled: boolean; days: number[] }
 
+export type TimeSlotsChange =
+  | TimeSlot[]
+  | ((prev: TimeSlot[]) => TimeSlot[])
+
+const TimeScheduleSlotRow = memo(function TimeScheduleSlotRow({
+  slot,
+  coerced,
+  timeOptions,
+  repeat,
+  updateSlot,
+  deleteSlot,
+  setActivityRef,
+  focusActivity,
+  onApplyTimeBlockToWeek,
+  setRepeatEnabled,
+  toggleRepeatDay,
+  applyRepeat,
+}: {
+  slot: TimeSlot
+  coerced: string
+  timeOptions: { value: string; label: string }[]
+  repeat: RepeatPref
+  updateSlot: (
+    id: string,
+    updates: { time?: string; category?: string; activity?: string },
+  ) => void
+  deleteSlot: (id: string) => void
+  setActivityRef: (id: string, el: HTMLInputElement | null) => void
+  focusActivity: (id: string) => void
+  onApplyTimeBlockToWeek?: (
+    block: Pick<TimeSlot, 'time' | 'category' | 'activity' | 'colorClass'>,
+    dayIndices: number[],
+  ) => Promise<{ error: string | null }>
+  setRepeatEnabled: (id: string, enabled: boolean) => void
+  toggleRepeatDay: (id: string, dayIndex: number) => void
+  applyRepeat: (slot: TimeSlot) => void | Promise<void>
+}) {
+  return (
+    <div className="rounded-lg border border-border/60 bg-secondary/20 p-2 space-y-2">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-3">
+        <select
+          value={coerced}
+          onChange={(e) => updateSlot(slot.id, { time: e.target.value })}
+          aria-label="Time"
+          className="h-11 w-full shrink-0 rounded-md border border-border bg-background/60 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring md:h-8 md:w-[7.25rem]"
+        >
+          {!timeOptions.some((o) => o.value === slot.time) ? (
+            <option value={slot.time}>{slot.time}</option>
+          ) : null}
+          {timeOptions.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <div className="flex w-full min-w-0 flex-col gap-2 md:w-auto md:shrink-0 md:flex-row md:items-center md:gap-2">
+          <div
+            className={`h-6 w-1 shrink-0 rounded-full max-md:hidden md:block ${slot.colorClass}`}
+            aria-hidden
+          />
+          <div
+            className={`h-1 w-6 shrink-0 rounded-full md:hidden ${slot.colorClass}`}
+            aria-hidden
+          />
+          <select
+            value={slot.category}
+            onChange={(e) =>
+              updateSlot(slot.id, { category: e.target.value })
+            }
+            aria-label="Category"
+            className="h-11 w-full min-w-0 flex-1 rounded-md border border-border bg-background/60 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring md:h-8 md:max-w-[9rem] md:flex-none md:shrink-0"
+          >
+            {!TIME_SLOT_CATEGORY_OPTIONS.some(
+              (c) => c.label === slot.category,
+            ) ? (
+              <option value={slot.category}>{slot.category}</option>
+            ) : null}
+            {TIME_SLOT_CATEGORY_OPTIONS.map((c) => (
+              <option key={c.label} value={c.label}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div
+          className="min-w-0 w-full rounded-md border border-border bg-background/60 md:flex-1 md:overflow-x-auto md:overflow-y-hidden md:[scrollbar-width:thin]"
+          title="Scroll sideways for longer activity text (desktop)"
+        >
+          <Input
+            ref={(el) => setActivityRef(slot.id, el)}
+            value={slot.activity}
+            onChange={(e) =>
+              updateSlot(slot.id, { activity: e.target.value })
+            }
+            aria-label="Activity"
+            className="time-schedule-activity-input h-11 w-full min-w-[28ch] border-0 bg-transparent px-2 py-1 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0 rounded-none md:h-8 md:max-w-none md:shrink-0"
+          />
+        </div>
+        <div className="flex w-full shrink-0 items-center justify-end gap-1 self-stretch pt-1 md:w-auto md:justify-start md:self-center md:pt-0">
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="md:h-8 md:w-8"
+            aria-label="Edit activity"
+            onClick={() => focusActivity(slot.id)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="text-destructive hover:text-destructive md:h-8 md:w-8"
+            aria-label="Remove time block"
+            onClick={() => deleteSlot(slot.id)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {onApplyTimeBlockToWeek ? (
+        <div className="flex flex-col gap-2 border-l-2 border-border/50 pl-2 md:pl-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Switch
+              id={`repeat-${slot.id}`}
+              checked={repeat.enabled}
+              onCheckedChange={(v) => setRepeatEnabled(slot.id, v)}
+            />
+            <Label
+              htmlFor={`repeat-${slot.id}`}
+              className="text-xs font-normal cursor-pointer"
+            >
+              Repeat this block on selected days (copies into planner data for
+              this week)
+            </Label>
+          </div>
+          {repeat.enabled ? (
+            <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center md:gap-2">
+              <div className="flex flex-wrap gap-2">
+                {DAY_SHORT.map((label, i) => (
+                  <label
+                    key={label}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-border/80 bg-background/40 px-2 py-1 text-xs"
+                  >
+                    <Checkbox
+                      checked={repeat.days.includes(i)}
+                      onCheckedChange={() => toggleRepeatDay(slot.id, i)}
+                      className="border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent data-[state=checked]:text-accent-foreground"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="w-full shrink-0 text-xs md:h-8 md:w-auto"
+                disabled={repeat.days.length === 0}
+                onClick={() => void applyRepeat(slot)}
+              >
+                Apply to week
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+})
+
 type Props = {
+  /** Stable list identity for dashboard rows (e.g. yyyy-MM-dd); avoids remounts when slot ids sync. */
+  selectedDateKey?: string
   timeSlots: TimeSlot[]
-  onTimeSlotsChange: (next: TimeSlot[]) => void
+  onTimeSlotsChange: (next: TimeSlotsChange) => void
   /** New row ids (Supabase UUID when synced). */
   getNewSlotId: () => string
   /** When set, “Apply to week” inserts planner rows for signed-in Pro users. */
@@ -158,6 +329,7 @@ type Props = {
 }
 
 export function TimeScheduleCard({
+  selectedDateKey,
   timeSlots,
   onTimeSlotsChange,
   getNewSlotId,
@@ -189,7 +361,7 @@ export function TimeScheduleCard({
   }, [])
 
   const pushChange = useCallback(
-    (next: TimeSlot[]) => {
+    (next: TimeSlotsChange) => {
       onTimeSlotsChange(next)
       flashSaved()
     },
@@ -205,15 +377,17 @@ export function TimeScheduleCard({
         /* ignore */
       }
       const nextOptions = buildTimeOptions(nextInc)
-      const normalized = timeSlots.map((s) => ({
-        ...s,
-        time: coerceTimeValue(s.time, nextOptions),
-      }))
-      if (normalized.some((s, i) => s.time !== timeSlots[i].time)) {
-        pushChange(normalized)
-      }
+      pushChange((prev) => {
+        const normalized = prev.map((s) => ({
+          ...s,
+          time: coerceTimeValue(s.time, nextOptions),
+        }))
+        return normalized.some((s, i) => s.time !== prev[i].time)
+          ? normalized
+          : prev
+      })
     },
-    [timeSlots, pushChange],
+    [pushChange],
   )
 
   const updateSlot = useCallback(
@@ -221,8 +395,8 @@ export function TimeScheduleCard({
       id: string,
       updates: { time?: string; category?: string; activity?: string },
     ) => {
-      pushChange(
-        timeSlots.map((s) => {
+      pushChange((prev) =>
+        prev.map((s) => {
           if (s.id !== id) return s
           const next = { ...s, ...updates }
           if (updates.category !== undefined) {
@@ -235,7 +409,7 @@ export function TimeScheduleCard({
         }),
       )
     },
-    [timeSlots, pushChange, timeOptions],
+    [pushChange, timeOptions],
   )
 
   const deleteSlot = useCallback(
@@ -245,16 +419,16 @@ export function TimeScheduleCard({
         delete next[id]
         return next
       })
-      pushChange(timeSlots.filter((s) => s.id !== id))
+      pushChange((prev) => prev.filter((s) => s.id !== id))
     },
-    [timeSlots, pushChange],
+    [pushChange],
   )
 
   const addEmptyRow = useCallback(() => {
     const first = timeOptions[0]?.value ?? '09:00'
     const cat = TIME_SLOT_CATEGORY_OPTIONS[0]
-    pushChange([
-      ...timeSlots,
+    pushChange((prev) => [
+      ...prev,
       {
         id: getNewSlotId(),
         time: first,
@@ -263,11 +437,19 @@ export function TimeScheduleCard({
         colorClass: cat.colorClass,
       },
     ])
-  }, [timeSlots, getNewSlotId, pushChange, timeOptions])
+  }, [getNewSlotId, pushChange, timeOptions])
 
   const focusActivity = useCallback((id: string) => {
     activityRefs.current.get(id)?.focus()
   }, [])
+
+  const setActivityRef = useCallback(
+    (id: string, el: HTMLInputElement | null) => {
+      if (el) activityRefs.current.set(id, el)
+      else activityRefs.current.delete(id)
+    },
+    [],
+  )
 
   const getRepeat = useCallback(
     (id: string): RepeatPref =>
@@ -364,151 +546,23 @@ export function TimeScheduleCard({
         {timeSlots.map((slot) => {
           const coerced = coerceTimeValue(slot.time, timeOptions)
           const repeat = getRepeat(slot.id)
+          const rowKey = `${selectedDateKey ?? 'local'}-${slot.time}-${slot.id}`
           return (
-            <div
-              key={slot.id}
-              className="rounded-lg border border-border/60 bg-secondary/20 p-2 space-y-2"
-            >
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-3">
-                <select
-                  value={coerced}
-                  onChange={(e) =>
-                    updateSlot(slot.id, { time: e.target.value })
-                  }
-                  aria-label="Time"
-                  className="h-11 w-full shrink-0 rounded-md border border-border bg-background/60 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring md:h-8 md:w-[7.25rem]"
-                >
-                  {!timeOptions.some((o) => o.value === slot.time) ? (
-                    <option value={slot.time}>{slot.time}</option>
-                  ) : null}
-                  {timeOptions.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-                <div className="flex w-full min-w-0 flex-col gap-2 md:w-auto md:shrink-0 md:flex-row md:items-center md:gap-2">
-                  <div
-                    className={`h-6 w-1 shrink-0 rounded-full max-md:hidden md:block ${slot.colorClass}`}
-                    aria-hidden
-                  />
-                  <div
-                    className={`h-1 w-6 shrink-0 rounded-full md:hidden ${slot.colorClass}`}
-                    aria-hidden
-                  />
-                  <select
-                    value={slot.category}
-                    onChange={(e) =>
-                      updateSlot(slot.id, { category: e.target.value })
-                    }
-                    aria-label="Category"
-                    className="h-11 w-full min-w-0 flex-1 rounded-md border border-border bg-background/60 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring md:h-8 md:max-w-[9rem] md:flex-none md:shrink-0"
-                  >
-                  {!TIME_SLOT_CATEGORY_OPTIONS.some(
-                    (c) => c.label === slot.category,
-                  ) ? (
-                    <option value={slot.category}>{slot.category}</option>
-                  ) : null}
-                    {TIME_SLOT_CATEGORY_OPTIONS.map((c) => (
-                      <option key={c.label} value={c.label}>
-                        {c.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div
-                  className="min-w-0 w-full rounded-md border border-border bg-background/60 md:flex-1 md:overflow-x-auto md:overflow-y-hidden md:[scrollbar-width:thin]"
-                  title="Scroll sideways for longer activity text (desktop)"
-                >
-                  <Input
-                    ref={(el) => {
-                      if (el) activityRefs.current.set(slot.id, el)
-                      else activityRefs.current.delete(slot.id)
-                    }}
-                    value={slot.activity}
-                    onChange={(e) =>
-                      updateSlot(slot.id, { activity: e.target.value })
-                    }
-                    aria-label="Activity"
-                    style={{
-                      width: `${timeSlotActivityWidthCh(slot.activity)}ch`,
-                      maxWidth: 'none',
-                    }}
-                    className="time-schedule-activity-input h-11 w-full min-w-0 border-0 bg-transparent px-2 py-1 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0 rounded-none md:h-8 md:w-auto md:min-w-[28ch] md:max-w-none md:shrink-0"
-                  />
-                </div>
-                <div className="flex w-full shrink-0 items-center justify-end gap-1 self-stretch pt-1 md:w-auto md:justify-start md:self-center md:pt-0">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="md:h-8 md:w-8"
-                    aria-label="Edit activity"
-                    onClick={() => focusActivity(slot.id)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="text-destructive hover:text-destructive md:h-8 md:w-8"
-                    aria-label="Remove time block"
-                    onClick={() => deleteSlot(slot.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {onApplyTimeBlockToWeek ? (
-                <div className="flex flex-col gap-2 border-l-2 border-border/50 pl-2 md:pl-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Switch
-                      id={`repeat-${slot.id}`}
-                      checked={repeat.enabled}
-                      onCheckedChange={(v) => setRepeatEnabled(slot.id, v)}
-                    />
-                    <Label
-                      htmlFor={`repeat-${slot.id}`}
-                      className="text-xs font-normal cursor-pointer"
-                    >
-                      Repeat this block on selected days (copies into planner data
-                      for this week)
-                    </Label>
-                  </div>
-                  {repeat.enabled ? (
-                    <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center md:gap-2">
-                      <div className="flex flex-wrap gap-2">
-                        {DAY_SHORT.map((label, i) => (
-                          <label
-                            key={label}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-border/80 bg-background/40 px-2 py-1 text-xs"
-                          >
-                            <Checkbox
-                              checked={repeat.days.includes(i)}
-                              onCheckedChange={() => toggleRepeatDay(slot.id, i)}
-                              className="border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent data-[state=checked]:text-accent-foreground"
-                            />
-                            {label}
-                          </label>
-                        ))}
-                      </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        className="w-full shrink-0 text-xs md:h-8 md:w-auto"
-                        disabled={repeat.days.length === 0}
-                        onClick={() => void applyRepeat(slot)}
-                      >
-                        Apply to week
-                      </Button>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
+            <TimeScheduleSlotRow
+              key={rowKey}
+              slot={slot}
+              coerced={coerced}
+              timeOptions={timeOptions}
+              repeat={repeat}
+              updateSlot={updateSlot}
+              deleteSlot={deleteSlot}
+              setActivityRef={setActivityRef}
+              focusActivity={focusActivity}
+              onApplyTimeBlockToWeek={onApplyTimeBlockToWeek}
+              setRepeatEnabled={setRepeatEnabled}
+              toggleRepeatDay={toggleRepeatDay}
+              applyRepeat={applyRepeat}
+            />
           )
         })}
       </div>

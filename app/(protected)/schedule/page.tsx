@@ -146,9 +146,13 @@ export default function SchedulePage() {
         ) : null}
         <TimeScheduleCard
           timeSlots={data.timeSlots}
-          onTimeSlotsChange={(timeSlots) => {
-            setData({ ...data, timeSlots })
-            void persistSlots(timeSlots)
+          onTimeSlotsChange={(next) => {
+            setData((d) => {
+              const timeSlots =
+                typeof next === 'function' ? next(d.timeSlots) : next
+              void persistSlots(timeSlots)
+              return { ...d, timeSlots }
+            })
           }}
           getNewSlotId={() => newTimeSlotClientId(dataContext)}
           onApplyTimeBlockToWeek={handleApplyToWeek}
