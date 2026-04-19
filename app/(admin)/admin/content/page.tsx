@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/context/ToastContext'
 import MediaUploader, { type MediaType } from '@/components/admin/MediaUploader'
@@ -10,6 +11,7 @@ import { LessonForm } from '@/components/admin/LessonForm'
 
 type Tab = 'lessons' | 'programLessons' | 'programLessonsApi' | 'onboarding' | 'habits' | 'training'
 
+/** Persists across browser tabs and reloads (sessionStorage did not — new tab lost the last tab). */
 const TAB_STORAGE_KEY = 'admin-content-manager-tab'
 
 function isTab(s: string | null | undefined): s is Tab {
@@ -24,6 +26,8 @@ function isTab(s: string | null | undefined): s is Tab {
 }
 
 export default function AdminContentPage() {
+  const router = useRouter()
+  const pathname = usePathname()
   const [activeTab, setActiveTab] = useState<Tab>('lessons')
   /** Tabs that have been opened stay mounted so switching tabs does not wipe unsaved edits. */
   const [mountedTabs, setMountedTabs] = useState<Set<Tab>>(() => new Set(['lessons']))
@@ -33,28 +37,72 @@ export default function AdminContentPage() {
     void fetch('/api/admin/setup-storage', { method: 'POST' }).catch(() => {})
   }, [])
 
-  /** Restore last-open sub-tab when returning to this page (same browser tab session). */
+  /**
+   * Restore sub-tab when opening /admin/content again:
+   * 1) `?tab=` in the URL (bookmark / share)
+   * 2) localStorage (survives new tabs, reload, leaving the site)
+   * Also sync the URL when restoring from storage so the address bar matches.
+   */
   useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem(TAB_STORAGE_KEY)
-      if (isTab(stored)) {
-        setActiveTab(stored)
-        setMountedTabs((prev) => new Set(prev).add(stored))
-      }
-    } catch {
-      /* private mode */
-    }
-  }, [])
+    if (typeof window === 'undefined') return
 
-  const selectTab = useCallback((tab: Tab) => {
-    setActiveTab(tab)
-    setMountedTabs((prev) => new Set(prev).add(tab))
+    let tab: Tab | null = null
     try {
-      sessionStorage.setItem(TAB_STORAGE_KEY, tab)
+      const urlTab = new URLSearchParams(window.location.search).get('tab')
+      if (isTab(urlTab)) tab = urlTab
     } catch {
-      /* private mode */
+      /* ignore */
     }
-  }, [])
+    if (tab === null) {
+      try {
+        const stored = localStorage.getItem(TAB_STORAGE_KEY)
+        if (isTab(stored)) tab = stored
+      } catch {
+        /* private mode */
+      }
+    }
+
+    if (tab !== null) {
+      setActiveTab(tab)
+      setMountedTabs((prev) => new Set(prev).add(tab))
+      try {
+        localStorage.setItem(TAB_STORAGE_KEY, tab)
+      } catch {
+        /* private mode */
+      }
+      try {
+        const params = new URLSearchParams(window.location.search)
+        if (params.get('tab') !== tab) {
+          params.set('tab', tab)
+          const qs = params.toString()
+          router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [pathname, router])
+
+  const selectTab = useCallback(
+    (tab: Tab) => {
+      setActiveTab(tab)
+      setMountedTabs((prev) => new Set(prev).add(tab))
+      try {
+        localStorage.setItem(TAB_STORAGE_KEY, tab)
+      } catch {
+        /* private mode */
+      }
+      try {
+        const params = new URLSearchParams(window.location.search)
+        params.set('tab', tab)
+        const qs = params.toString()
+        router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+      } catch {
+        /* ignore */
+      }
+    },
+    [pathname, router],
+  )
 
   const tabStyle = (tab: Tab) =>
     ({
