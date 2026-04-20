@@ -192,7 +192,8 @@ export async function POST(request: Request) {
       subscription_data: kind === 'lifetime'
         ? undefined
         : {
-            trial_period_days: 0,
+            // Do not set trial_period_days to 0 — Stripe requires ≥1 if present.
+            // App-managed Pro trial lives in Supabase; subscription charges after checkout.
             metadata: user?.id
               ? {
                   supabase_user_id: user.id,
