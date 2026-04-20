@@ -44,6 +44,7 @@ const EMAIL_TYPES = [
   'at_risk_2days',
   'at_risk_4days',
   'milestone_21',
+  'milestone_30',
   'milestone_40',
   'milestone_60',
   're_engagement_7days',
@@ -181,8 +182,8 @@ export default function UserTable() {
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
               <SelectItem value="60day">60-day</SelectItem>
-              <SelectItem value="sprint_standard">Sprint</SelectItem>
-              <SelectItem value="sprint_monk">Monk sprint</SelectItem>
+              <SelectItem value="sprint_standard">Sprint (30)</SelectItem>
+              <SelectItem value="sprint_monk">Monk Mode (21)</SelectItem>
               <SelectItem value="transform">Transform</SelectItem>
               <SelectItem value="mastery">Mastery</SelectItem>
               <SelectItem value="legacy">Legacy</SelectItem>
@@ -431,8 +432,8 @@ export default function UserTable() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="60day">60-day</SelectItem>
-                    <SelectItem value="sprint_standard">Sprint (21)</SelectItem>
-                    <SelectItem value="sprint_monk">Monk sprint (21)</SelectItem>
+                    <SelectItem value="sprint_standard">Sprint (30)</SelectItem>
+                    <SelectItem value="sprint_monk">Monk Mode (21)</SelectItem>
                     <SelectItem value="transform">Transform (56)</SelectItem>
                     <SelectItem value="mastery">Mastery (90)</SelectItem>
                   </SelectContent>

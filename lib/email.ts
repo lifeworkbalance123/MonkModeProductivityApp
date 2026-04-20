@@ -203,6 +203,7 @@ export type LifecycleEmailType =
   | 'at_risk_2days'
   | 'at_risk_4days'
   | 'milestone_21'
+  | 'milestone_30'
   | 'milestone_40'
   | 'milestone_60'
   | 're_engagement_7days'
@@ -268,6 +269,14 @@ export async function sendLifecycleSequenceEmail(
       html: wrap(
         name,
         `<p>You hit <strong>Day 21</strong>. That&apos;s a real checkpoint — acknowledge it, then keep going.</p>`,
+        today,
+      ),
+    },
+    milestone_30: {
+      subject: 'Milestone: Day 30',
+      html: wrap(
+        name,
+        `<p>You hit <strong>Day 30</strong> — strong finish to this arc. Acknowledge the win, then keep the habits rolling.</p>`,
         today,
       ),
     },

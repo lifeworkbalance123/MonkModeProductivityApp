@@ -15,6 +15,7 @@ const ALLOWED: readonly LifecycleEmailType[] = [
   'at_risk_2days',
   'at_risk_4days',
   'milestone_21',
+  'milestone_30',
   'milestone_40',
   'milestone_60',
   're_engagement_7days',

@@ -21,6 +21,7 @@ type Draft = {
   id?: string
   program_type: ProgramType
   program_day: number
+  is_bonus: boolean
   phase: number
   title: string
   content_markdown: string
@@ -29,10 +30,11 @@ type Draft = {
   tip_topic: string
 }
 
-function emptyDraft(programType: ProgramType, day: number): Draft {
+function emptyDraft(programType: ProgramType, day: number, isBonus: boolean): Draft {
   return {
     program_type: programType,
     program_day: day,
+    is_bonus: isBonus,
     phase: 1,
     title: '',
     content_markdown: '',
@@ -43,10 +45,12 @@ function emptyDraft(programType: ProgramType, day: number): Draft {
 }
 
 function rowToDraft(row: DailyProgramLessonRow): Draft {
+  const bonus = row.is_bonus ?? false
   return {
     id: row.id,
     program_type: row.program_type,
     program_day: row.program_day,
+    is_bonus: bonus,
     phase: row.phase,
     title: row.title,
     content_markdown: row.content_markdown,
@@ -62,7 +66,8 @@ export default function DailyProgramLessonsEditor() {
   const [rows, setRows] = useState<DailyProgramLessonRow[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDay, setSelectedDay] = useState(1)
-  const [draft, setDraft] = useState<Draft>(() => emptyDraft('sprint_standard', 1))
+  const [isBonus, setIsBonus] = useState(false)
+  const [draft, setDraft] = useState<Draft>(() => emptyDraft('sprint_standard', 1, false))
   const [saving, setSaving] = useState(false)
   const [uploadingAudio, setUploadingAudio] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -78,6 +83,7 @@ export default function DailyProgramLessonsEditor() {
       .select('*')
       .eq('program_type', programType)
       .order('program_day', { ascending: true })
+      .order('is_bonus', { ascending: true })
 
     if (error) {
       showToast(error.message, 'error')
@@ -94,19 +100,25 @@ export default function DailyProgramLessonsEditor() {
 
   useEffect(() => {
     if (draftDirtyRef.current) return
-    const found = rows.find((r) => r.program_day === selectedDay)
-    setDraft(found ? rowToDraft(found) : emptyDraft(programType, selectedDay))
-  }, [rows, selectedDay, programType])
+    const found = rows.find((r) => r.program_day === selectedDay && !!(r.is_bonus ?? false) === isBonus)
+    setDraft(found ? rowToDraft(found) : emptyDraft(programType, selectedDay, isBonus))
+  }, [rows, selectedDay, programType, isBonus])
 
   const onProgramTypeChange = (next: ProgramType) => {
     draftDirtyRef.current = false
     setProgramType(next)
     setSelectedDay(1)
+    setIsBonus(false)
   }
 
   const selectDay = (day: number) => {
     draftDirtyRef.current = false
     setSelectedDay(day)
+  }
+
+  const setBonusMode = (next: boolean) => {
+    draftDirtyRef.current = false
+    setIsBonus(next)
   }
 
   async function saveDraft() {
@@ -115,9 +127,13 @@ export default function DailyProgramLessonsEditor() {
       return
     }
     setSaving(true)
+    const bonus = isBonus
+    const day = draft.program_day
     const payload = {
       program_type: draft.program_type,
-      program_day: draft.program_day,
+      program_day: day,
+      is_bonus: bonus,
+      parent_day_number: bonus ? day : null,
       phase: Math.max(1, Math.floor(draft.phase) || 1),
       title: draft.title.trim(),
       content_markdown: draft.content_markdown,
@@ -126,7 +142,7 @@ export default function DailyProgramLessonsEditor() {
       tip_topic: draft.tip_topic.trim() || null,
     }
     const { error } = await supabase.from('daily_lessons').upsert(payload, {
-      onConflict: 'program_type,program_day',
+      onConflict: 'program_type,program_day,is_bonus',
     })
     setSaving(false)
     if (error) {
@@ -134,18 +150,29 @@ export default function DailyProgramLessonsEditor() {
       return
     }
     draftDirtyRef.current = false
-    showToast('Saved day ' + draft.program_day, 'success')
+    showToast(
+      (bonus ? 'Saved bonus for day ' : 'Saved day ') + draft.program_day,
+      'success',
+    )
     await loadRows()
   }
 
   async function deleteDay() {
-    if (!window.confirm(`Remove the saved lesson for day ${selectedDay}?`)) return
+    if (
+      !window.confirm(
+        isBonus
+          ? `Remove the saved bonus content for day ${selectedDay}?`
+          : `Remove the saved lesson for day ${selectedDay}?`,
+      )
+    )
+      return
     setSaving(true)
     const { error } = await supabase
       .from('daily_lessons')
       .delete()
       .eq('program_type', programType)
       .eq('program_day', selectedDay)
+      .eq('is_bonus', isBonus)
     setSaving(false)
     if (error) {
       showToast(error.message, 'error')
@@ -154,7 +181,7 @@ export default function DailyProgramLessonsEditor() {
     draftDirtyRef.current = false
     showToast('Removed', 'success')
     await loadRows()
-    setDraft(emptyDraft(programType, selectedDay))
+    setDraft(emptyDraft(programType, selectedDay, isBonus))
   }
 
   async function onAudioFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -163,7 +190,7 @@ export default function DailyProgramLessonsEditor() {
     setUploadingAudio(true)
     try {
       const ext = file.name.split('.').pop() || 'mp3'
-      const path = `lesson/daily-${programType}-${selectedDay}-${Date.now()}.${ext}`
+      const path = `lesson/daily-${programType}-${selectedDay}-${isBonus ? 'bonus' : 'primary'}-${Date.now()}.${ext}`
       const { error } = await supabase.storage.from('lesson-media').upload(path, file, {
         cacheControl: '3600',
         upsert: true,
@@ -182,12 +209,14 @@ export default function DailyProgramLessonsEditor() {
     }
   }
 
-  const filledDays = new Set(rows.map((r) => r.program_day))
+  const filledDays = new Set(rows.filter((r) => !(r.is_bonus ?? false)).map((r) => r.program_day))
+  const bonusDays = new Set(rows.filter((r) => r.is_bonus ?? false).map((r) => r.program_day))
 
   return (
     <div>
       <p style={{ color: 'var(--muted-foreground)', fontSize: '14px', marginBottom: '16px', maxWidth: '720px' }}>
-        One row per calendar day for each program track (21 / 56 / 90 days). Optional audio and video URLs
+        One primary row per calendar day for each program track (30 / 21 / 56 / 90 days). Optional bonus row
+        per day and optional audio and video URLs
         (hosted files or YouTube links). Use markdown for the 2‑minute tip body.
       </p>
 
@@ -232,7 +261,8 @@ export default function DailyProgramLessonsEditor() {
             }}
           >
             {Array.from({ length: maxDays }, (_, i) => i + 1).map((day) => {
-              const hasContent = filledDays.has(day)
+              const hasPrimary = filledDays.has(day)
+              const hasBonus = bonusDays.has(day)
               const active = selectedDay === day
               return (
                 <button
@@ -243,16 +273,25 @@ export default function DailyProgramLessonsEditor() {
                     minWidth: '40px',
                     padding: '6px 8px',
                     borderRadius: '6px',
-                    border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                    background: active ? 'var(--accent)' : hasContent ? 'var(--card)' : 'transparent',
+                    border: `1px solid ${active ? 'var(--accent)' : hasBonus ? 'var(--ring)' : 'var(--border)'}`,
+                    background: active ? 'var(--accent)' : hasPrimary ? 'var(--card)' : 'transparent',
                     color: active ? 'var(--accent-foreground)' : 'var(--foreground)',
                     fontSize: '12px',
                     cursor: 'pointer',
-                    opacity: hasContent ? 1 : 0.65,
+                    opacity: hasPrimary ? 1 : 0.65,
                   }}
-                  title={hasContent ? 'Has saved content' : 'Empty'}
+                  title={
+                    hasPrimary && hasBonus
+                      ? 'Primary + bonus saved'
+                      : hasBonus
+                        ? 'Bonus only'
+                        : hasPrimary
+                          ? 'Primary saved'
+                          : 'Empty'
+                  }
                 >
                   {day}
+                  {hasBonus ? <span style={{ fontSize: '9px', marginLeft: '2px', opacity: 0.85 }}>B</span> : null}
                 </button>
               )
             })}
@@ -268,8 +307,28 @@ export default function DailyProgramLessonsEditor() {
             }}
           >
             <h3 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: 600 }}>
-              Day {selectedDay} · {PROGRAM_LABELS[programType]}
+              Day {selectedDay}
+              {isBonus ? ' · Bonus' : ''} · {PROGRAM_LABELS[programType]}
             </h3>
+
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '13px',
+                marginBottom: '12px',
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={isBonus}
+                onChange={(e) => setBonusMode(e.target.checked)}
+              />
+              Bonus content for this day (extra tip/media alongside the primary lesson)
+            </label>
 
             <div style={{ display: 'grid', gap: '12px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', color: 'var(--muted-foreground)' }}>
@@ -404,7 +463,12 @@ export default function DailyProgramLessonsEditor() {
               </button>
               <button
                 type="button"
-                disabled={saving || !rows.some((r) => r.program_day === selectedDay)}
+                disabled={
+                  saving ||
+                  !rows.some(
+                    (r) => r.program_day === selectedDay && !!(r.is_bonus ?? false) === isBonus,
+                  )
+                }
                 onClick={() => void deleteDay()}
                 style={{
                   padding: '10px 20px',

@@ -22,7 +22,7 @@ export function getMilestoneDisplayName(programType: ProgramType, milestoneDay: 
       30: 'Sprint milestone',
     },
     sprint_monk: {
-      21: 'Monk Sprint complete',
+      21: 'Monk Mode complete',
     },
     transform: {
       21: 'Foundation Builder',

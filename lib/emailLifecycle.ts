@@ -202,16 +202,18 @@ export async function enqueueLifecycleEmails(admin: SupabaseClient): Promise<{
   const { data: milestones, error: msErr } = await admin
     .from('user_milestones')
     .select('user_id,milestone_day')
-    .in('milestone_day', [21, 40, 60])
+    .in('milestone_day', [21, 30, 40, 60])
 
   if (!msErr && milestones?.length) {
     for (const m of milestones as { user_id: string; milestone_day: number }[]) {
       const t =
         m.milestone_day === 21
           ? 'milestone_21'
-          : m.milestone_day === 40
-            ? 'milestone_40'
-            : 'milestone_60'
+          : m.milestone_day === 30
+            ? 'milestone_30'
+            : m.milestone_day === 40
+              ? 'milestone_40'
+              : 'milestone_60'
       if (await tryEnqueue(admin, m.user_id, t as LifecycleEmailType, now)) stats.milestone++
     }
   }

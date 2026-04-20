@@ -20,6 +20,7 @@ type Row = {
   audio_url?: string | null
   video_url?: string | null
   tip_topic?: string | null
+  is_bonus?: boolean | number | string | null
 }
 
 export async function POST(request: Request) {
@@ -65,9 +66,17 @@ export async function POST(request: Request) {
       continue
     }
 
+    const isBonus =
+      r.is_bonus === true ||
+      r.is_bonus === 1 ||
+      r.is_bonus === '1' ||
+      String(r.is_bonus ?? '').toLowerCase() === 'true'
+    const dayFloor = Math.floor(day)
     const payload = {
       program_type: r.program_type,
-      program_day: Math.floor(day),
+      program_day: dayFloor,
+      is_bonus: isBonus,
+      parent_day_number: isBonus ? dayFloor : null,
       phase: Math.max(1, Math.floor(r.phase ?? 1) || 1),
       title,
       content_markdown: md,
@@ -77,7 +86,7 @@ export async function POST(request: Request) {
     }
 
     const { error } = await admin.from('daily_lessons').upsert(payload, {
-      onConflict: 'program_type,program_day',
+      onConflict: 'program_type,program_day,is_bonus',
     })
 
     if (error) {

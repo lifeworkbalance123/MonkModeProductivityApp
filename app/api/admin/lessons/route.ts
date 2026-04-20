@@ -34,6 +34,7 @@ export async function GET(request: Request) {
     .select('*', { count: 'exact' })
     .order('program_type', { ascending: true })
     .order('program_day', { ascending: true })
+    .order('is_bonus', { ascending: true })
 
   if (programType && programType !== 'all') {
     q = q.eq('program_type', programType)
@@ -81,9 +82,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'title and content_markdown required' }, { status: 400 })
   }
 
+  const is_bonus =
+    body.is_bonus === true || body.is_bonus === 'true' || body.is_bonus === 1 || body.is_bonus === '1'
+  const dayFloor = Math.floor(program_day)
   const payload = {
     program_type,
-    program_day: Math.floor(program_day),
+    program_day: dayFloor,
+    is_bonus,
+    parent_day_number: is_bonus ? dayFloor : null,
     phase: Math.max(1, Math.floor(phase) || 1),
     title,
     content_markdown,
@@ -96,7 +102,10 @@ export async function POST(request: Request) {
 
   if (error) {
     if (error.code === '23505') {
-      return NextResponse.json({ error: 'Duplicate program_type + program_day' }, { status: 409 })
+      return NextResponse.json(
+        { error: 'Duplicate program_type + program_day + is_bonus' },
+        { status: 409 },
+      )
     }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

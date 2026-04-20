@@ -229,7 +229,7 @@ export type ProgramType =
 
 export const PROGRAM_DURATIONS: Record<ProgramType, number> = {
   '60day': 60,
-  sprint_standard: 21,
+  sprint_standard: 30,
   sprint_monk: 21,
   transform: 56,
   mastery: 90,
@@ -237,8 +237,8 @@ export const PROGRAM_DURATIONS: Record<ProgramType, number> = {
 
 export const PROGRAM_LABELS: Record<ProgramType, string> = {
   '60day': '60-Day MonkMode',
-  sprint_standard: '21-Day Sprint',
-  sprint_monk: '21-Day MonkMode Sprint',
+  sprint_standard: '30-Day Sprint',
+  sprint_monk: '21-Day Monk Mode',
   transform: '56-Day Transform',
   mastery: '90-Day Mastery',
 }

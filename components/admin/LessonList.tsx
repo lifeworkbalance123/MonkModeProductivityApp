@@ -84,6 +84,10 @@ export default function LessonList() {
       if (vu >= 0) row.video_url = cells[vu] || null
       const tt = idx('tip_topic')
       if (tt >= 0) row.tip_topic = cells[tt] || null
+      const ib = idx('is_bonus')
+      if (ib >= 0 && cells[ib] !== undefined && String(cells[ib]).trim() !== '') {
+        row.is_bonus = cells[ib]
+      }
       rowsParsed.push(row)
     }
 
@@ -120,7 +124,7 @@ export default function LessonList() {
       <p className="text-sm text-muted-foreground">
         Program-track lessons live in <code className="text-xs">daily_lessons</code>. CSV columns:{' '}
         <code className="text-xs">
-          program_type, program_day, title, content_markdown, phase, audio_url, video_url, tip_topic
+          program_type, program_day, title, content_markdown, phase, audio_url, video_url, tip_topic, is_bonus
         </code>
       </p>
       <div className="flex flex-wrap items-center gap-3">
@@ -133,7 +137,7 @@ export default function LessonList() {
           >
             <option value="all">All types</option>
             <option value="sprint_standard">Sprint</option>
-            <option value="sprint_monk">Monk sprint</option>
+            <option value="sprint_monk">Monk Mode</option>
             <option value="transform">Transform</option>
             <option value="mastery">Mastery</option>
           </select>

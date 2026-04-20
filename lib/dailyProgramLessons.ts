@@ -11,6 +11,9 @@ export type DailyProgramLessonRow = {
   id: string
   program_type: DailyProgramLessonType
   program_day: number
+  /** Primary row: false. Optional bonus for the same calendar day: true. */
+  is_bonus?: boolean
+  parent_day_number?: number | null
   phase: number
   title: string
   content_markdown: string
@@ -40,6 +43,7 @@ export async function getDailyProgramLessonForDay(
       .select('*')
       .eq('program_type', programType)
       .eq('program_day', day)
+      .eq('is_bonus', false)
       .maybeSingle()
 
     if (error || !data) return null

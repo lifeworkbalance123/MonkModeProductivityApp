@@ -55,12 +55,28 @@ export async function PUT(
   if (body.audio_url !== undefined) payload.audio_url = body.audio_url ? String(body.audio_url) : null
   if (body.video_url !== undefined) payload.video_url = body.video_url ? String(body.video_url) : null
   if (body.tip_topic !== undefined) payload.tip_topic = body.tip_topic ? String(body.tip_topic) : null
+  if (body.is_bonus !== undefined) {
+    payload.is_bonus =
+      body.is_bonus === true || body.is_bonus === 'true' || body.is_bonus === 1 || body.is_bonus === '1'
+  }
+  if (body.parent_day_number !== undefined) {
+    const p = Number(body.parent_day_number)
+    payload.parent_day_number =
+      body.parent_day_number === null || body.parent_day_number === ''
+        ? null
+        : Number.isFinite(p) && p >= 1
+          ? Math.floor(p)
+          : null
+  }
 
   const { error } = await admin.from('daily_lessons').update(payload).eq('id', id)
 
   if (error) {
     if (error.code === '23505') {
-      return NextResponse.json({ error: 'Duplicate program_type + program_day' }, { status: 409 })
+      return NextResponse.json(
+        { error: 'Duplicate program_type + program_day + is_bonus' },
+        { status: 409 },
+      )
     }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
