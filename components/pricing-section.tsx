@@ -5,7 +5,7 @@ import { useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Check, Sparkles } from "lucide-react"
-import { formatPriceCents, lifetimePriceFromRows, useAppSubscriptionPrices } from "@/hooks/usePricing"
+import { formatPriceCents, useAppSubscriptionPrices } from "@/hooks/usePricing"
 
 const FREE_PLAN = {
   name: "Free",
@@ -34,19 +34,8 @@ const PRO_FEATURES = [
   "Data export & backup",
 ] as const
 
-const LIFETIME_FEATURES = [
-  "Everything in Pro",
-  "Lifetime access",
-  "All future features",
-  "Priority support",
-  "Community access",
-  "Upload custom content",
-  "API access",
-] as const
-
 export function PricingSection() {
-  const { prices, monthlyCents, monthlyCurrency } = useAppSubscriptionPrices()
-  const { cents: lifetimeCents, currency: lifetimeCurrency } = lifetimePriceFromRows(prices)
+  const { monthlyCents, monthlyCurrency } = useAppSubscriptionPrices()
 
   const plans = useMemo(
     () => [
@@ -60,17 +49,8 @@ export function PricingSection() {
         cta: "Start 14-Day Trial",
         highlighted: true,
       },
-      {
-        name: "Lifetime",
-        price: formatPriceCents(lifetimeCents, lifetimeCurrency),
-        period: "one-time",
-        description: "Own monkcubed forever with all future updates.",
-        features: [...LIFETIME_FEATURES],
-        cta: "Get Lifetime Access",
-        highlighted: false,
-      },
     ],
-    [lifetimeCents, lifetimeCurrency, monthlyCents, monthlyCurrency],
+    [monthlyCents, monthlyCurrency],
   )
 
   return (
@@ -85,7 +65,7 @@ export function PricingSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
           {plans.map((plan) => (
             <Card
               key={plan.name}

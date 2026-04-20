@@ -6,7 +6,7 @@ import { AppPageChrome } from '@/components/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { captureEvent } from '@/lib/analytics'
-import { formatPriceCents, lifetimePriceFromRows, useAppSubscriptionPrices } from '@/hooks/usePricing'
+import { formatPriceCents, useAppSubscriptionPrices } from '@/hooks/usePricing'
 import { supabase } from '@/lib/supabase'
 import { startStripeCheckout } from '@/lib/stripe-checkout'
 
@@ -16,7 +16,6 @@ const PRICE_IDS = {
   monkMode: process.env.NEXT_PUBLIC_STRIPE_PRICE_MONK_MODE,
   sprint: process.env.NEXT_PUBLIC_STRIPE_PRICE_SPRINT,
   transform: process.env.NEXT_PUBLIC_STRIPE_PRICE_TRANSFORM,
-  lifetime: process.env.NEXT_PUBLIC_STRIPE_PRICE_LIFETIME,
 } as const
 
 export default function PricingPage() {
@@ -24,7 +23,6 @@ export default function PricingPage() {
   const [loading, setLoading] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const {
-    prices,
     monthlyCents,
     annualCents,
     monthlyCurrency,
@@ -32,8 +30,6 @@ export default function PricingPage() {
     annualPerMonthCents,
     annualSavingsLine,
   } = useAppSubscriptionPrices()
-
-  const { cents: lifetimeCents, currency: lifetimeCurrency } = lifetimePriceFromRows(prices)
 
   useEffect(() => {
     captureEvent('pricing_page_viewed')
@@ -88,21 +84,15 @@ export default function PricingPage() {
     }
   }
 
-  async function handleAppCheckout(kind: 'monthly' | 'annual' | 'lifetime') {
-    const envPriceId =
-      kind === 'monthly'
-        ? PRICE_IDS.monthly
-        : kind === 'annual'
-          ? PRICE_IDS.annual
-          : PRICE_IDS.lifetime
+  async function handleAppCheckout(kind: 'monthly' | 'annual') {
+    const envPriceId = kind === 'monthly' ? PRICE_IDS.monthly : PRICE_IDS.annual
 
     if (envPriceId) {
       const ok = await createCheckoutFromPriceId(envPriceId, kind)
       if (ok) return
     }
 
-    const legacyKind = kind === 'lifetime' ? 'lifetime' : kind
-    const result = await startStripeCheckout(legacyKind)
+    const result = await startStripeCheckout(kind)
     if (!result.ok) {
       setCheckoutError(result.error)
     }
@@ -141,7 +131,7 @@ export default function PricingPage() {
           </button>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2">
           <Card className="p-5 text-left">
             <h2 className="text-xl font-semibold">Free</h2>
             <p className="mt-1 text-sm text-muted-foreground">Core habits & dashboard</p>

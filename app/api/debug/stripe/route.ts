@@ -1,4 +1,4 @@
-import { validateStripePrices } from '@/lib/stripePrices'
+import { getStripePriceSlotDiagnostics, validateStripePrices } from '@/lib/stripePrices'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,7 +14,8 @@ export async function GET() {
     return Response.json({ error: 'Not available in production' }, { status: 404 })
   }
 
-  const prices = validateStripePrices()
+  const summary = validateStripePrices()
+  const slots = getStripePriceSlotDiagnostics()
 
   return Response.json({
     stripe: {
@@ -26,6 +27,9 @@ export async function GET() {
       appUrlConfigured: isConfigured('NEXT_PUBLIC_APP_URL'),
       siteUrlConfigured: isConfigured('NEXT_PUBLIC_SITE_URL'),
     },
-    prices,
+    prices: {
+      ...summary,
+      slots,
+    },
   })
 }

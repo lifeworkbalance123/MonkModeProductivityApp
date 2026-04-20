@@ -74,6 +74,9 @@ const FAQ_BASE = [
   },
 ] as const
 
+/** Turn on when Lifetime checkout should appear again (upgrade page + FAQ). */
+const LIFETIME_PURCHASE_ENABLED = false
+
 export function UpgradeOfferContent({
   variant,
   trialExpired = false,
@@ -91,24 +94,28 @@ export function UpgradeOfferContent({
     annualPerMonthCents,
     annualSavingsLine,
   } = useAppSubscriptionPrices()
-  const { cents: lifetimeCents, currency: lifetimeCurrency } = lifetimePriceFromRows(prices)
-  const lifetimeLabel = formatPriceCents(lifetimeCents, lifetimeCurrency)
 
-  const faqItems = useMemo(
-    () => [
+  const lifetimeOfferLabel = useMemo(() => {
+    const { cents, currency } = lifetimePriceFromRows(prices)
+    const label = formatPriceCents(cents, currency)
+    return LIFETIME_PURCHASE_ENABLED ? label : null
+  }, [prices])
+
+  const faqItems = useMemo(() => {
+    if (!LIFETIME_PURCHASE_ENABLED || !lifetimeOfferLabel) {
+      return [...FAQ_BASE]
+    }
+    return [
       ...FAQ_BASE,
       {
-        q: `Is the ${lifetimeLabel} Lifetime deal permanent?`,
+        q: `Is the ${lifetimeOfferLabel} Lifetime deal permanent?`,
         a: 'Not forever — we plan to increase this price as the app grows. Lock it in now.',
       },
-    ],
-    [lifetimeLabel],
-  )
+    ]
+  }, [lifetimeOfferLabel])
 
   const [annual, setAnnual] = useState(true)
-  const [busy, setBusy] = useState<'monthly' | 'annual' | 'lifetime' | null>(
-    null,
-  )
+  const [busy, setBusy] = useState<'monthly' | 'annual' | 'lifetime' | null>(null)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [pendingCheckoutKind, setPendingCheckoutKind] = useState<
     'monthly' | 'annual' | 'lifetime' | null
@@ -300,8 +307,8 @@ export function UpgradeOfferContent({
             </div>
           ) : (
             <p className="mt-4 text-sm text-emerald-200/90">
-              You&apos;re on Pro. Manage billing from Settings, or grab Lifetime
-              below.
+              You&apos;re on Pro. Manage billing from Settings
+              {LIFETIME_PURCHASE_ENABLED ? ', or grab Lifetime below.' : '.'}
             </p>
           )}
 
@@ -368,14 +375,14 @@ export function UpgradeOfferContent({
         </div>
       </div>
 
-      {/* Lifetime */}
-      {!isLifetime ? (
+      {/* Lifetime (gated until post-launch) */}
+      {LIFETIME_PURCHASE_ENABLED && !isLifetime && lifetimeOfferLabel ? (
         <div className="mx-auto mt-10 max-w-5xl rounded-2xl border-l-4 border-primary bg-card/80 p-6 sm:p-8">
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">
             Best value — Own it forever
           </p>
           <h3 className="mt-2 text-2xl font-semibold text-foreground">
-            Lifetime Access — {lifetimeLabel}
+            Lifetime Access — {lifetimeOfferLabel}
           </h3>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
             Pay once. Get every future feature. No subscriptions, ever.
@@ -404,7 +411,7 @@ export function UpgradeOfferContent({
             {busy === 'lifetime' ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
-              `Get Lifetime Access — ${lifetimeLabel}`
+              `Get Lifetime Access — ${lifetimeOfferLabel}`
             )}
           </Button>
         </div>

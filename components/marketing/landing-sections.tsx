@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { formatPriceCents, lifetimePriceFromRows, useAppSubscriptionPrices } from '@/hooks/usePricing'
+import { formatPriceCents, useAppSubscriptionPrices } from '@/hooks/usePricing'
 import { MonkCubedLogo } from '@/components/brand/MonkCubedLogo'
 import { MONKCUBED_TAGLINE } from '@/components/brand/MonkCubedLogo'
 import { supabase } from '@/lib/supabase'
@@ -27,7 +27,7 @@ export function SocialProofBar() {
   return (
     <section className="border-y border-border bg-card">
       <div className="mx-auto grid max-w-[1100px] grid-cols-1 gap-4 px-4 py-5 text-center text-sm text-muted-foreground md:grid-cols-3">
-        <p>14-day free trial. No card required.</p>
+        <p>7-day free trial. No card required.</p>
         <p>Works on iOS, Android, and web.</p>
         <p>Your data, your control.</p>
       </div>
@@ -140,7 +140,6 @@ export function PricingSection() {
   const [loading, setLoading] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const {
-    prices,
     monthlyCents,
     annualCents,
     monthlyCurrency,
@@ -148,11 +147,9 @@ export function PricingSection() {
     annualPerMonthCents,
     annualSavingsLine,
   } = useAppSubscriptionPrices()
-  const { cents: lifetimeCents, currency: lifetimeCurrency } = lifetimePriceFromRows(prices)
   const priceIds = {
     monthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_APP_MONTHLY,
     annual: process.env.NEXT_PUBLIC_STRIPE_PRICE_APP_ANNUAL,
-    lifetime: process.env.NEXT_PUBLIC_STRIPE_PRICE_LIFETIME,
   } as const
 
   const plans = useMemo(
@@ -169,19 +166,10 @@ export function PricingSection() {
         featured: true,
       },
     ],
-    [
-      annual,
-      annualCents,
-      annualCurrency,
-      annualPerMonthCents,
-      lifetimeCents,
-      lifetimeCurrency,
-      monthlyCents,
-      monthlyCurrency,
-    ],
+    [annual, annualCents, annualCurrency, annualPerMonthCents, monthlyCents, monthlyCurrency],
   )
 
-  async function openStripeCheckout(kind: 'monthly' | 'annual' | 'lifetime') {
+  async function openStripeCheckout(kind: 'monthly' | 'annual') {
     try {
       setLoading(kind)
       setCheckoutError(null)
@@ -196,12 +184,7 @@ export function PricingSection() {
         headers.Authorization = `Bearer ${session.access_token}`
       }
 
-      const envPriceId =
-        kind === 'monthly'
-          ? priceIds.monthly
-          : kind === 'annual'
-            ? priceIds.annual
-            : priceIds.lifetime
+      const envPriceId = kind === 'monthly' ? priceIds.monthly : priceIds.annual
       const body = envPriceId
         ? { priceId: envPriceId, userId: session?.user?.id, userEmail: session?.user?.email }
         : { priceKind: kind }
@@ -247,7 +230,7 @@ export function PricingSection() {
           </span>
         </button>
       </div>
-      <div className="mt-10 grid gap-4 md:grid-cols-3">
+      <div className="mt-10 grid gap-4 md:grid-cols-2">
         {plans.map((p) => (
           <div key={p.title} className={`rounded-xl border p-5 ${p.featured ? 'border-accent/70 bg-accent/10' : 'border-border bg-card/60'}`}>
             <h3 className="text-xl font-semibold text-foreground">{p.title}</h3>
@@ -261,18 +244,10 @@ export function PricingSection() {
               <Button
                 type="button"
                 className="mt-4 inline-block rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:bg-accent/90"
-                onClick={() =>
-                  void openStripeCheckout(
-                    p.title === 'Lifetime'
-                      ? 'lifetime'
-                      : annual
-                        ? 'annual'
-                        : 'monthly',
-                  )
-                }
-                disabled={loading === 'annual' || loading === 'monthly' || loading === 'lifetime'}
+                onClick={() => void openStripeCheckout(annual ? 'annual' : 'monthly')}
+                disabled={loading === 'annual' || loading === 'monthly'}
               >
-                {loading === 'annual' || loading === 'monthly' || loading === 'lifetime'
+                {loading === 'annual' || loading === 'monthly'
                   ? 'Loading...'
                   : p.title === 'Pro'
                     ? annual
@@ -324,7 +299,7 @@ export function FinalCtaSection() {
     <section id="roadmap" className="border-t border-accent/40 bg-background py-20">
       <div className="mx-auto max-w-[1100px] px-4 text-center">
         <h2 className="text-4xl font-semibold text-foreground">Your focused life starts today.</h2>
-        <p className="mx-auto mt-3 max-w-xl text-muted-foreground">Join monkcubed free. Fourteen days of full Pro access. No card required.</p>
+        <p className="mx-auto mt-3 max-w-xl text-muted-foreground">Join monkcubed free. Seven days of full Pro access. No card required.</p>
         <Link href="/auth" className="mt-6 inline-block rounded-md bg-accent px-6 py-3 font-semibold text-accent-foreground">Begin</Link>
         <div className="mt-3">
           <Link href="/waitlist" className="text-sm text-muted-foreground hover:text-foreground">
