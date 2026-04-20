@@ -2,14 +2,30 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { loadStripe } from '@stripe/stripe-js'
 import { AppPageChrome } from '@/components/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { captureEvent } from '@/lib/analytics'
 import { formatPriceCents, lifetimePriceFromRows, useAppSubscriptionPrices } from '@/hooks/usePricing'
+import { supabase } from '@/lib/supabase'
+import { startStripeCheckout } from '@/lib/stripe-checkout'
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '')
+
+const PRICE_IDS = {
+  monthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_APP_MONTHLY,
+  annual: process.env.NEXT_PUBLIC_STRIPE_PRICE_APP_ANNUAL,
+  monkMode: process.env.NEXT_PUBLIC_STRIPE_PRICE_MONK_MODE,
+  sprint: process.env.NEXT_PUBLIC_STRIPE_PRICE_SPRINT,
+  transform: process.env.NEXT_PUBLIC_STRIPE_PRICE_TRANSFORM,
+  lifetime: process.env.NEXT_PUBLIC_STRIPE_PRICE_LIFETIME,
+} as const
 
 export default function PricingPage() {
   const [annual, setAnnual] = useState(true)
+  const [loading, setLoading] = useState<string | null>(null)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const {
     prices,
     monthlyCents,
@@ -25,6 +41,80 @@ export default function PricingPage() {
   useEffect(() => {
     captureEvent('pricing_page_viewed')
   }, [])
+
+  async function createCheckoutFromPriceId(priceId: string, label: string): Promise<boolean> {
+    try {
+      setLoading(label)
+      setCheckoutError(null)
+
+      const stripe = await stripePromise
+      if (!stripe) {
+        setCheckoutError('Stripe failed to load. Please refresh and try again.')
+        return false
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (!session?.access_token || !session.user) {
+        setCheckoutError('Sign in to continue.')
+        return false
+      }
+
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          priceId,
+          userId: session.user.id,
+          userEmail: session.user.email,
+        }),
+      })
+
+      const data = (await response.json()) as {
+        sessionId?: string
+        error?: string
+      }
+      if (!response.ok || !data.sessionId) {
+        setCheckoutError(data.error ?? 'Could not start checkout. Try again later.')
+        return false
+      }
+
+      const result = await stripe.redirectToCheckout({ sessionId: data.sessionId })
+      if (result.error) {
+        setCheckoutError(result.error.message ?? 'Could not redirect to checkout.')
+        return false
+      }
+
+      return true
+    } catch {
+      setCheckoutError('Checkout failed. Please try again.')
+      return false
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  async function handleAppCheckout(kind: 'monthly' | 'annual' | 'lifetime') {
+    const envPriceId =
+      kind === 'monthly'
+        ? PRICE_IDS.monthly
+        : kind === 'annual'
+          ? PRICE_IDS.annual
+          : PRICE_IDS.lifetime
+
+    if (envPriceId) {
+      const ok = await createCheckoutFromPriceId(envPriceId, kind)
+      if (ok) return
+    }
+
+    const legacyKind = kind === 'lifetime' ? 'lifetime' : kind
+    const result = await startStripeCheckout(legacyKind)
+    if (!result.ok) setCheckoutError(result.error)
+  }
 
   return (
     <AppPageChrome>
@@ -99,12 +189,19 @@ export default function PricingPage() {
                 <p className="text-xs text-muted-foreground">&nbsp;</p>
               </div>
             </div>
-            <Button asChild className="mt-4 w-full bg-accent text-accent-foreground hover:bg-accent/90">
-              <Link href="/auth">
-                {annual
+            <Button
+              type="button"
+              className="mt-4 w-full bg-accent text-accent-foreground hover:bg-accent/90"
+              onClick={() => {
+                void handleAppCheckout(annual ? 'annual' : 'monthly')
+              }}
+              disabled={loading === 'annual' || loading === 'monthly'}
+            >
+              {loading === 'annual' || loading === 'monthly'
+                ? 'Loading...'
+                : annual
                   ? `Start free trial — ${formatPriceCents(annualCents, annualCurrency)}/yr`
                   : `Start free trial — ${formatPriceCents(monthlyCents, monthlyCurrency)}/mo`}
-              </Link>
             </Button>
             {annual ? (
               annualSavingsLine ? (
@@ -119,11 +216,13 @@ export default function PricingPage() {
             <p className="mt-4 text-2xl font-bold">
               {formatPriceCents(lifetimeCents, lifetimeCurrency)}
             </p>
-            <Button asChild variant="outline" className="mt-4 w-full">
-              <Link href="/auth">Get lifetime</Link>
+            <Button variant="outline" className="mt-4 w-full" onClick={() => void handleAppCheckout('lifetime')} disabled={loading === 'lifetime'}>
+              {loading === 'lifetime' ? 'Loading...' : 'Get lifetime'}
             </Button>
           </Card>
         </div>
+
+        {checkoutError ? <p className="text-sm text-red-400">{checkoutError}</p> : null}
 
         <Link href="/" className="text-sm text-accent hover:underline">
           Back to home

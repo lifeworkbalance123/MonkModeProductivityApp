@@ -2,21 +2,22 @@
 
 import { useMemo } from 'react'
 import useSWR from 'swr'
+import {
+  DEFAULT_ANNUAL_CENTS,
+  DEFAULT_LIFETIME_CENTS,
+  DEFAULT_MONTHLY_CENTS,
+  findPricingRow,
+  formatPriceCents,
+  type PricingConfigRow,
+} from '@/lib/pricingDisplay'
 
-/** Fallbacks when `/api/pricing` is empty or fails (matches historical marketing copy). */
-export const DEFAULT_MONTHLY_CENTS = 999
-export const DEFAULT_ANNUAL_CENTS = 7999
-export const DEFAULT_LIFETIME_CENTS = 14900
-
-export type PricingConfigRow = {
-  id: string
-  name: string
-  full_price: number | null
-  current_price: number
-  currency: string
-  is_launch_special: boolean
-  launch_special_end_date: string | null
-  updated_at: string
+export type { PricingConfigRow }
+export {
+  DEFAULT_ANNUAL_CENTS,
+  DEFAULT_LIFETIME_CENTS,
+  DEFAULT_MONTHLY_CENTS,
+  findPricingRow,
+  formatPriceCents,
 }
 
 async function pricingFetcher(url: string): Promise<PricingConfigRow[]> {
@@ -44,21 +45,6 @@ export function usePricing() {
     { revalidateOnFocus: false },
   )
   return { prices: data, error, isLoading, isValidating, mutate }
-}
-
-export function findPricingRow(
-  prices: PricingConfigRow[] | undefined,
-  id: string,
-): PricingConfigRow | undefined {
-  return prices?.find((p) => p.id === id)
-}
-
-export function formatPriceCents(cents: number, currency = 'AUD'): string {
-  try {
-    return new Intl.NumberFormat('en-AU', { style: 'currency', currency }).format(cents / 100)
-  } catch {
-    return `$${(cents / 100).toFixed(2)}`
-  }
 }
 
 /** Pro subscription rows (`app_monthly`, `app_annual`) for pricing / upgrade / landing. */
