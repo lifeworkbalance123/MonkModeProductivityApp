@@ -14,7 +14,7 @@ export type CheckoutMode = 'subscription' | 'payment'
  * Creates a Stripe Checkout Session.
  * - Program: POST JSON `{ "plan": "monk_mode" | "sprint" | "transform" | "v2_program" }` — one-time payment.
  * - Pro / Lifetime: POST JSON `{ "priceKind": "monthly" | "annual" | "lifetime" }`.
- * Authorization: Bearer <Supabase access_token>
+ * Authorization: Optional Bearer <Supabase access_token> for logged-in attribution.
  */
 export async function POST(request: Request) {
   if (!process.env.STRIPE_SECRET_KEY?.trim()) {
@@ -106,14 +106,10 @@ export async function POST(request: Request) {
     }
   }
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   // Optional direct price checkout (for Stripe.js / Checkout Session ID flows).
   if (body.priceId?.trim()) {
     const suppliedUserId = body.userId?.trim()
-    if (suppliedUserId && suppliedUserId !== user.id) {
+    if (suppliedUserId && (!user || suppliedUserId !== user.id)) {
       return NextResponse.json({ error: 'Invalid userId for authenticated user' }, { status: 403 })
     }
 
@@ -132,11 +128,15 @@ export async function POST(request: Request) {
         line_items: [{ price: priceId, quantity: 1 }],
         success_url: `${origin}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${origin}/pricing`,
-        customer_email: body.userEmail?.trim() || user.email || undefined,
-        client_reference_id: user.id,
+        customer_email: body.userEmail?.trim() || user?.email || undefined,
+        client_reference_id: user?.id,
         metadata: {
-          supabase_user_id: user.id,
-          user_id: user.id,
+          ...(user?.id
+            ? {
+                supabase_user_id: user.id,
+                user_id: user.id,
+              }
+            : {}),
         },
       })
 
@@ -180,10 +180,10 @@ export async function POST(request: Request) {
       billing_address_collection: 'auto',
       customer_update: { address: 'auto' },
       payment_method_types: kind === 'lifetime' ? undefined : ['card'],
-      customer_email: user.email ?? undefined,
-      client_reference_id: user.id,
+      customer_email: user?.email ?? undefined,
+      client_reference_id: user?.id,
       metadata: {
-        supabase_user_id: user.id,
+        ...(user?.id ? { supabase_user_id: user.id } : {}),
         plan: kind === 'lifetime' ? 'lifetime' : kind,
         ...(kind === 'annual'
           ? { billing_cycle: 'yearly', success_message: 'annual_checkout' }
@@ -193,10 +193,12 @@ export async function POST(request: Request) {
         ? undefined
         : {
             trial_period_days: 0,
-            metadata: {
-              supabase_user_id: user.id,
-              plan: kind,
-            },
+            metadata: user?.id
+              ? {
+                  supabase_user_id: user.id,
+                  plan: kind,
+                }
+              : { plan: kind },
           },
     })
 

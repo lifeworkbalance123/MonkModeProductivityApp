@@ -32,7 +32,6 @@ const PROGRAMS: ProgramCard[] = [
       'Student -> Monk -> Master progression',
       'Milestone checkpoints along the way',
       'All app productivity tools included',
-      'Lifetime access - no subscription',
     ],
   },
   {
@@ -47,7 +46,6 @@ const PROGRAMS: ProgramCard[] = [
       'Progress checkpoints to lock consistency',
       'Structure built for busy work weeks',
       'All app productivity tools included',
-      'Lifetime access - no subscription',
     ],
   },
   {
@@ -62,7 +60,6 @@ const PROGRAMS: ProgramCard[] = [
       'Weekly review and reset rituals',
       'Built to transition you into mastery mode',
       'All app productivity tools included',
-      'Lifetime access - no subscription',
     ],
   },
 ]
@@ -224,7 +221,7 @@ export default function JoinPage() {
               {selectedPriceLabel}
             </p>
             <p style={{ color: 'var(--muted-foreground)', fontSize: '14px', margin: '8px 0 0' }}>
-              {selectedConfig.subtitle}. One-time payment. Lifetime access.
+              {selectedConfig.subtitle}. One-time payment.
             </p>
           </div>
 

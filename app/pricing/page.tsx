@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { AppPageChrome } from '@/components/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -21,7 +20,6 @@ const PRICE_IDS = {
 } as const
 
 export default function PricingPage() {
-  const router = useRouter()
   const [annual, setAnnual] = useState(true)
   const [loading, setLoading] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
@@ -49,22 +47,24 @@ export default function PricingPage() {
       const {
         data: { session },
       } = await supabase.auth.getSession()
-      if (!session?.access_token || !session.user) {
-        router.push('/auth?redirect=/pricing')
-        return false
-      }
 
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+      const payload: {
+        priceId: string
+        userId?: string
+        userEmail?: string | null
+      } = { priceId }
+      if (session?.access_token && session.user) {
+        headers.Authorization = `Bearer ${session.access_token}`
+        payload.userId = session.user.id
+        payload.userEmail = session.user.email
+      }
       const response = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          priceId,
-          userId: session.user.id,
-          userEmail: session.user.email,
-        }),
+        headers,
+        body: JSON.stringify(payload),
       })
 
       const data = (await response.json()) as {
@@ -104,10 +104,6 @@ export default function PricingPage() {
     const legacyKind = kind === 'lifetime' ? 'lifetime' : kind
     const result = await startStripeCheckout(legacyKind)
     if (!result.ok) {
-      if (result.error.toLowerCase().includes('sign in')) {
-        router.push('/auth?redirect=/pricing')
-        return
-      }
       setCheckoutError(result.error)
     }
   }
