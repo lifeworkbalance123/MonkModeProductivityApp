@@ -64,11 +64,16 @@ export default function UserTable() {
   const [message, setMessage] = useState('')
 
   const [adjustOpen, setAdjustOpen] = useState(false)
+  const [resetOpen, setResetOpen] = useState(false)
   const [refundOpen, setRefundOpen] = useState(false)
   const [emailOpen, setEmailOpen] = useState(false)
   const [activeUser, setActiveUser] = useState<AdminUserRow | null>(null)
   const [adjustDay, setAdjustDay] = useState(1)
   const [adjustReason, setAdjustReason] = useState('')
+  const [resetProgramType, setResetProgramType] = useState('60day')
+  const [resetChangeProgram, setResetChangeProgram] = useState(false)
+  const [resetTestMode, setResetTestMode] = useState(false)
+  const [resetTestDay, setResetTestDay] = useState(1)
   const [emailType, setEmailType] = useState<string>(EMAIL_TYPES[0])
   const [working, setWorking] = useState(false)
   const [refundCents, setRefundCents] = useState('')
@@ -293,6 +298,21 @@ export default function UserTable() {
                           variant="outline"
                           size="sm"
                           className="h-7 text-[11px] px-2"
+                          onClick={() => {
+                            setActiveUser(u)
+                            setResetProgramType(u.program_type ?? '60day')
+                            setResetChangeProgram(false)
+                            setResetTestMode(false)
+                            setResetTestDay(1)
+                            setResetOpen(true)
+                          }}
+                        >
+                          Reset
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-[11px] px-2"
           onClick={() => {
             setActiveUser(u)
             setRefundCents('')
@@ -378,6 +398,98 @@ export default function UserTable() {
               }
             >
               Save
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reset to Day 1</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Sets <strong>start date to today</strong>, <strong>day 1</strong>, clears completed days, and
+            reactivates the program. Use this so a user can continue on a new track or retest from the
+            beginning.
+          </p>
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={resetChangeProgram}
+                onChange={(e) => setResetChangeProgram(e.target.checked)}
+              />
+              Change program track
+            </label>
+            {resetChangeProgram ? (
+              <div>
+                <Label>New program</Label>
+                <Select value={resetProgramType} onValueChange={setResetProgramType}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="60day">60-day</SelectItem>
+                    <SelectItem value="sprint_standard">Sprint (21)</SelectItem>
+                    <SelectItem value="sprint_monk">Monk sprint (21)</SelectItem>
+                    <SelectItem value="transform">Transform (56)</SelectItem>
+                    <SelectItem value="mastery">Mastery (90)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={resetTestMode}
+                onChange={(e) => setResetTestMode(e.target.checked)}
+              />
+              Enable test mode for this user (jump to a day without waiting)
+            </label>
+            {resetTestMode ? (
+              <div>
+                <Label>Test day (1–365)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={365}
+                  className="mt-1"
+                  value={resetTestDay}
+                  onChange={(e) =>
+                    setResetTestDay(Math.min(365, Math.max(1, Number(e.target.value) || 1)))
+                  }
+                />
+              </div>
+            ) : null}
+
+            <Button
+              variant="destructive"
+              disabled={working || !activeUser}
+              onClick={() => {
+                if (
+                  !window.confirm(
+                    `Reset ${activeUser?.email ?? 'this user'} to Day 1 with today as start date?`,
+                  )
+                ) {
+                  return
+                }
+                const body: Record<string, unknown> = {}
+                if (resetChangeProgram) body.program_type = resetProgramType
+                if (resetTestMode) {
+                  body.test_mode = { enabled: true, day: resetTestDay }
+                } else {
+                  body.test_mode = { enabled: false }
+                }
+                void postAction(
+                  `/api/admin/users/${activeUser!.id}/reset-program`,
+                  body,
+                  () => setResetOpen(false),
+                )
+              }}
+            >
+              Reset program
             </Button>
           </div>
         </DialogContent>

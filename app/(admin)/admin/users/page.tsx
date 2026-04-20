@@ -200,6 +200,8 @@ function TestModePanel() {
           </h3>
           <p style={{ color: 'var(--muted-foreground)', fontSize: '12px', margin: 0 }}>
             Override your program day to test any lesson without waiting. Only affects your account.
+            To reset <strong>another</strong> user to Day 1, change their program, or set test mode for them,
+            use <strong>Progress &amp; support</strong> below → <strong>Reset</strong>.
           </p>
         </div>
         {testMode ? (
