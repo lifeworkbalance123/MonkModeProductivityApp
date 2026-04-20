@@ -1,14 +1,20 @@
 import Stripe from 'stripe'
 
-const secretKey = process.env.STRIPE_SECRET_KEY?.trim()
+let cached: Stripe | null = null
 
-if (!secretKey) {
-  throw new Error(
-    'STRIPE_SECRET_KEY is missing. Add it to .env.local and to Vercel environment variables.',
-  )
+export function getStripeClient(): Stripe {
+  if (cached) return cached
+
+  const secretKey = process.env.STRIPE_SECRET_KEY?.trim()
+  if (!secretKey) {
+    throw new Error(
+      'STRIPE_SECRET_KEY is missing. Add it to .env.local and to Vercel environment variables.',
+    )
+  }
+
+  cached = new Stripe(secretKey, {
+    apiVersion: '2026-03-25.dahlia',
+    typescript: true,
+  })
+  return cached
 }
-
-export const stripe = new Stripe(secretKey, {
-  apiVersion: '2025-03-31.basil',
-  typescript: true,
-})

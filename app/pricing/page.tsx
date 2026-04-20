@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { loadStripe } from '@stripe/stripe-js'
 import { AppPageChrome } from '@/components/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -10,8 +9,6 @@ import { captureEvent } from '@/lib/analytics'
 import { formatPriceCents, lifetimePriceFromRows, useAppSubscriptionPrices } from '@/hooks/usePricing'
 import { supabase } from '@/lib/supabase'
 import { startStripeCheckout } from '@/lib/stripe-checkout'
-
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '')
 
 const PRICE_IDS = {
   monthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_APP_MONTHLY,
@@ -47,12 +44,6 @@ export default function PricingPage() {
       setLoading(label)
       setCheckoutError(null)
 
-      const stripe = await stripePromise
-      if (!stripe) {
-        setCheckoutError('Stripe failed to load. Please refresh and try again.')
-        return false
-      }
-
       const {
         data: { session },
       } = await supabase.auth.getSession()
@@ -76,18 +67,15 @@ export default function PricingPage() {
 
       const data = (await response.json()) as {
         sessionId?: string
+        url?: string
         error?: string
       }
-      if (!response.ok || !data.sessionId) {
+      if (!response.ok || !data.url) {
         setCheckoutError(data.error ?? 'Could not start checkout. Try again later.')
         return false
       }
 
-      const result = await stripe.redirectToCheckout({ sessionId: data.sessionId })
-      if (result.error) {
-        setCheckoutError(result.error.message ?? 'Could not redirect to checkout.')
-        return false
-      }
+      window.location.href = data.url
 
       return true
     } catch {

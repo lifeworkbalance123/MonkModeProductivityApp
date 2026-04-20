@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-service'
 import { getAppOrigin } from '@/lib/app-origin'
-import { stripe } from '@/lib/stripe'
+import { getStripeClient } from '@/lib/stripe'
 import { STRIPE_PRICES, isSubscriptionPrice } from '@/lib/stripePrices'
 
 export const dynamic = 'force-dynamic'
@@ -58,6 +58,7 @@ export async function POST(request: Request) {
   }
 
   const origin = getAppOrigin(request)
+  const stripe = getStripeClient()
 
   // Optional direct price checkout (for Stripe.js / Checkout Session ID flows).
   if (body.priceId?.trim()) {
