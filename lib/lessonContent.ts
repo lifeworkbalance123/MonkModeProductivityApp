@@ -13,6 +13,8 @@ export type DailyLesson = {
   tip?: string
   media_type?: string | null
   media_url?: string | null
+  companion_media_type?: string | null
+  companion_media_url?: string | null
   isBonus?: boolean
 }
 
@@ -43,6 +45,8 @@ type LessonRow = {
   is_bonus?: boolean | null
   media_type?: string | null
   media_url?: string | null
+  companion_media_type?: string | null
+  companion_media_url?: string | null
 }
 
 function rowToLesson(data: LessonRow): DailyLesson {
@@ -57,6 +61,8 @@ function rowToLesson(data: LessonRow): DailyLesson {
     tip: data.tip?.trim() ? data.tip : undefined,
     media_type: data.media_type ?? null,
     media_url: data.media_url ?? null,
+    companion_media_type: data.companion_media_type ?? null,
+    companion_media_url: data.companion_media_url ?? null,
     isBonus: !!data.is_bonus,
   }
 }

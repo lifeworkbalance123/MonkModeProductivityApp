@@ -5,6 +5,8 @@ import { PU } from '@/lib/program-ui-tokens'
 type LessonMediaProps = {
   mediaType: string | null | undefined
   mediaUrl: string | null | undefined
+  companionMediaType?: string | null
+  companionMediaUrl?: string | null
 }
 
 function getYouTubeId(url: string) {
@@ -21,7 +23,62 @@ function getYouTubeId(url: string) {
   return null
 }
 
-export default function LessonMedia({ mediaType, mediaUrl }: LessonMediaProps) {
+function AudioBlock({ url }: { url: string }) {
+  return (
+    <div
+      style={{
+        background: PU.bg,
+        borderRadius: '10px',
+        padding: '16px',
+        marginBottom: '16px',
+        border: `1px solid ${PU.border}`,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+        <span style={{ fontSize: '20px' }}>🎵</span>
+        <span style={{ color: PU.mutedFg, fontSize: '13px' }}>Listen to today&apos;s lesson</span>
+      </div>
+      <audio controls style={{ width: '100%', height: '40px', accentColor: PU.primary }}>
+        <source src={url} type="audio/mpeg" />
+        Your browser does not support audio playback.
+      </audio>
+    </div>
+  )
+}
+
+function ImageBlock({ url }: { url: string }) {
+  return (
+    <div
+      style={{
+        borderRadius: '10px',
+        overflow: 'hidden',
+        marginBottom: '16px',
+        border: `1px solid ${PU.border}`,
+        background: PU.bg,
+        aspectRatio: '16 / 9',
+        maxHeight: 'min(56vh, 420px)',
+      }}
+    >
+      <img
+        src={url}
+        alt=""
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          display: 'block',
+        }}
+      />
+    </div>
+  )
+}
+
+export default function LessonMedia({
+  mediaType,
+  mediaUrl,
+  companionMediaType,
+  companionMediaUrl,
+}: LessonMediaProps) {
   if (!mediaType || !mediaUrl) return null
 
   if (mediaType === 'youtube') {
@@ -58,29 +115,6 @@ export default function LessonMedia({ mediaType, mediaUrl }: LessonMediaProps) {
     )
   }
 
-  if (mediaType === 'audio') {
-    return (
-      <div
-        style={{
-          background: PU.bg,
-          borderRadius: '10px',
-          padding: '16px',
-          marginBottom: '16px',
-          border: `1px solid ${PU.border}`,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-          <span style={{ fontSize: '20px' }}>🎵</span>
-          <span style={{ color: PU.mutedFg, fontSize: '13px' }}>Listen to today&apos;s lesson</span>
-        </div>
-        <audio controls style={{ width: '100%', height: '40px', accentColor: PU.primary }}>
-          <source src={mediaUrl} type="audio/mpeg" />
-          Your browser does not support audio playback.
-        </audio>
-      </div>
-    )
-  }
-
   if (mediaType === 'video') {
     return (
       <div style={{ borderRadius: '10px', overflow: 'hidden', marginBottom: '16px', background: '#000' }}>
@@ -92,30 +126,27 @@ export default function LessonMedia({ mediaType, mediaUrl }: LessonMediaProps) {
     )
   }
 
+  let imageUrl: string | null = null
+  let audioUrl: string | null = null
+
   if (mediaType === 'image') {
+    imageUrl = mediaUrl
+    if (companionMediaType === 'audio' && companionMediaUrl) {
+      audioUrl = companionMediaUrl
+    }
+  } else if (mediaType === 'audio') {
+    audioUrl = mediaUrl
+    if (companionMediaType === 'image' && companionMediaUrl) {
+      imageUrl = companionMediaUrl
+    }
+  }
+
+  if (imageUrl || audioUrl) {
     return (
-      <div
-        style={{
-          borderRadius: '10px',
-          overflow: 'hidden',
-          marginBottom: '16px',
-          border: `1px solid ${PU.border}`,
-          background: PU.bg,
-          aspectRatio: '16 / 9',
-          maxHeight: 'min(56vh, 420px)',
-        }}
-      >
-        <img
-          src={mediaUrl}
-          alt=""
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            display: 'block',
-          }}
-        />
-      </div>
+      <>
+        {imageUrl ? <ImageBlock url={imageUrl} /> : null}
+        {audioUrl ? <AudioBlock url={audioUrl} /> : null}
+      </>
     )
   }
 

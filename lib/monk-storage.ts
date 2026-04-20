@@ -91,6 +91,27 @@ export const defaultMonkData: MonkData = {
   habitLog: {},
 }
 
+/**
+ * Used after Settings → “Reset all data”: empty slate, not the demo copy in {@link defaultMonkData}.
+ * Five goal rows with blank text so the dashboard still shows five checkboxes to fill in.
+ */
+export const emptyMonkDataAfterReset: MonkData = {
+  habits: [],
+  goals: [
+    { id: 'g1', text: '', completed: false },
+    { id: 'g2', text: '', completed: false },
+    { id: 'g3', text: '', completed: false },
+    { id: 'g4', text: '', completed: false },
+    { id: 'g5', text: '', completed: false },
+  ],
+  gratitude: ['', '', ''],
+  achievements: ['', '', ''],
+  morningVideoUrl: '',
+  morningVideoNote: '',
+  timeSlots: [],
+  habitLog: {},
+}
+
 function mergeLoaded(raw: string): MonkData {
   const parsed = JSON.parse(raw) as Partial<MonkData>
   return {

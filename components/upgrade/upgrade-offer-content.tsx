@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Flame, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,7 @@ import { usePlan } from '@/hooks/usePlan'
 import { startStripeCheckout } from '@/lib/stripe-checkout'
 import { cn } from '@/lib/utils'
 import { captureEvent } from '@/lib/analytics'
+import { formatPriceCents, lifetimePriceFromRows, useAppSubscriptionPrices } from '@/hooks/usePricing'
 
 export type UpgradeOfferVariant = 'page' | 'modal'
 
@@ -58,7 +59,7 @@ const PRO_FEATURES = [
   'Priority support',
 ]
 
-const FAQ = [
+const FAQ_BASE = [
   {
     q: 'Will I lose my data if I stay on Free?',
     a: 'No. All your habits, goals, and journal entries are saved. You just lose access to Pro features.',
@@ -71,11 +72,7 @@ const FAQ = [
     q: 'What if I want to cancel?',
     a: 'Cancel anytime from Settings → Manage Subscription. You keep Pro access until the end of your billing period.',
   },
-  {
-    q: 'Is the $149 Lifetime deal permanent?',
-    a: 'Not forever — we plan to increase this price as the app grows. Lock it in now.',
-  },
-]
+] as const
 
 export function UpgradeOfferContent({
   variant,
@@ -85,6 +82,29 @@ export function UpgradeOfferContent({
   const { user } = useAuth()
   const { showToast } = useToast()
   const { isPro, plan, isLoading: planLoading } = usePlan()
+  const {
+    prices,
+    monthlyCents,
+    annualCents,
+    monthlyCurrency,
+    annualCurrency,
+    annualPerMonthCents,
+    annualSavingsLine,
+  } = useAppSubscriptionPrices()
+  const { cents: lifetimeCents, currency: lifetimeCurrency } = lifetimePriceFromRows(prices)
+  const lifetimeLabel = formatPriceCents(lifetimeCents, lifetimeCurrency)
+
+  const faqItems = useMemo(
+    () => [
+      ...FAQ_BASE,
+      {
+        q: `Is the ${lifetimeLabel} Lifetime deal permanent?`,
+        a: 'Not forever — we plan to increase this price as the app grows. Lock it in now.',
+      },
+    ],
+    [lifetimeLabel],
+  )
+
   const [annual, setAnnual] = useState(true)
   const [busy, setBusy] = useState<'monthly' | 'annual' | 'lifetime' | null>(
     null,
@@ -123,8 +143,8 @@ export function UpgradeOfferContent({
   }
 
   const proCtaLabel = annual
-    ? 'Start free trial — $59.99/yr'
-    : 'Start free trial — $9.99/mo'
+    ? `Start free trial — ${formatPriceCents(annualCents, annualCurrency)}/yr`
+    : `Start free trial — ${formatPriceCents(monthlyCents, monthlyCurrency)}/mo`
 
   const padding =
     variant === 'page' ? 'px-4 pb-16 pt-8 sm:px-8 sm:pt-10' : 'px-4 pb-10 pt-6 sm:px-8'
@@ -260,7 +280,7 @@ export function UpgradeOfferContent({
                 )}
                 onClick={() => setAnnual(false)}
               >
-                Monthly · $9.99/mo
+                Monthly · {formatPriceCents(monthlyCents, monthlyCurrency)}/mo
               </button>
               <button
                 type="button"
@@ -272,7 +292,7 @@ export function UpgradeOfferContent({
                 )}
                 onClick={() => setAnnual(true)}
               >
-                Annual · $59.99/yr
+                Annual · {formatPriceCents(annualCents, annualCurrency)}/yr
                 <span className="absolute -right-1 -top-2 rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
                   BEST VALUE
                 </span>
@@ -305,8 +325,12 @@ export function UpgradeOfferContent({
                     annual ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0',
                   )}
                 >
-                  <p className="text-2xl font-bold text-foreground">$4.99/mo</p>
-                  <p className="text-xs text-muted-foreground">billed as $59.99/year</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {formatPriceCents(annualPerMonthCents, annualCurrency)}/mo
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    billed as {formatPriceCents(annualCents, annualCurrency)}/year
+                  </p>
                 </div>
                 <div
                   className={cn(
@@ -314,7 +338,9 @@ export function UpgradeOfferContent({
                     annual ? '-translate-y-2 opacity-0' : 'translate-y-0 opacity-100',
                   )}
                 >
-                  <p className="text-2xl font-bold text-foreground">$9.99/mo</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {formatPriceCents(monthlyCents, monthlyCurrency)}/mo
+                  </p>
                 </div>
               </div>
               <Button
@@ -334,10 +360,8 @@ export function UpgradeOfferContent({
               <p className="mt-2 text-center text-xs text-muted-foreground">
                 Cancel anytime. No hidden fees.
               </p>
-              {annual ? (
-                <p className="mt-1 text-center text-xs text-emerald-300">
-                  You save $59.89 per year vs monthly billing
-                </p>
+              {annual && annualSavingsLine ? (
+                <p className="mt-1 text-center text-xs text-emerald-300">{annualSavingsLine}</p>
               ) : null}
             </>
           ) : null}
@@ -351,7 +375,7 @@ export function UpgradeOfferContent({
             Best value — Own it forever
           </p>
           <h3 className="mt-2 text-2xl font-semibold text-foreground">
-            Lifetime Access — $149
+            Lifetime Access — {lifetimeLabel}
           </h3>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
             Pay once. Get every future feature. No subscriptions, ever.
@@ -380,7 +404,7 @@ export function UpgradeOfferContent({
             {busy === 'lifetime' ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
-              'Get Lifetime Access — $149'
+              `Get Lifetime Access — ${lifetimeLabel}`
             )}
           </Button>
         </div>
@@ -411,7 +435,7 @@ export function UpgradeOfferContent({
           collapsible
           className="rounded-xl border border-border bg-card/40 px-4"
         >
-          {FAQ.map((item, i) => (
+          {faqItems.map((item, i) => (
             <AccordionItem key={item.q} value={`q-${i}`} className="border-border">
               <AccordionTrigger className="text-left text-foreground hover:no-underline">
                 {item.q}

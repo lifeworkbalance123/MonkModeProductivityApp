@@ -12,6 +12,7 @@ const navLinks = [
   { label: 'Analytics', href: '/admin/analytics' },
   { label: 'Content', href: '/admin/content' },
   { label: 'Hero', href: '/admin/hero' },
+  { label: 'Deep Work', href: '/admin/deep-work' },
   { label: 'Blog', href: '/admin/blog' },
   { label: 'Revenue', href: '/admin/revenue' },
   { label: 'Waitlist', href: '/admin/waitlist' },

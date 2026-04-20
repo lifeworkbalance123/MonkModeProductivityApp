@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
+import { useTrialBanner } from '@/hooks/use-trial-banner'
 import { mailtoSales, mailtoSupport, SUPPORT_EMAIL } from '@/lib/site-contact'
+import { cn } from '@/lib/utils'
 
 const FEATURE_REQUEST_URL = mailtoSales('Feature request — monkcubed')
 const EXCLUDED_PATHS = new Set(['/', '/auth', '/pricing', '/upgrade'])
@@ -16,6 +18,7 @@ const bugReportHref = mailtoSupport(
 
 export function SupportFloatingButton() {
   const { user } = useAuth()
+  const trial = useTrialBanner()
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -40,47 +43,62 @@ export function SupportFloatingButton() {
   if (!user || isExcluded) return null
 
   return (
-    <div ref={wrapRef} className="fixed bottom-6 right-6 z-[115]">
-      {open ? (
-        <div className="mb-3 w-56 rounded-xl border border-border bg-card p-3 shadow-xl">
-          <p className="mb-2 text-sm font-medium text-foreground">Need help?</p>
-          <div className="space-y-1.5 text-sm">
-            <a
-              href={`mailto:${SUPPORT_EMAIL}`}
-              className="block text-muted-foreground hover:text-foreground"
-            >
-              📧 Email support
-            </a>
-            <Link
-              href="/support"
-              className="block text-muted-foreground hover:text-foreground"
-              onClick={() => setOpen(false)}
-            >
-              📖 View FAQ
-            </Link>
-            <a
-              href={FEATURE_REQUEST_URL}
-              className="block text-muted-foreground hover:text-foreground"
-            >
-              💡 Request a feature
-            </a>
-            <a
-              href={bugReportHref}
-              className="block text-muted-foreground hover:text-foreground"
-            >
-              🐛 Report bug
-            </a>
+    <div
+      ref={wrapRef}
+      className={cn(
+        'fixed z-[115]',
+        /* Mobile: top-right under app header — avoids covering bottom tab + Menu */
+        'max-md:right-3 max-md:bottom-auto max-md:left-auto',
+        trial.visible
+          ? 'max-md:top-[calc(env(safe-area-inset-top,0px)+6.75rem)]'
+          : 'max-md:top-[calc(env(safe-area-inset-top,0px)+3.75rem)]',
+        /* Desktop: classic FAB bottom-right */
+        'md:bottom-6 md:right-6 md:top-auto',
+      )}
+    >
+      <div className="flex flex-col items-end gap-3 md:flex-col-reverse">
+        <button
+          type="button"
+          aria-label="Open support"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-base font-bold text-primary-foreground shadow-[0_8px_20px_rgba(0,0,0,0.35)]"
+        >
+          ?
+        </button>
+        {open ? (
+          <div className="w-56 rounded-xl border border-border bg-card p-3 shadow-xl">
+            <p className="mb-2 text-sm font-medium text-foreground">Need help?</p>
+            <div className="space-y-1.5 text-sm">
+              <a
+                href={`mailto:${SUPPORT_EMAIL}`}
+                className="block text-muted-foreground hover:text-foreground"
+              >
+                📧 Email support
+              </a>
+              <Link
+                href="/support"
+                className="block text-muted-foreground hover:text-foreground"
+                onClick={() => setOpen(false)}
+              >
+                📖 View FAQ
+              </Link>
+              <a
+                href={FEATURE_REQUEST_URL}
+                className="block text-muted-foreground hover:text-foreground"
+              >
+                💡 Request a feature
+              </a>
+              <a
+                href={bugReportHref}
+                className="block text-muted-foreground hover:text-foreground"
+              >
+                🐛 Report bug
+              </a>
+            </div>
           </div>
-        </div>
-      ) : null}
-      <button
-        type="button"
-        aria-label="Open support"
-        onClick={() => setOpen((v) => !v)}
-        className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-base font-bold text-primary-foreground shadow-[0_8px_20px_rgba(0,0,0,0.35)]"
-      >
-        ?
-      </button>
+        ) : null}
+      </div>
     </div>
   )
 }

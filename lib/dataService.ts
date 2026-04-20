@@ -7,7 +7,7 @@ import { addDays, format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { computeStreak } from '@/lib/monk-streak'
 import type { Goal, Habit, HabitLog, MonkData, TimeSlot } from '@/lib/monk-types'
-import { defaultMonkData, loadMonk, saveMonk } from '@/lib/monk-storage'
+import { defaultMonkData, emptyMonkDataAfterReset, loadMonk, saveMonk } from '@/lib/monk-storage'
 import type {
   PersonalTrainingCategory,
   PersonalTrainingResource,
@@ -475,7 +475,10 @@ export async function resetAllUserData(ctx: DataServiceContext): Promise<void> {
     await supabase.from('journal_entries').delete().eq('user_id', uid)
     await supabase.from('streaks').delete().eq('user_id', uid)
   }
-  saveMonk(defaultMonkData)
+  saveMonk(emptyMonkDataAfterReset)
+  if (shouldSyncToCloud(ctx) && ctx.userId) {
+    await persistFullMonkData(ctx, emptyMonkDataAfterReset)
+  }
 }
 
 // --- Granular API (localStorage when not Pro cloud) ---

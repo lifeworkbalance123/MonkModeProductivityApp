@@ -2,16 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { ChevronDown } from 'lucide-react'
 import { ProBadge } from '@/components/pro-badge'
 import { MonkCubedLogo } from '@/components/brand/MonkCubedLogo'
 import { PwaInstallButton } from '@/components/marketing/PwaInstallButton'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useColorTheme } from '@/context/ColorThemeContext'
-import {
-  allNavItems,
-  desktopOnlyGroups,
-  drawerNavGroups,
-  type NavItem,
-} from '@/lib/nav-config'
+import { useSidebarNavCollapse } from '@/hooks/useSidebarNavCollapse'
+import { sidebarNavSections, type NavItem } from '@/lib/nav-config'
 import { cn } from '@/lib/utils'
 
 type Props = {
@@ -71,14 +69,7 @@ function ItemLink({
 export function DesktopSidebar({ showProGate, onProLocked }: Props) {
   const pathname = usePathname()
   const { themeId } = useColorTheme()
-
-  const today = allNavItems.find((i) => i.href === '/today')!
-  const dashboard = allNavItems.find((i) => i.href === '/dashboard')!
-
-  function isActive(href: string) {
-    if (href === '/') return pathname === '/'
-    return pathname === href || pathname.startsWith(`${href}/`)
-  }
+  const { isActive, isGroupOpen, setGroupOpen } = useSidebarNavCollapse(pathname)
 
   return (
     <aside
@@ -96,59 +87,56 @@ export function DesktopSidebar({ showProGate, onProLocked }: Props) {
       </div>
 
       <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
-        <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Daily
-        </p>
-        <ItemLink
-          item={today}
-          active={isActive(today.href)}
-          showProGate={showProGate}
-          onProLocked={onProLocked}
-        />
-        <ItemLink
-          item={dashboard}
-          active={isActive(dashboard.href)}
-          showProGate={showProGate}
-          onProLocked={onProLocked}
-        />
+        {sidebarNavSections.map((group, index) => {
+          const open = isGroupOpen(group)
+          const panelId = `nav-section-${group.id}`
 
-        {drawerNavGroups.map((group) => (
-          <div key={group.title} className="mt-4">
-            <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {group.title}
-            </p>
-            <div className="flex flex-col gap-0.5">
-              {group.items.map((item) => (
-                <ItemLink
-                  key={item.href}
-                  item={item}
-                  active={isActive(item.href)}
-                  showProGate={showProGate}
-                  onProLocked={onProLocked}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {desktopOnlyGroups.map((group) => (
-          <div key={group.title} className="mt-4">
-            <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {group.title}
-            </p>
-            <div className="flex flex-col gap-0.5">
-              {group.items.map((item) => (
-                <ItemLink
-                  key={item.href}
-                  item={item}
-                  active={isActive(item.href)}
-                  showProGate={showProGate}
-                  onProLocked={onProLocked}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
+          return (
+            <Collapsible
+              key={group.id}
+              open={open}
+              onOpenChange={(next) => setGroupOpen(group.id, next)}
+              className={cn(index > 0 && 'mt-3')}
+            >
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  id={`${panelId}-trigger`}
+                  aria-controls={panelId}
+                  onMouseEnter={() => setGroupOpen(group.id, true)}
+                  className={cn(
+                    'flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-left',
+                    'text-[10px] font-semibold uppercase tracking-wider text-muted-foreground',
+                    'outline-none transition-colors hover:bg-secondary/60 hover:text-foreground',
+                    'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                  )}
+                >
+                  <ChevronDown
+                    className={cn(
+                      'h-3.5 w-3.5 shrink-0 opacity-70 transition-transform duration-200',
+                      open ? 'rotate-0' : '-rotate-90',
+                    )}
+                    aria-hidden
+                  />
+                  <span className="flex-1">{group.title}</span>
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent id={panelId} className="overflow-hidden">
+                <div className="flex flex-col gap-0.5 pt-1 pl-1">
+                  {group.items.map((item) => (
+                    <ItemLink
+                      key={item.href}
+                      item={item}
+                      active={isActive(item.href)}
+                      showProGate={showProGate}
+                      onProLocked={onProLocked}
+                    />
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )
+        })}
       </nav>
     </aside>
   )

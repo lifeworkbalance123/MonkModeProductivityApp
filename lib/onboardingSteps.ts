@@ -8,6 +8,8 @@ export type OnboardingStepRow = {
   /** CMS media (optional). When set with `media_url`, shown instead of legacy `video_url`. */
   media_type?: string | null
   media_url?: string | null
+  companion_media_type?: string | null
+  companion_media_url?: string | null
   action_label: string
   step_kind: OnboardingStepKind
   created_at: string

@@ -1,64 +1,78 @@
 "use client"
 
 import Link from "next/link"
+import { useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Check, Sparkles } from "lucide-react"
+import { formatPriceCents, lifetimePriceFromRows, useAppSubscriptionPrices } from "@/hooks/usePricing"
 
-const plans = [
-  {
-    name: "Free",
-    price: "$0",
-    period: "forever",
-    description: "Get started with essential productivity features.",
-    features: [
-      "Weekly planner view",
-      "Basic habit tracking (5 habits)",
-      "Daily goals (3 per day)",
-      "Morning gratitude journal",
-      "2 training modules",
-    ],
-    cta: "Start Free",
-    highlighted: false,
-  },
-  {
-    name: "Pro",
-    price: "$9",
-    period: "per month",
-    description: "Unlock full productivity potential with all features.",
-    features: [
-      "Everything in Free",
-      "Unlimited habits & goals",
-      "10 custom categories",
-      "Full training library access",
-      "Progress analytics & reports",
-      "Evening reflection journal",
-      "Smart reminders & notifications",
-      "Data export & backup",
-    ],
-    cta: "Start 14-Day Trial",
-    highlighted: true,
-  },
-  {
-    name: "Lifetime",
-    price: "$149",
-    period: "one-time",
-    description: "Own monkcubed forever with all future updates.",
-    features: [
-      "Everything in Pro",
-      "Lifetime access",
-      "All future features",
-      "Priority support",
-      "Community access",
-      "Upload custom content",
-      "API access",
-    ],
-    cta: "Get Lifetime Access",
-    highlighted: false,
-  },
-]
+const FREE_PLAN = {
+  name: "Free",
+  price: "$0",
+  period: "forever",
+  description: "Get started with essential productivity features.",
+  features: [
+    "Weekly planner view",
+    "Basic habit tracking (5 habits)",
+    "Daily goals (3 per day)",
+    "Morning gratitude journal",
+    "2 training modules",
+  ],
+  cta: "Start Free",
+  highlighted: false,
+} as const
+
+const PRO_FEATURES = [
+  "Everything in Free",
+  "Unlimited habits & goals",
+  "10 custom categories",
+  "Full training library access",
+  "Progress analytics & reports",
+  "Evening reflection journal",
+  "Smart reminders & notifications",
+  "Data export & backup",
+] as const
+
+const LIFETIME_FEATURES = [
+  "Everything in Pro",
+  "Lifetime access",
+  "All future features",
+  "Priority support",
+  "Community access",
+  "Upload custom content",
+  "API access",
+] as const
 
 export function PricingSection() {
+  const { prices, monthlyCents, monthlyCurrency } = useAppSubscriptionPrices()
+  const { cents: lifetimeCents, currency: lifetimeCurrency } = lifetimePriceFromRows(prices)
+
+  const plans = useMemo(
+    () => [
+      { ...FREE_PLAN },
+      {
+        name: "Pro",
+        price: formatPriceCents(monthlyCents, monthlyCurrency),
+        period: "per month",
+        description: "Unlock full productivity potential with all features.",
+        features: [...PRO_FEATURES],
+        cta: "Start 14-Day Trial",
+        highlighted: true,
+      },
+      {
+        name: "Lifetime",
+        price: formatPriceCents(lifetimeCents, lifetimeCurrency),
+        period: "one-time",
+        description: "Own monkcubed forever with all future updates.",
+        features: [...LIFETIME_FEATURES],
+        cta: "Get Lifetime Access",
+        highlighted: false,
+      },
+    ],
+    [lifetimeCents, lifetimeCurrency, monthlyCents, monthlyCurrency],
+  )
+
   return (
     <section id="pricing" className="py-24 bg-background scroll-mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

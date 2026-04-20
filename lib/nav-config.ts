@@ -61,11 +61,15 @@ export const allNavItems: NavItem[] = [
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
-export type NavGroup = { title: string; items: NavItem[] }
+export type NavGroup = { id: string; title: string; items: NavItem[] }
 
-/** Desktop sidebar + mobile drawer (excludes bottom-tab destinations). */
+/**
+ * Sidebar + mobile menu groups (single story everywhere):
+ * Planning → schedule → week → board; then track, learn; Focus and Insights each get their own section.
+ */
 export const drawerNavGroups: NavGroup[] = [
   {
+    id: 'planning',
     title: 'Planning',
     items: [
       allNavItems.find((i) => i.href === '/schedule')!,
@@ -74,6 +78,7 @@ export const drawerNavGroups: NavGroup[] = [
     ],
   },
   {
+    id: 'tracking',
     title: 'Tracking',
     items: [
       allNavItems.find((i) => i.href === '/habits')!,
@@ -81,6 +86,7 @@ export const drawerNavGroups: NavGroup[] = [
     ],
   },
   {
+    id: 'learning',
     title: 'Learning',
     items: [
       allNavItems.find((i) => i.href === '/training')!,
@@ -88,6 +94,17 @@ export const drawerNavGroups: NavGroup[] = [
     ],
   },
   {
+    id: 'focus',
+    title: 'Focus',
+    items: [allNavItems.find((i) => i.href === '/focus')!],
+  },
+  {
+    id: 'insights',
+    title: 'Insights',
+    items: [allNavItems.find((i) => i.href === '/analytics')!],
+  },
+  {
+    id: 'system',
     title: 'System',
     items: [
       allNavItems.find((i) => i.href === '/sync')!,
@@ -96,16 +113,17 @@ export const drawerNavGroups: NavGroup[] = [
   },
 ]
 
-/** Desktop-only extra groups (Focus + Insights) — not duplicated in mobile drawer. */
-export const desktopOnlyGroups: NavGroup[] = [
+/** Daily (Today / Dashboard) + all drawer groups — used for sidebar + mobile menu. */
+export const sidebarNavSections: NavGroup[] = [
   {
-    title: 'Focus',
-    items: [allNavItems.find((i) => i.href === '/focus')!],
+    id: 'daily',
+    title: 'Daily',
+    items: [
+      allNavItems.find((i) => i.href === '/today')!,
+      allNavItems.find((i) => i.href === '/dashboard')!,
+    ],
   },
-  {
-    title: 'Insights',
-    items: [allNavItems.find((i) => i.href === '/analytics')!],
-  },
+  ...drawerNavGroups,
 ]
 
 /** Fixed bottom tabs (mobile, logged in). */

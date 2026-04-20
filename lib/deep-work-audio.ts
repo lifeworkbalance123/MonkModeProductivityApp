@@ -103,3 +103,25 @@ export function stopAmbient(h: AmbientNoiseHandle | null) {
     /* ignore */
   }
 }
+
+/** Admin-uploaded MP3 loop (Deep Work). */
+export function stopMp3Loop(audio: HTMLAudioElement | null) {
+  if (!audio) return
+  try {
+    audio.pause()
+    audio.src = ''
+    audio.load()
+  } catch {
+    /* ignore */
+  }
+}
+
+export function startMp3Loop(url: string, volume = 0.45): HTMLAudioElement {
+  const el = new Audio(url)
+  el.loop = true
+  el.volume = volume
+  void el.play().catch(() => {
+    /* autoplay blocked until user gesture — Deep Work starts after tap */
+  })
+  return el
+}

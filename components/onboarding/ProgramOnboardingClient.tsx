@@ -54,7 +54,14 @@ type Goal = 'sprint' | 'transform' | 'mastery'
 
 function StepMedia({ step }: { step: OnboardingStepRow }) {
   if (step.media_url && step.media_type) {
-    return <LessonMedia mediaType={step.media_type} mediaUrl={step.media_url} />
+    return (
+      <LessonMedia
+        mediaType={step.media_type}
+        mediaUrl={step.media_url}
+        companionMediaType={step.companion_media_type}
+        companionMediaUrl={step.companion_media_url}
+      />
+    )
   }
   if (step.video_url) {
     return <VideoBlock url={step.video_url} title={step.title} />

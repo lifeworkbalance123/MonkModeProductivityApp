@@ -257,7 +257,12 @@ export default function DailyLesson({
           {expanded ? '↑ Show less' : '↓ Read full lesson'}
         </button>
 
-        <LessonMedia mediaType={lesson.media_type} mediaUrl={lesson.media_url} />
+        <LessonMedia
+          mediaType={lesson.media_type}
+          mediaUrl={lesson.media_url}
+          companionMediaType={lesson.companion_media_type}
+          companionMediaUrl={lesson.companion_media_url}
+        />
 
         <div
           style={{

@@ -6,9 +6,22 @@ import { AppPageChrome } from '@/components/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { captureEvent } from '@/lib/analytics'
+import { formatPriceCents, lifetimePriceFromRows, useAppSubscriptionPrices } from '@/hooks/usePricing'
 
 export default function PricingPage() {
   const [annual, setAnnual] = useState(true)
+  const {
+    prices,
+    monthlyCents,
+    annualCents,
+    monthlyCurrency,
+    annualCurrency,
+    annualPerMonthCents,
+    annualSavingsLine,
+  } = useAppSubscriptionPrices()
+
+  const { cents: lifetimeCents, currency: lifetimeCurrency } = lifetimePriceFromRows(prices)
+
   useEffect(() => {
     captureEvent('pricing_page_viewed')
   }, [])
@@ -67,36 +80,45 @@ export default function PricingPage() {
                   annual ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
                 }`}
               >
-                <p className="text-3xl font-bold">$4.99/mo</p>
-                <p className="text-xs text-muted-foreground">billed as $59.99/year</p>
+                <p className="text-3xl font-bold">
+                  {formatPriceCents(annualPerMonthCents, annualCurrency)}
+                  /mo
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  billed as {formatPriceCents(annualCents, annualCurrency)}/year
+                </p>
               </div>
               <div
                 className={`absolute inset-0 transition-all duration-300 ${
                   annual ? '-translate-y-2 opacity-0' : 'translate-y-0 opacity-100'
                 }`}
               >
-                <p className="text-3xl font-bold">$9.99/mo</p>
+                <p className="text-3xl font-bold">
+                  {formatPriceCents(monthlyCents, monthlyCurrency)}/mo
+                </p>
                 <p className="text-xs text-muted-foreground">&nbsp;</p>
               </div>
             </div>
             <Button asChild className="mt-4 w-full bg-accent text-accent-foreground hover:bg-accent/90">
               <Link href="/auth">
                 {annual
-                  ? 'Start free trial — $59.99/yr'
-                  : 'Start free trial — $9.99/mo'}
+                  ? `Start free trial — ${formatPriceCents(annualCents, annualCurrency)}/yr`
+                  : `Start free trial — ${formatPriceCents(monthlyCents, monthlyCurrency)}/mo`}
               </Link>
             </Button>
             {annual ? (
-              <p className="mt-2 text-xs text-emerald-300">
-                You save $59.89 per year vs monthly billing
-              </p>
+              annualSavingsLine ? (
+                <p className="mt-2 text-xs text-emerald-300">{annualSavingsLine}</p>
+              ) : null
             ) : null}
           </Card>
 
           <Card className="p-5 text-left">
             <h2 className="text-xl font-semibold">Lifetime</h2>
             <p className="mt-1 text-sm text-muted-foreground">One-time purchase</p>
-            <p className="mt-4 text-2xl font-bold">$149</p>
+            <p className="mt-4 text-2xl font-bold">
+              {formatPriceCents(lifetimeCents, lifetimeCurrency)}
+            </p>
             <Button asChild variant="outline" className="mt-4 w-full">
               <Link href="/auth">Get lifetime</Link>
             </Button>

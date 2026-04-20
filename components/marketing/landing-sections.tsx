@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { formatPriceCents, lifetimePriceFromRows, useAppSubscriptionPrices } from '@/hooks/usePricing'
 import { MonkCubedLogo } from '@/components/brand/MonkCubedLogo'
 import { MONKCUBED_TAGLINE } from '@/components/brand/MonkCubedLogo'
 import { supabase } from '@/lib/supabase'
@@ -135,16 +136,48 @@ export function HowItWorksSection() {
 
 export function PricingSection() {
   const [annual, setAnnual] = useState(true)
-  const plans = [
-    { title: 'Free', price: '$0', desc: 'Core habits, goals and dashboard.' },
-    {
-      title: 'Pro',
-      price: annual ? '$4.99/mo' : '$9.99/mo',
-      desc: annual ? 'billed as $59.99/year' : 'monthly billing',
-      featured: true,
-    },
-    { title: 'Lifetime', price: '$149 once', desc: 'One-time payment for everything forever.' },
-  ]
+  const {
+    prices,
+    monthlyCents,
+    annualCents,
+    monthlyCurrency,
+    annualCurrency,
+    annualPerMonthCents,
+    annualSavingsLine,
+  } = useAppSubscriptionPrices()
+  const { cents: lifetimeCents, currency: lifetimeCurrency } = lifetimePriceFromRows(prices)
+
+  const plans = useMemo(
+    () => [
+      { title: 'Free', price: '$0', desc: 'Core habits, goals and dashboard.', featured: false },
+      {
+        title: 'Pro',
+        price: annual
+          ? `${formatPriceCents(annualPerMonthCents, annualCurrency)}/mo`
+          : `${formatPriceCents(monthlyCents, monthlyCurrency)}/mo`,
+        desc: annual
+          ? `billed as ${formatPriceCents(annualCents, annualCurrency)}/year`
+          : 'monthly billing',
+        featured: true,
+      },
+      {
+        title: 'Lifetime',
+        price: `${formatPriceCents(lifetimeCents, lifetimeCurrency)} once`,
+        desc: 'One-time payment for everything forever.',
+        featured: false,
+      },
+    ],
+    [
+      annual,
+      annualCents,
+      annualCurrency,
+      annualPerMonthCents,
+      lifetimeCents,
+      lifetimeCurrency,
+      monthlyCents,
+      monthlyCurrency,
+    ],
+  )
   return (
     <section id="pricing" className="mx-auto max-w-[1100px] px-4 py-20">
       <h2 className="text-center text-3xl font-semibold text-foreground">Simple, honest pricing</h2>
@@ -177,14 +210,12 @@ export function PricingSection() {
             <Link href="/auth" className="mt-4 inline-block rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
               {p.title === 'Pro'
                 ? annual
-                  ? 'Start free trial — $59.99/yr'
-                  : 'Start free trial — $9.99/mo'
+                  ? `Start free trial — ${formatPriceCents(annualCents, annualCurrency)}/yr`
+                  : `Start free trial — ${formatPriceCents(monthlyCents, monthlyCurrency)}/mo`
                 : 'Start free trial'}
             </Link>
-            {p.title === 'Pro' && annual ? (
-              <p className="mt-2 text-xs text-primary">
-                You save $59.89 per year vs monthly billing
-              </p>
+            {p.title === 'Pro' && annual && annualSavingsLine ? (
+              <p className="mt-2 text-xs text-primary">{annualSavingsLine}</p>
             ) : null}
           </div>
         ))}
