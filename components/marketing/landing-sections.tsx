@@ -7,6 +7,7 @@ import { MonkCubedLogo } from '@/components/brand/MonkCubedLogo'
 import { MONKCUBED_TAGLINE } from '@/components/brand/MonkCubedLogo'
 import { supabase } from '@/lib/supabase'
 import { SALES_EMAIL } from '@/lib/site-contact'
+import { Button } from '@/components/ui/button'
 
 function getYouTubeId(url: string) {
   const patterns = [
@@ -136,6 +137,8 @@ export function HowItWorksSection() {
 
 export function PricingSection() {
   const [annual, setAnnual] = useState(true)
+  const [loading, setLoading] = useState<string | null>(null)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const {
     prices,
     monthlyCents,
@@ -146,6 +149,11 @@ export function PricingSection() {
     annualSavingsLine,
   } = useAppSubscriptionPrices()
   const { cents: lifetimeCents, currency: lifetimeCurrency } = lifetimePriceFromRows(prices)
+  const priceIds = {
+    monthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_APP_MONTHLY,
+    annual: process.env.NEXT_PUBLIC_STRIPE_PRICE_APP_ANNUAL,
+    lifetime: process.env.NEXT_PUBLIC_STRIPE_PRICE_LIFETIME,
+  } as const
 
   const plans = useMemo(
     () => [
@@ -178,6 +186,50 @@ export function PricingSection() {
       monthlyCurrency,
     ],
   )
+
+  async function openStripeCheckout(kind: 'monthly' | 'annual' | 'lifetime') {
+    try {
+      setLoading(kind)
+      setCheckoutError(null)
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`
+      }
+
+      const envPriceId =
+        kind === 'monthly'
+          ? priceIds.monthly
+          : kind === 'annual'
+            ? priceIds.annual
+            : priceIds.lifetime
+      const body = envPriceId
+        ? { priceId: envPriceId, userId: session?.user?.id, userEmail: session?.user?.email }
+        : { priceKind: kind }
+
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      })
+      const data = (await response.json()) as { url?: string; error?: string }
+      if (!response.ok || !data.url) {
+        setCheckoutError(data.error ?? 'Could not start checkout. Try again later.')
+        return
+      }
+      window.location.href = data.url
+    } catch {
+      setCheckoutError('Checkout failed. Please try again.')
+    } finally {
+      setLoading(null)
+    }
+  }
+
   return (
     <section id="pricing" className="mx-auto max-w-[1100px] px-4 py-20">
       <h2 className="text-center text-3xl font-semibold text-foreground">Simple, honest pricing</h2>
@@ -207,19 +259,43 @@ export function PricingSection() {
             <h3 className="text-xl font-semibold text-foreground">{p.title}</h3>
             <p className="mt-2 text-accent">{p.price}</p>
             <p className="mt-2 text-sm text-muted-foreground">{p.desc}</p>
-            <Link href="/auth" className="mt-4 inline-block rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
-              {p.title === 'Pro'
-                ? annual
-                  ? `Start free trial — ${formatPriceCents(annualCents, annualCurrency)}/yr`
-                  : `Start free trial — ${formatPriceCents(monthlyCents, monthlyCurrency)}/mo`
-                : 'Start free trial'}
-            </Link>
+            {p.title === 'Free' ? (
+              <Link href="/auth" className="mt-4 inline-block rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
+                Start free trial
+              </Link>
+            ) : (
+              <Button
+                type="button"
+                className="mt-4 inline-block rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:bg-accent/90"
+                onClick={() =>
+                  void openStripeCheckout(
+                    p.title === 'Lifetime'
+                      ? 'lifetime'
+                      : annual
+                        ? 'annual'
+                        : 'monthly',
+                  )
+                }
+                disabled={loading === 'annual' || loading === 'monthly' || loading === 'lifetime'}
+              >
+                {loading === 'annual' || loading === 'monthly' || loading === 'lifetime'
+                  ? 'Loading...'
+                  : p.title === 'Pro'
+                    ? annual
+                      ? `Start free trial — ${formatPriceCents(annualCents, annualCurrency)}/yr`
+                      : `Start free trial — ${formatPriceCents(monthlyCents, monthlyCurrency)}/mo`
+                    : 'Start free trial'}
+              </Button>
+            )}
             {p.title === 'Pro' && annual && annualSavingsLine ? (
               <p className="mt-2 text-xs text-primary">{annualSavingsLine}</p>
             ) : null}
           </div>
         ))}
       </div>
+      {checkoutError ? (
+        <p className="mt-4 text-center text-sm text-red-400">{checkoutError}</p>
+      ) : null}
     </section>
   )
 }
