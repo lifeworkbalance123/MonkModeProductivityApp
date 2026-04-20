@@ -66,6 +66,8 @@ export default function DailyProgramLessonsEditor() {
   const [saving, setSaving] = useState(false)
   const [uploadingAudio, setUploadingAudio] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  /** When true, do not overwrite draft from `rows` (avoids wiping unsaved uploads/edits after loadRows). */
+  const draftDirtyRef = useRef(false)
 
   const maxDays = PROGRAM_DURATIONS[programType]
 
@@ -91,13 +93,20 @@ export default function DailyProgramLessonsEditor() {
   }, [loadRows])
 
   useEffect(() => {
+    if (draftDirtyRef.current) return
     const found = rows.find((r) => r.program_day === selectedDay)
     setDraft(found ? rowToDraft(found) : emptyDraft(programType, selectedDay))
   }, [rows, selectedDay, programType])
 
   const onProgramTypeChange = (next: ProgramType) => {
+    draftDirtyRef.current = false
     setProgramType(next)
     setSelectedDay(1)
+  }
+
+  const selectDay = (day: number) => {
+    draftDirtyRef.current = false
+    setSelectedDay(day)
   }
 
   async function saveDraft() {
@@ -124,6 +133,7 @@ export default function DailyProgramLessonsEditor() {
       showToast(error.message, 'error')
       return
     }
+    draftDirtyRef.current = false
     showToast('Saved day ' + draft.program_day, 'success')
     await loadRows()
   }
@@ -141,6 +151,7 @@ export default function DailyProgramLessonsEditor() {
       showToast(error.message, 'error')
       return
     }
+    draftDirtyRef.current = false
     showToast('Removed', 'success')
     await loadRows()
     setDraft(emptyDraft(programType, selectedDay))
@@ -156,11 +167,13 @@ export default function DailyProgramLessonsEditor() {
       const { error } = await supabase.storage.from('lesson-media').upload(path, file, {
         cacheControl: '3600',
         upsert: true,
+        contentType: file.type || 'audio/mpeg',
       })
       if (error) throw error
       const { data: urlData } = supabase.storage.from('lesson-media').getPublicUrl(path)
+      draftDirtyRef.current = true
       setDraft((d) => ({ ...d, audio_url: urlData.publicUrl }))
-      showToast('Audio uploaded — save to persist row.', 'success')
+      showToast('Audio uploaded — click Save day to store the URL on this lesson.', 'success')
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : 'Upload failed', 'error')
     } finally {
@@ -225,7 +238,7 @@ export default function DailyProgramLessonsEditor() {
                 <button
                   key={day}
                   type="button"
-                  onClick={() => setSelectedDay(day)}
+                  onClick={() => selectDay(day)}
                   style={{
                     minWidth: '40px',
                     padding: '6px 8px',
@@ -263,7 +276,10 @@ export default function DailyProgramLessonsEditor() {
                 Title
                 <input
                   value={draft.title}
-                  onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
+                  onChange={(e) => {
+                    draftDirtyRef.current = true
+                    setDraft((d) => ({ ...d, title: e.target.value }))
+                  }}
                   style={inputStyle}
                   placeholder="Short headline"
                 />
@@ -275,7 +291,10 @@ export default function DailyProgramLessonsEditor() {
                   type="number"
                   min={1}
                   value={draft.phase}
-                  onChange={(e) => setDraft((d) => ({ ...d, phase: Number(e.target.value) || 1 }))}
+                  onChange={(e) => {
+                    draftDirtyRef.current = true
+                    setDraft((d) => ({ ...d, phase: Number(e.target.value) || 1 }))
+                  }}
                   style={{ ...inputStyle, maxWidth: '120px' }}
                 />
               </label>
@@ -284,7 +303,10 @@ export default function DailyProgramLessonsEditor() {
                 Tip topic
                 <input
                   value={draft.tip_topic}
-                  onChange={(e) => setDraft((d) => ({ ...d, tip_topic: e.target.value }))}
+                  onChange={(e) => {
+                    draftDirtyRef.current = true
+                    setDraft((d) => ({ ...d, tip_topic: e.target.value }))
+                  }}
                   style={inputStyle}
                   placeholder='e.g. "Hydration & focus"'
                 />
@@ -294,7 +316,10 @@ export default function DailyProgramLessonsEditor() {
                 Lesson body (markdown)
                 <textarea
                   value={draft.content_markdown}
-                  onChange={(e) => setDraft((d) => ({ ...d, content_markdown: e.target.value }))}
+                  onChange={(e) => {
+                    draftDirtyRef.current = true
+                    setDraft((d) => ({ ...d, content_markdown: e.target.value }))
+                  }}
                   style={{ ...inputStyle, minHeight: '180px', fontFamily: 'ui-monospace, monospace', fontSize: '13px' }}
                   placeholder="Two-minute tip in markdown…"
                 />
@@ -304,7 +329,10 @@ export default function DailyProgramLessonsEditor() {
                 Audio URL (optional)
                 <input
                   value={draft.audio_url}
-                  onChange={(e) => setDraft((d) => ({ ...d, audio_url: e.target.value }))}
+                  onChange={(e) => {
+                    draftDirtyRef.current = true
+                    setDraft((d) => ({ ...d, audio_url: e.target.value }))
+                  }}
                   style={inputStyle}
                   placeholder="https://…"
                 />
@@ -329,12 +357,28 @@ export default function DailyProgramLessonsEditor() {
                 </button>
                 <span style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>Sets public URL into the field above.</span>
               </div>
+              {draft.audio_url.trim() ? (
+                <div style={{ marginTop: '4px' }}>
+                  <p style={{ fontSize: '11px', color: 'var(--muted-foreground)', margin: '0 0 6px' }}>
+                    Preview (saved after you click Save day)
+                  </p>
+                  <audio
+                    controls
+                    preload="metadata"
+                    style={{ width: '100%', maxWidth: '420px', height: '36px' }}
+                    src={draft.audio_url.trim()}
+                  />
+                </div>
+              ) : null}
 
               <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', color: 'var(--muted-foreground)' }}>
                 Video URL (optional)
                 <input
                   value={draft.video_url}
-                  onChange={(e) => setDraft((d) => ({ ...d, video_url: e.target.value }))}
+                  onChange={(e) => {
+                    draftDirtyRef.current = true
+                    setDraft((d) => ({ ...d, video_url: e.target.value }))
+                  }}
                   style={inputStyle}
                   placeholder="YouTube or hosted video URL"
                 />
