@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { incrementViewCount, type BlogPost } from '@/lib/blog'
 import { publicSiteOrigin } from '@/lib/site-contact'
+import { findPricingRow, formatPriceCents, usePricing } from '@/hooks/usePricing'
 
 type Props = {
   post: BlogPost
@@ -11,6 +12,14 @@ type Props = {
 }
 
 export default function BlogPostClient({ post, related }: Props) {
+  const { prices } = usePricing()
+  const monkJoinLabel = useMemo(() => {
+    const row = findPricingRow(prices, 'monk_mode')
+    const cents = row?.current_price ?? 1900
+    const cur = row?.currency ?? 'AUD'
+    return `Join — ${formatPriceCents(cents, cur)} →`
+  }, [prices])
+
   useEffect(() => {
     void incrementViewCount(post.slug)
   }, [post.slug])
@@ -118,13 +127,15 @@ export default function BlogPostClient({ post, related }: Props) {
 
         <div className="mb-12 rounded-2xl border border-primary/30 bg-card p-8 text-center">
           <p className="mb-2 text-xs font-bold uppercase tracking-wider text-primary">Ready to go further?</p>
-          <h3 className="mb-2.5 text-xl font-bold text-foreground">Start the 60-day monk mode program</h3>
-          <p className="mb-5 text-[15px] text-muted-foreground">One lesson per day. One action. 60 days to build real discipline.</p>
+          <h3 className="mb-2.5 text-xl font-bold text-foreground">Start the Monk Mode program</h3>
+          <p className="mb-5 text-[15px] text-muted-foreground">
+            One lesson per day. One action. Build real discipline in a focused Monk Mode arc.
+          </p>
           <Link
             href="/join"
             className="inline-block rounded-lg bg-primary px-7 py-3 text-[15px] font-bold text-primary-foreground no-underline hover:opacity-95"
           >
-            Join for $19 →
+            {monkJoinLabel}
           </Link>
         </div>
 

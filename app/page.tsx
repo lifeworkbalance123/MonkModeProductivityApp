@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import MarketingNav from '@/components/marketing/marketing-nav'
 import HeroMedia from '@/components/landing/HeroMedia'
+import { HeroMonkModeCta } from '@/components/landing/HeroMonkModeCta'
 import { publicSiteOrigin } from '@/lib/site-contact'
 
 const SocialProofBar = dynamic(() =>
@@ -63,9 +63,7 @@ export default function Home() {
             time.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/join" className="rounded-md bg-accent px-5 py-3 font-semibold text-accent-foreground">
-              Start the 60-day program — $19
-            </Link>
+            <HeroMonkModeCta />
             <a href="#features" className="rounded-md border border-border px-5 py-3 font-semibold text-foreground">
               See what&apos;s inside
             </a>

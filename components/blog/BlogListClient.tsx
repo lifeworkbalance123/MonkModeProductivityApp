@@ -201,12 +201,14 @@ export default function BlogListClient() {
 
       <div className="mt-10 border-t border-border bg-card px-6 py-16 text-center">
         <h2 className="mb-3 text-2xl font-bold text-foreground md:text-3xl">Ready to enter monk mode?</h2>
-        <p className="mb-6 text-base text-muted-foreground">Join the 60-day program. One lesson per day. No excuses.</p>
+        <p className="mb-6 text-base text-muted-foreground">
+          Join the Monk Mode program. One lesson per day. No excuses.
+        </p>
         <Link
           href="/join"
           className="inline-block rounded-xl bg-primary px-8 py-3.5 text-base font-bold text-primary-foreground no-underline hover:opacity-95"
         >
-          Start the 60-day program — $19 →
+          Start the Monk Mode program →
         </Link>
       </div>
     </div>

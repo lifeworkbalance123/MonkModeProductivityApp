@@ -37,7 +37,7 @@ export async function startStripeCheckout(
 }
 
 /**
- * One-time Stripe Checkout for the V2 60-day program ($19 launch).
+ * One-time Stripe Checkout for the V2 Monk Mode program (launch price from `pricing_config` in UI).
  */
 export async function startV2ProgramCheckout(): Promise<
   { ok: true } | { ok: false; error: string }

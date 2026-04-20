@@ -2,14 +2,26 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { startV2ProgramCheckout } from '@/lib/stripe-checkout'
+import { findPricingRow, formatPriceCents, usePricing } from '@/hooks/usePricing'
+
+const FALLBACK_MONK_CENTS = 1900
+const FALLBACK_CURRENCY = 'AUD'
 
 export default function JoinPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+  const { prices } = usePricing()
+  const monk = findPricingRow(prices, 'monk_mode')
+  const monkCents = monk?.current_price ?? FALLBACK_MONK_CENTS
+  const monkCurrency = monk?.currency ?? FALLBACK_CURRENCY
+  const monkPriceLabel = useMemo(
+    () => formatPriceCents(monkCents, monkCurrency),
+    [monkCents, monkCurrency],
+  )
 
   async function handleJoin() {
     setLoading(true)
@@ -60,11 +72,11 @@ export default function JoinPage() {
               lineHeight: '1.2',
             }}
           >
-            The 60-day monkcubed program
+            The Monk Mode program
           </h1>
           <p style={{ color: 'var(--muted-foreground)', fontSize: '16px', lineHeight: '1.6', margin: 0 }}>
-            Sprint, then Transform, then Mastery. One daily lesson. One action. Sixty days of
-            structured practice.
+            One daily lesson. One action. A focused arc to build discipline — then carry it into Sprint,
+            Transform, and Mastery when you are ready.
           </p>
         </div>
 
@@ -94,20 +106,17 @@ export default function JoinPage() {
             >
               Launch price
             </div>
-            <div
+            <p
               style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                justifyContent: 'center',
-                gap: '4px',
+                color: 'var(--foreground)',
+                fontSize: '56px',
+                fontWeight: '700',
+                lineHeight: 1.1,
+                margin: 0,
               }}
             >
-              <span style={{ color: 'var(--muted-foreground)', fontSize: '24px', marginTop: '8px' }}>$</span>
-              <span style={{ color: 'var(--foreground)', fontSize: '72px', fontWeight: '700', lineHeight: 1 }}>
-                19
-              </span>
-              <span style={{ color: 'var(--muted-foreground)', fontSize: '16px', marginTop: '12px' }}>AUD</span>
-            </div>
+              {monkPriceLabel}
+            </p>
             <p style={{ color: 'var(--muted-foreground)', fontSize: '14px', margin: '8px 0 0' }}>
               One-time payment. Lifetime access to the program.
             </p>
@@ -115,12 +124,12 @@ export default function JoinPage() {
 
           <div style={{ marginBottom: '24px' }}>
             {[
-              '60 daily lessons (2–3 min each)',
+              'Daily lessons (2–3 min each) for your Monk Mode arc',
               'One focused daily action',
               'Distraction and energy tracking',
               'Weekly review templates',
               'Student → Monk → Master progression',
-              'Milestone badges at 14, 30 and 60 days',
+              'Milestone checkpoints along the way',
               'All app productivity tools included',
               'Lifetime access — no subscription',
             ].map((feature, i) => (
@@ -163,7 +172,7 @@ export default function JoinPage() {
               marginBottom: '12px',
             }}
           >
-            {loading ? 'Loading checkout…' : 'Start my 60-day journey — $19'}
+            {loading ? 'Loading checkout…' : `Start the Monk Mode program — ${monkPriceLabel}`}
           </button>
 
           <div style={{ textAlign: 'center' }}>
