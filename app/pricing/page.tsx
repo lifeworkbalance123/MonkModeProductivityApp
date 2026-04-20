@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { AppPageChrome } from '@/components/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -20,6 +21,7 @@ const PRICE_IDS = {
 } as const
 
 export default function PricingPage() {
+  const router = useRouter()
   const [annual, setAnnual] = useState(true)
   const [loading, setLoading] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
@@ -48,7 +50,7 @@ export default function PricingPage() {
         data: { session },
       } = await supabase.auth.getSession()
       if (!session?.access_token || !session.user) {
-        setCheckoutError('Sign in to continue.')
+        router.push('/auth?redirect=/pricing')
         return false
       }
 
@@ -101,7 +103,13 @@ export default function PricingPage() {
 
     const legacyKind = kind === 'lifetime' ? 'lifetime' : kind
     const result = await startStripeCheckout(legacyKind)
-    if (!result.ok) setCheckoutError(result.error)
+    if (!result.ok) {
+      if (result.error.toLowerCase().includes('sign in')) {
+        router.push('/auth?redirect=/pricing')
+        return
+      }
+      setCheckoutError(result.error)
+    }
   }
 
   return (
