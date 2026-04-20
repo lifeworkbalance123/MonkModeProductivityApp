@@ -168,12 +168,6 @@ export function PricingSection() {
           : 'monthly billing',
         featured: true,
       },
-      {
-        title: 'Lifetime',
-        price: `${formatPriceCents(lifetimeCents, lifetimeCurrency)} once`,
-        desc: 'One-time payment for everything forever.',
-        featured: false,
-      },
     ],
     [
       annual,

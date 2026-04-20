@@ -201,17 +201,6 @@ export default function PricingPage() {
               ) : null
             ) : null}
           </Card>
-
-          <Card className="p-5 text-left">
-            <h2 className="text-xl font-semibold">Lifetime</h2>
-            <p className="mt-1 text-sm text-muted-foreground">One-time purchase</p>
-            <p className="mt-4 text-2xl font-bold">
-              {formatPriceCents(lifetimeCents, lifetimeCurrency)}
-            </p>
-            <Button variant="outline" className="mt-4 w-full" onClick={() => void handleAppCheckout('lifetime')} disabled={loading === 'lifetime'}>
-              {loading === 'lifetime' ? 'Loading...' : 'Get lifetime'}
-            </Button>
-          </Card>
         </div>
 
         {checkoutError ? <p className="text-sm text-red-400">{checkoutError}</p> : null}
