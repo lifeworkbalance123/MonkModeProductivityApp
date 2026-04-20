@@ -1,9 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { startProgramCheckout, type ProgramCheckoutKind } from '@/lib/stripe-checkout'
 import { findPricingRow, formatPriceCents, usePricing } from '@/hooks/usePricing'
 
@@ -73,7 +71,6 @@ export default function JoinPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selectedProgram, setSelectedProgram] = useState<ProgramCheckoutKind>('monk_mode')
-  const router = useRouter()
   const { prices } = usePricing()
   const monk = findPricingRow(prices, 'monk_mode')
   const sprint = findPricingRow(prices, 'sprint')
@@ -101,16 +98,6 @@ export default function JoinPage() {
   async function handleJoin(program: ProgramCheckoutKind) {
     setLoading(true)
     setError('')
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      router.push('/auth?redirect=/join')
-      setLoading(false)
-      return
-    }
 
     try {
       const result = await startProgramCheckout(program)

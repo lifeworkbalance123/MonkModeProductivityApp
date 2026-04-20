@@ -21,28 +21,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 })
   }
 
-  let admin
-  try {
-    admin = createServiceRoleClient()
-  } catch {
-    return NextResponse.json({ error: 'Server misconfigured' }, { status: 503 })
-  }
-
-  const authHeader = request.headers.get('authorization')
-  const token = authHeader?.replace(/^Bearer\s+/i, '').trim()
-  if (!token) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  const {
-    data: { user },
-    error: authError,
-  } = await admin.auth.getUser(token)
-
-  if (authError || !user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   let body: {
     priceKind?: string
     plan?: string
@@ -57,8 +35,80 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
+  const authHeader = request.headers.get('authorization')
+  const token = authHeader?.replace(/^Bearer\s+/i, '').trim() ?? ''
+  let user: { id: string; email?: string | null } | null = null
+
+  if (token) {
+    let admin
+    try {
+      admin = createServiceRoleClient()
+    } catch {
+      return NextResponse.json({ error: 'Server misconfigured' }, { status: 503 })
+    }
+    const {
+      data: { user: authedUser },
+      error: authError,
+    } = await admin.auth.getUser(token)
+    if (authError || !authedUser?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    user = authedUser
+  }
+
   const origin = getAppOrigin(request)
   const stripe = getStripeClient()
+
+  const requestedPlan = (body.plan ?? '').toLowerCase()
+  if (
+    requestedPlan === 'v2_program' ||
+    requestedPlan === 'monk_mode' ||
+    requestedPlan === 'sprint' ||
+    requestedPlan === 'transform'
+  ) {
+    const programPlan = requestedPlan === 'v2_program' ? 'monk_mode' : requestedPlan
+    const priceId =
+      programPlan === 'sprint'
+        ? STRIPE_PRICES.SPRINT
+        : programPlan === 'transform'
+          ? STRIPE_PRICES.TRANSFORM
+          : STRIPE_PRICES.MONK_MODE
+    if (!priceId) {
+      return NextResponse.json(
+        { error: `Program price not configured for ${programPlan}` },
+        { status: 503 },
+      )
+    }
+
+    try {
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [{ price: priceId, quantity: 1 }],
+        success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&plan=${encodeURIComponent(programPlan)}`,
+        cancel_url: `${origin}/join`,
+        allow_promotion_codes: true,
+        billing_address_collection: 'auto',
+        customer_email: user?.email ?? undefined,
+        client_reference_id: user?.id ?? undefined,
+        metadata: {
+          plan: programPlan,
+          ...(user?.id ? { supabase_user_id: user.id } : {}),
+        },
+      })
+
+      if (!session.url) {
+        return NextResponse.json({ error: 'Checkout session missing URL' }, { status: 500 })
+      }
+      return NextResponse.json({ url: session.url })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Checkout failed'
+      return NextResponse.json({ error: msg }, { status: 500 })
+    }
+  }
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   // Optional direct price checkout (for Stripe.js / Checkout Session ID flows).
   if (body.priceId?.trim()) {
@@ -91,52 +141,6 @@ export async function POST(request: Request) {
       })
 
       return NextResponse.json({ sessionId: session.id, url: session.url })
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Checkout failed'
-      return NextResponse.json({ error: msg }, { status: 500 })
-    }
-  }
-
-  const requestedPlan = (body.plan ?? '').toLowerCase()
-  if (requestedPlan === 'v2_program' || requestedPlan === 'monk_mode' || requestedPlan === 'sprint' || requestedPlan === 'transform') {
-    const programPlan =
-      requestedPlan === 'v2_program' ? 'monk_mode' : requestedPlan
-    const priceId =
-      programPlan === 'sprint'
-        ? STRIPE_PRICES.SPRINT
-        : programPlan === 'transform'
-          ? STRIPE_PRICES.TRANSFORM
-          : STRIPE_PRICES.MONK_MODE
-    if (!priceId) {
-      return NextResponse.json(
-        { error: `Program price not configured for ${programPlan}` },
-        { status: 503 },
-      )
-    }
-
-    try {
-      const session = await stripe.checkout.sessions.create({
-        mode: 'payment',
-        line_items: [{ price: priceId, quantity: 1 }],
-        success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&plan=${encodeURIComponent(programPlan)}`,
-        cancel_url: `${origin}/join`,
-        allow_promotion_codes: true,
-        billing_address_collection: 'auto',
-        customer_email: user.email ?? undefined,
-        client_reference_id: user.id,
-        metadata: {
-          supabase_user_id: user.id,
-          plan: programPlan,
-        },
-      })
-
-      if (!session.url) {
-        return NextResponse.json(
-          { error: 'Checkout session missing URL' },
-          { status: 500 },
-        )
-      }
-      return NextResponse.json({ url: session.url })
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Checkout failed'
       return NextResponse.json({ error: msg }, { status: 500 })
