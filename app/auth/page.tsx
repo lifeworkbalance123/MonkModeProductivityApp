@@ -118,6 +118,14 @@ function authCallbackRedirectHint(): string {
   return `In Supabase → Authentication → URL Configuration, add redirect URL: ${authCallbackRedirectUrl()}`
 }
 
+function safeRedirectPath(input: string | null | undefined): string | null {
+  if (!input) return null
+  const value = input.trim()
+  if (!value.startsWith('/')) return null
+  if (value.startsWith('//')) return null
+  return value
+}
+
 /** Wrong/missing env — not the same as a failed HTTP request. */
 function friendlySupabaseSetupError(): string {
   const detail = getSupabaseConfigProblem() ?? 'Check .env.local.'
@@ -154,6 +162,11 @@ function passwordFlowFromSubmit(
 export default function AuthPage() {
   const router = useRouter()
   const { session, isLoading: authBootstrapping } = useAuth()
+  const postAuthRedirect = (() => {
+    if (typeof window === 'undefined') return null
+    const params = new URLSearchParams(window.location.search)
+    return safeRedirectPath(params.get('redirect'))
+  })()
 
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('')
@@ -214,9 +227,9 @@ export default function AuthPage() {
         router.replace('/auth/update-password')
         return
       }
-      router.replace('/dashboard')
+      router.replace(postAuthRedirect ?? '/dashboard')
     }
-  }, [authBootstrapping, session, router])
+  }, [authBootstrapping, session, router, postAuthRedirect])
 
   function validatePasswordForm(flow: 'signin' | 'signup'): boolean {
     const next: typeof fieldErrors = {}
@@ -316,7 +329,7 @@ export default function AuthPage() {
             }
           }
         }
-        router.replace('/dashboard')
+        router.replace(postAuthRedirect ?? '/dashboard')
         return
       }
 
@@ -399,7 +412,7 @@ export default function AuthPage() {
             localStorage.removeItem('buddy_invite_code')
           }
         }
-        router.replace('/dashboard')
+        router.replace(postAuthRedirect ?? '/dashboard')
         return
       }
       setPendingConfirmEmail(authEmail)
@@ -483,7 +496,7 @@ export default function AuthPage() {
       const { error } = await supabase.auth.signInWithOtp({
         email: normalizeAuthEmail(magicEmail),
         options: {
-          emailRedirectTo: `${getAuthCallbackBaseUrl()}/auth/callback`,
+          emailRedirectTo: `${getAuthCallbackBaseUrl()}/auth/callback${postAuthRedirect ? `?redirect=${encodeURIComponent(postAuthRedirect)}` : ''}`,
           shouldCreateUser: true,
         },
       })
@@ -517,7 +530,7 @@ export default function AuthPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${getAuthCallbackBaseUrl()}/auth/callback`,
+          redirectTo: `${getAuthCallbackBaseUrl()}/auth/callback${postAuthRedirect ? `?redirect=${encodeURIComponent(postAuthRedirect)}` : ''}`,
         },
       })
       if (error) setFormError(error.message)

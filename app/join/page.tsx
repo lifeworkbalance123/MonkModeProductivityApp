@@ -4,26 +4,101 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { startV2ProgramCheckout } from '@/lib/stripe-checkout'
+import { startProgramCheckout, type ProgramCheckoutKind } from '@/lib/stripe-checkout'
 import { findPricingRow, formatPriceCents, usePricing } from '@/hooks/usePricing'
 
 const FALLBACK_MONK_CENTS = 1900
+const FALLBACK_SPRINT_CENTS = 2900
+const FALLBACK_TRANSFORM_CENTS = 4900
 const FALLBACK_CURRENCY = 'AUD'
+
+type ProgramCard = {
+  id: ProgramCheckoutKind
+  title: string
+  subtitle: string
+  ctaTitle: string
+  features: string[]
+}
+
+const PROGRAMS: ProgramCard[] = [
+  {
+    id: 'monk_mode',
+    title: 'Monk Mode',
+    subtitle: '21-day focus reset',
+    ctaTitle: 'Start the Monk Mode program',
+    features: [
+      'Daily lessons (2-3 min each) for your Monk Mode arc',
+      'One focused daily action',
+      'Distraction and energy tracking',
+      'Weekly review templates',
+      'Student -> Monk -> Master progression',
+      'Milestone checkpoints along the way',
+      'All app productivity tools included',
+      'Lifetime access - no subscription',
+    ],
+  },
+  {
+    id: 'sprint',
+    title: 'Sprint',
+    subtitle: '30-day execution sprint',
+    ctaTitle: 'Start the Sprint program',
+    features: [
+      'Clear daily execution plan for 30 days',
+      'One focused high-impact task every day',
+      'Momentum tracking with weekly reflection',
+      'Progress checkpoints to lock consistency',
+      'Structure built for busy work weeks',
+      'All app productivity tools included',
+      'Lifetime access - no subscription',
+    ],
+  },
+  {
+    id: 'transform',
+    title: 'Transform',
+    subtitle: '56-day identity upgrade',
+    ctaTitle: 'Start the Transform program',
+    features: [
+      '56-day behavior change roadmap',
+      'Daily actions for discipline and consistency',
+      'Habit and energy tracking across the full arc',
+      'Weekly review and reset rituals',
+      'Built to transition you into mastery mode',
+      'All app productivity tools included',
+      'Lifetime access - no subscription',
+    ],
+  },
+]
 
 export default function JoinPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [selectedProgram, setSelectedProgram] = useState<ProgramCheckoutKind>('monk_mode')
   const router = useRouter()
   const { prices } = usePricing()
   const monk = findPricingRow(prices, 'monk_mode')
-  const monkCents = monk?.current_price ?? FALLBACK_MONK_CENTS
-  const monkCurrency = monk?.currency ?? FALLBACK_CURRENCY
-  const monkPriceLabel = useMemo(
-    () => formatPriceCents(monkCents, monkCurrency),
-    [monkCents, monkCurrency],
-  )
+  const sprint = findPricingRow(prices, 'sprint')
+  const transform = findPricingRow(prices, 'transform')
+  const programRows: Record<ProgramCheckoutKind, { cents: number; currency: string }> = {
+    monk_mode: {
+      cents: monk?.current_price ?? FALLBACK_MONK_CENTS,
+      currency: monk?.currency ?? FALLBACK_CURRENCY,
+    },
+    sprint: {
+      cents: sprint?.current_price ?? FALLBACK_SPRINT_CENTS,
+      currency: sprint?.currency ?? FALLBACK_CURRENCY,
+    },
+    transform: {
+      cents: transform?.current_price ?? FALLBACK_TRANSFORM_CENTS,
+      currency: transform?.currency ?? FALLBACK_CURRENCY,
+    },
+  }
+  const selectedConfig = PROGRAMS.find((p) => p.id === selectedProgram) ?? PROGRAMS[0]
+  const selectedPriceLabel = useMemo(() => {
+    const row = programRows[selectedProgram]
+    return formatPriceCents(row.cents, row.currency)
+  }, [selectedProgram, programRows])
 
-  async function handleJoin() {
+  async function handleJoin(program: ProgramCheckoutKind) {
     setLoading(true)
     setError('')
 
@@ -38,7 +113,7 @@ export default function JoinPage() {
     }
 
     try {
-      const result = await startV2ProgramCheckout()
+      const result = await startProgramCheckout(program)
       if (!result.ok) {
         setError(result.error)
       }
@@ -75,8 +150,7 @@ export default function JoinPage() {
             The Monk Mode program
           </h1>
           <p style={{ color: 'var(--muted-foreground)', fontSize: '16px', lineHeight: '1.6', margin: 0 }}>
-            One daily lesson. One action. A focused arc to build discipline — then carry it into Sprint,
-            Transform, and Mastery when you are ready.
+            Pick your program and start the same focused system with the depth that fits your current season.
           </p>
         </div>
 
@@ -89,6 +163,51 @@ export default function JoinPage() {
             marginBottom: '16px',
           }}
         >
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+              gap: '8px',
+              marginBottom: '18px',
+            }}
+          >
+            {PROGRAMS.map((program) => {
+              const isSelected = selectedProgram === program.id
+              const row = programRows[program.id]
+              return (
+                <button
+                  key={program.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedProgram(program.id)
+                    setError('')
+                  }}
+                  disabled={loading}
+                  style={{
+                    border: isSelected ? '1px solid var(--accent)' : '1px solid var(--border)',
+                    background: isSelected
+                      ? 'color-mix(in srgb, var(--accent) 14%, transparent)'
+                      : 'transparent',
+                    borderRadius: '10px',
+                    textAlign: 'left',
+                    padding: '10px',
+                    cursor: loading ? 'default' : 'pointer',
+                  }}
+                >
+                  <div style={{ color: 'var(--foreground)', fontSize: '13px', fontWeight: 700 }}>
+                    {program.title}
+                  </div>
+                  <div style={{ color: 'var(--muted-foreground)', fontSize: '11px', marginTop: '2px' }}>
+                    {program.subtitle}
+                  </div>
+                  <div style={{ color: 'var(--accent)', fontSize: '11px', fontWeight: 600, marginTop: '6px' }}>
+                    {formatPriceCents(row.cents, row.currency)}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
             <div
               style={{
@@ -115,24 +234,15 @@ export default function JoinPage() {
                 margin: 0,
               }}
             >
-              {monkPriceLabel}
+              {selectedPriceLabel}
             </p>
             <p style={{ color: 'var(--muted-foreground)', fontSize: '14px', margin: '8px 0 0' }}>
-              One-time payment. Lifetime access to the program.
+              {selectedConfig.subtitle}. One-time payment. Lifetime access.
             </p>
           </div>
 
           <div style={{ marginBottom: '24px' }}>
-            {[
-              'Daily lessons (2–3 min each) for your Monk Mode arc',
-              'One focused daily action',
-              'Distraction and energy tracking',
-              'Weekly review templates',
-              'Student → Monk → Master progression',
-              'Milestone checkpoints along the way',
-              'All app productivity tools included',
-              'Lifetime access — no subscription',
-            ].map((feature, i) => (
+            {selectedConfig.features.map((feature, i) => (
               <div
                 key={feature}
                 style={{
@@ -140,7 +250,7 @@ export default function JoinPage() {
                   alignItems: 'center',
                   gap: '10px',
                   padding: '8px 0',
-                  borderBottom: i < 7 ? '1px solid var(--border)' : 'none',
+                  borderBottom: i < selectedConfig.features.length - 1 ? '1px solid var(--border)' : 'none',
                 }}
               >
                 <span style={{ color: 'var(--accent)', fontSize: '14px' }}>✓</span>
@@ -157,7 +267,7 @@ export default function JoinPage() {
 
           <button
             type="button"
-            onClick={() => void handleJoin()}
+            onClick={() => void handleJoin(selectedProgram)}
             disabled={loading}
             style={{
               width: '100%',
@@ -172,7 +282,7 @@ export default function JoinPage() {
               marginBottom: '12px',
             }}
           >
-            {loading ? 'Loading checkout…' : `Start the Monk Mode program — ${monkPriceLabel}`}
+            {loading ? 'Loading checkout…' : `${selectedConfig.ctaTitle} — ${selectedPriceLabel}`}
           </button>
 
           <div style={{ textAlign: 'center' }}>

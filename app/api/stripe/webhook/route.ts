@@ -4,9 +4,14 @@ import { createServiceRoleClient } from '@/lib/supabase-service'
 import { sendPaymentConfirmationEmail } from '@/lib/email'
 import { applyReferralRewardForUpgradedUser } from '@/lib/referral'
 import { enrollProgramForUser } from '@/lib/programUtils'
+import { STRIPE_PRICES } from '@/lib/stripePrices'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
+
+const APP_SUBSCRIPTION_PRICE_IDS = new Set(
+  [STRIPE_PRICES.APP_MONTHLY, STRIPE_PRICES.APP_ANNUAL].filter(Boolean),
+)
 
 /** Stripe v22 types omit top-level current_period_end; runtime/API still expose it on items or legacy shape. */
 function subscriptionPeriodEndUnix(sub: Stripe.Subscription): number | null {
@@ -83,14 +88,30 @@ export async function POST(request: Request) {
           break
         }
 
-        if (metaPlan === 'v2_program') {
+        if (
+          metaPlan === 'v2_program' ||
+          metaPlan === 'monk_mode' ||
+          metaPlan === 'sprint' ||
+          metaPlan === 'transform'
+        ) {
           const enrolled = await enrollProgramForUser(admin, userId)
           if (enrolled) {
-            console.log('User enrolled in V2 program:', userId)
+            console.log(`User enrolled in ${metaPlan || 'program'}:`, userId)
           } else {
-            console.error('V2 program enrollment failed for user:', userId)
+            console.error(`Program enrollment failed (${metaPlan || 'unknown'}) for user:`, userId)
           }
           await logWebhook(admin, eventType, eventId, userId, enrolled)
+          break
+        }
+
+        if (metaPlan === 'coaching') {
+          const { error } = await admin
+            .from('users')
+            .update({
+              stripe_customer_id: customerId,
+            })
+            .eq('id', userId)
+          await logWebhook(admin, eventType, eventId, userId, !error)
           break
         }
 
@@ -234,6 +255,13 @@ export async function POST(request: Request) {
 
       case 'customer.subscription.updated': {
         const sub = event.data.object as Stripe.Subscription
+        const hasAppSubscriptionPrice = sub.items.data.some(
+          (item) => !!item.price?.id && APP_SUBSCRIPTION_PRICE_IDS.has(item.price.id),
+        )
+        if (!hasAppSubscriptionPrice) {
+          await logWebhook(admin, eventType, eventId, null, true)
+          break
+        }
         const customerId =
           typeof sub.customer === 'string'
             ? sub.customer
@@ -296,6 +324,13 @@ export async function POST(request: Request) {
 
       case 'customer.subscription.deleted': {
         const sub = event.data.object as Stripe.Subscription
+        const hasAppSubscriptionPrice = sub.items.data.some(
+          (item) => !!item.price?.id && APP_SUBSCRIPTION_PRICE_IDS.has(item.price.id),
+        )
+        if (!hasAppSubscriptionPrice) {
+          await logWebhook(admin, eventType, eventId, null, true)
+          break
+        }
         const customerId =
           typeof sub.customer === 'string'
             ? sub.customer

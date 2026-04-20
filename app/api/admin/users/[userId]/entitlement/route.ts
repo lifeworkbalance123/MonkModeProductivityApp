@@ -12,7 +12,7 @@ const UUID_RE =
  */
 export async function PATCH(
   request: Request,
-  ctx: { params: Promise<{ id: string }> },
+  ctx: { params: Promise<{ userId: string }> },
 ) {
   let admin
   try {
@@ -49,7 +49,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { id: targetId } = await ctx.params
+  const { userId: targetId } = await ctx.params
   if (!targetId || !UUID_RE.test(targetId)) {
     return NextResponse.json({ error: 'Invalid user id' }, { status: 400 })
   }

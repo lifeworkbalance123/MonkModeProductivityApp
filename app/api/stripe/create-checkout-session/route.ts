@@ -12,7 +12,7 @@ export type CheckoutMode = 'subscription' | 'payment'
 
 /**
  * Creates a Stripe Checkout Session.
- * - V2 program: POST JSON `{ "plan": "v2_program" }` — one-time payment (price from STRIPE_V2_PROGRAM_PRICE_ID).
+ * - Program: POST JSON `{ "plan": "monk_mode" | "sprint" | "transform" | "v2_program" }` — one-time payment.
  * - Pro / Lifetime: POST JSON `{ "priceKind": "monthly" | "annual" | "lifetime" }`.
  * Authorization: Bearer <Supabase access_token>
  */
@@ -97,11 +97,19 @@ export async function POST(request: Request) {
     }
   }
 
-  if ((body.plan ?? '').toLowerCase() === 'v2_program') {
-    const priceId = STRIPE_PRICES.MONK_MODE
+  const requestedPlan = (body.plan ?? '').toLowerCase()
+  if (requestedPlan === 'v2_program' || requestedPlan === 'monk_mode' || requestedPlan === 'sprint' || requestedPlan === 'transform') {
+    const programPlan =
+      requestedPlan === 'v2_program' ? 'monk_mode' : requestedPlan
+    const priceId =
+      programPlan === 'sprint'
+        ? STRIPE_PRICES.SPRINT
+        : programPlan === 'transform'
+          ? STRIPE_PRICES.TRANSFORM
+          : STRIPE_PRICES.MONK_MODE
     if (!priceId) {
       return NextResponse.json(
-        { error: 'V2 program price not configured (STRIPE_V2_PROGRAM_PRICE_ID)' },
+        { error: `Program price not configured for ${programPlan}` },
         { status: 503 },
       )
     }
@@ -110,7 +118,7 @@ export async function POST(request: Request) {
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
         line_items: [{ price: priceId, quantity: 1 }],
-        success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&plan=v2_program`,
+        success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&plan=${encodeURIComponent(programPlan)}`,
         cancel_url: `${origin}/join`,
         allow_promotion_codes: true,
         billing_address_collection: 'auto',
@@ -118,7 +126,7 @@ export async function POST(request: Request) {
         client_reference_id: user.id,
         metadata: {
           supabase_user_id: user.id,
-          plan: 'v2_program',
+          plan: programPlan,
         },
       })
 
