@@ -4,65 +4,15 @@ import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { startProgramCheckout, type ProgramCheckoutKind } from '@/lib/stripe-checkout'
 import { findPricingRow, formatPriceCents, usePricing } from '@/hooks/usePricing'
+import { PROGRAM_FALLBACK_CENTS, PROGRAM_FALLBACK_CURRENCY, PROGRAM_MARKETING_CARDS } from '@/lib/programCatalog'
 
-const FALLBACK_MONK_CENTS = 1900
-const FALLBACK_SPRINT_CENTS = 2900
-const FALLBACK_TRANSFORM_CENTS = 4900
-const FALLBACK_CURRENCY = 'AUD'
-
-type ProgramCard = {
-  id: ProgramCheckoutKind
-  title: string
-  subtitle: string
-  ctaTitle: string
-  features: string[]
-}
-
-const PROGRAMS: ProgramCard[] = [
-  {
-    id: 'monk_mode',
-    title: 'Monk Mode',
-    subtitle: '21-day focus reset',
-    ctaTitle: 'Start the Monk Mode program',
-    features: [
-      'Daily lessons (2-3 min each) for your Monk Mode arc',
-      'One focused daily action',
-      'Distraction and energy tracking',
-      'Weekly review templates',
-      'Student -> Monk -> Master progression',
-      'Milestone checkpoints along the way',
-      'All app productivity tools included',
-    ],
-  },
-  {
-    id: 'sprint',
-    title: 'Sprint',
-    subtitle: '30-day execution sprint',
-    ctaTitle: 'Start the Sprint program',
-    features: [
-      'Clear daily execution plan for 30 days',
-      'One focused high-impact task every day',
-      'Momentum tracking with weekly reflection',
-      'Progress checkpoints to lock consistency',
-      'Structure built for busy work weeks',
-      'All app productivity tools included',
-    ],
-  },
-  {
-    id: 'transform',
-    title: 'Transform',
-    subtitle: '56-day identity upgrade',
-    ctaTitle: 'Start the Transform program',
-    features: [
-      '56-day behavior change roadmap',
-      'Daily actions for discipline and consistency',
-      'Habit and energy tracking across the full arc',
-      'Weekly review and reset rituals',
-      'Built to transition you into mastery mode',
-      'All app productivity tools included',
-    ],
-  },
-]
+const PROGRAMS = PROGRAM_MARKETING_CARDS.map((c) => ({
+  id: c.id,
+  title: c.title,
+  subtitle: c.subtitle,
+  ctaTitle: c.ctaTitle,
+  features: c.features,
+}))
 
 export default function JoinPage() {
   const [loading, setLoading] = useState(false)
@@ -74,16 +24,16 @@ export default function JoinPage() {
   const transform = findPricingRow(prices, 'transform')
   const programRows: Record<ProgramCheckoutKind, { cents: number; currency: string }> = {
     monk_mode: {
-      cents: monk?.current_price ?? FALLBACK_MONK_CENTS,
-      currency: monk?.currency ?? FALLBACK_CURRENCY,
+      cents: monk?.current_price ?? PROGRAM_FALLBACK_CENTS.monk_mode,
+      currency: monk?.currency ?? PROGRAM_FALLBACK_CURRENCY,
     },
     sprint: {
-      cents: sprint?.current_price ?? FALLBACK_SPRINT_CENTS,
-      currency: sprint?.currency ?? FALLBACK_CURRENCY,
+      cents: sprint?.current_price ?? PROGRAM_FALLBACK_CENTS.sprint,
+      currency: sprint?.currency ?? PROGRAM_FALLBACK_CURRENCY,
     },
     transform: {
-      cents: transform?.current_price ?? FALLBACK_TRANSFORM_CENTS,
-      currency: transform?.currency ?? FALLBACK_CURRENCY,
+      cents: transform?.current_price ?? PROGRAM_FALLBACK_CENTS.transform,
+      currency: transform?.currency ?? PROGRAM_FALLBACK_CURRENCY,
     },
   }
   const selectedConfig = PROGRAMS.find((p) => p.id === selectedProgram) ?? PROGRAMS[0]
@@ -131,7 +81,7 @@ export default function JoinPage() {
               lineHeight: '1.2',
             }}
           >
-            The Monk Mode program
+            Choose your program
           </h1>
           <p style={{ color: 'var(--muted-foreground)', fontSize: '16px', lineHeight: '1.6', margin: 0 }}>
             Pick your program and start the same focused system with the depth that fits your current season.

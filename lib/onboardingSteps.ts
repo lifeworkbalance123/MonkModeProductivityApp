@@ -27,6 +27,8 @@ export type OnboardingStepKind =
   | 'goal_choice'
   | 'conditional'
   | 'environment'
+  /** Client-inserted: Stripe checkout for selected program before final ready step */
+  | 'program_pay'
 
 export function isOnboardingStepKind(v: string): v is OnboardingStepKind {
   return (
@@ -38,7 +40,8 @@ export function isOnboardingStepKind(v: string): v is OnboardingStepKind {
     v === 'content' ||
     v === 'goal_choice' ||
     v === 'conditional' ||
-    v === 'environment'
+    v === 'environment' ||
+    v === 'program_pay'
   )
 }
 
@@ -60,7 +63,7 @@ export const DEFAULT_ONBOARDING_STEPS: Omit<
     step_order: 1,
     title: 'What is your primary goal?',
     description:
-      'Sprint (21–60 days): complete a project.\nTransform (60 days): holistic habit change.\nMastery (90+ days): advanced discipline.',
+      'Sprint (30 days): focus stamina and daily execution.\nMonk Mode (21 days): deep work and project completion.\nTransform (60 days): wake progression, anchors, and identity-level change.',
     video_url: null,
     action_label: 'Continue',
     step_kind: 'goal_choice',

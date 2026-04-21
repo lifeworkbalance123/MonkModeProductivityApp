@@ -2,7 +2,12 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { formatPriceCents, useAppSubscriptionPrices } from '@/hooks/usePricing'
+import { findPricingRow, formatPriceCents, useAppSubscriptionPrices, usePricing } from '@/hooks/usePricing'
+import {
+  PROGRAM_FALLBACK_CENTS,
+  PROGRAM_FALLBACK_CURRENCY,
+  PROGRAM_MARKETING_CARDS,
+} from '@/lib/programCatalog'
 import { MonkCubedLogo } from '@/components/brand/MonkCubedLogo'
 import { MONKCUBED_TAGLINE } from '@/components/brand/MonkCubedLogo'
 import { supabase } from '@/lib/supabase'
@@ -59,6 +64,52 @@ export function FeaturesSection() {
           </div>
         ))}
       </div>
+    </section>
+  )
+}
+
+export function ProgramsOfferSection() {
+  const { prices } = usePricing()
+  return (
+    <section id="programs" className="mx-auto max-w-[1100px] px-4 py-20">
+      <h2 className="text-center text-3xl font-semibold text-foreground">Programs</h2>
+      <p className="mx-auto mt-3 max-w-2xl text-center text-muted-foreground">
+        Sprint, Monk Mode, and Transform are one-time purchases. Continue into onboarding to finish setup
+        and pay when prompted.
+      </p>
+      <div className="mt-10 grid gap-4 md:grid-cols-3">
+        {PROGRAM_MARKETING_CARDS.map((p) => {
+          const row = findPricingRow(prices, p.id)
+          const cents = row?.current_price ?? PROGRAM_FALLBACK_CENTS[p.id]
+          const cur = row?.currency ?? PROGRAM_FALLBACK_CURRENCY
+          return (
+            <div key={p.id} className="rounded-xl border border-border bg-card/60 p-5">
+              <h3 className="text-xl font-semibold text-foreground">{p.title}</h3>
+              <p className="mt-2 text-accent">
+                <span className="text-lg font-bold">{formatPriceCents(cents, cur)}</span>{' '}
+                <span className="text-sm font-normal text-muted-foreground">one-time</span>
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">{p.subtitle}</p>
+              <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                {p.features.slice(0, 4).map((f) => (
+                  <li key={f} className="flex gap-2">
+                    <span className="text-accent">✓</span>
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button asChild className="mt-6 w-full bg-accent text-accent-foreground hover:bg-accent/90">
+                <Link href={`/onboarding?program=${p.id}`}>{p.ctaTitle}</Link>
+              </Button>
+            </div>
+          )
+        })}
+      </div>
+      <p className="mt-8 text-center text-sm text-muted-foreground">
+        <Link href="/join" className="text-accent hover:underline">
+          Open full join page
+        </Link>
+      </p>
     </section>
   )
 }

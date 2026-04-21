@@ -11,6 +11,9 @@ const SocialProofBar = dynamic(() =>
 const FeaturesSection = dynamic(() =>
   import('@/components/marketing/landing-sections').then((m) => m.FeaturesSection),
 )
+const ProgramsOfferSection = dynamic(() =>
+  import('@/components/marketing/landing-sections').then((m) => m.ProgramsOfferSection),
+)
 const HowItWorksSection = dynamic(() =>
   import('@/components/marketing/landing-sections').then((m) => m.HowItWorksSection),
 )
@@ -77,6 +80,7 @@ export default function Home() {
 
       <SocialProofBar />
       <FeaturesSection />
+      <ProgramsOfferSection />
       <HowItWorksSection />
       <PricingSection />
       <TrainingPreviewSection />
