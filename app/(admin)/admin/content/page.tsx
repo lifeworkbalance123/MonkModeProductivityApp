@@ -150,7 +150,7 @@ export default function AdminContentPage() {
           Default Habits
         </button>
         <button type="button" style={tabStyle('training')} onClick={() => selectTab('training')}>
-          🎬 Training Videos
+          🎬 Training Videos (Bonus)
         </button>
       </div>
 
@@ -1722,6 +1722,20 @@ function TrainingVideosEditor() {
 
   return (
     <div>
+      <p
+        style={{
+          color: '#F59E0B',
+          fontSize: '12px',
+          margin: '0 0 12px',
+          lineHeight: '1.6',
+          background: '#F59E0B14',
+          border: '1px solid #F59E0B44',
+          borderRadius: '8px',
+          padding: '8px 10px',
+        }}
+      >
+        Bonus feature notice: Training videos are optional bonus content and are not part of the core included program experience.
+      </p>
       <p style={{ color: '#64748B', fontSize: '14px', margin: '0 0 20px', lineHeight: '1.6' }}>
         Reorder with arrows, delete videos, or add new ones. Paste a YouTube URL in the field — it saves automatically after you
         pause typing. Click the row (except controls) for full edit.

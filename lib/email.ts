@@ -350,8 +350,7 @@ export async function sendWaitlistConfirmationEmail(email: string) {
           <p>We'll email you the moment monkcubed launches on iOS and Android.</p>
           <p>As a waitlist member, you'll get:</p>
           <ul>
-            <li>30-day free Pro trial (vs 14 days for regular signups)</li>
-            <li>Lifetime deal locked at $99 (vs $149 at public launch)</li>
+            <li>7-day free trial access</li>
             <li>Founding member badge in the app</li>
             <li>Direct input on features before v2.0 ships</li>
           </ul>

@@ -28,6 +28,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/context/ToastContext'
 import type { OnboardingStepKind, OnboardingStepRow } from '@/lib/onboardingSteps'
+import { ProgramTracksEditor } from '@/components/admin/ProgramTracksEditor'
 
 const KINDS: OnboardingStepKind[] = ['welcome', 'why', 'commitment', 'wake', 'ready', 'content']
 
@@ -315,6 +316,8 @@ export default function AdminOnboardingPage() {
           </li>
         </ul>
       </Card>
+
+      <ProgramTracksEditor />
 
       <Card className="border-border bg-card p-6">
         <h2 className="mb-4 text-sm font-medium text-foreground">{editingId ? 'Edit step' : 'Add step'}</h2>

@@ -1,42 +1,16 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { cn } from '@/lib/utils'
 import {
-  PROGRAM_FLOW_CURRENCY,
-  PROGRAM_FLOW_PRICES,
+  DEFAULT_PROGRAM_TRACKS,
+  type ProgramTrackConfig,
   type SelectedProgram,
-  SELECTED_PROGRAM_LABEL,
 } from '@/lib/onboardingProgramFlow'
 import { formatPriceCents } from '@/hooks/usePricing'
-
-const OPTIONS: {
-  id: SelectedProgram
-  duration: string
-  benefit: string
-  intensity: string
-}[] = [
-  {
-    id: 'sprint_standard',
-    duration: '30 days',
-    benefit: 'Build focus stamina with a daily execution rhythm.',
-    intensity: 'Medium',
-  },
-  {
-    id: 'sprint_monk',
-    duration: '21 days',
-    benefit: 'Ship one big project with deep-work blocks every day.',
-    intensity: 'High',
-  },
-  {
-    id: 'transform',
-    duration: '60 days',
-    benefit: 'Rewrite defaults: wake, sleep, anchors, and identity.',
-    intensity: 'Steady',
-  },
-]
 
 type Props = {
   value: SelectedProgram | null
@@ -45,6 +19,26 @@ type Props = {
 }
 
 export function ProgramSelection({ value, onChange, onContinue }: Props) {
+  const [options, setOptions] = useState<ProgramTrackConfig[]>(DEFAULT_PROGRAM_TRACKS)
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch('/api/onboarding/program-tracks', { cache: 'no-store' })
+        const json = (await res.json()) as { tracks?: ProgramTrackConfig[] }
+        if (!res.ok || !Array.isArray(json.tracks) || !json.tracks.length) return
+        const active = json.tracks.filter((t) => t.is_active)
+        if (!cancelled && active.length) setOptions(active)
+      } catch {
+        // Keep fallback defaults.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-8">
       <div className="text-center">
@@ -56,13 +50,8 @@ export function ProgramSelection({ value, onChange, onContinue }: Props) {
         </p>
       </div>
 
-      <RadioGroup
-        value={value ?? undefined}
-        onValueChange={(v) => onChange(v as SelectedProgram)}
-        className="grid gap-4 md:grid-cols-3"
-      >
-        {OPTIONS.map((opt) => {
-          const price = PROGRAM_FLOW_PRICES[opt.id]
+      <RadioGroup value={value ?? undefined} onValueChange={(v) => onChange(v as SelectedProgram)} className="grid gap-4 md:grid-cols-3">
+        {options.map((opt) => {
           const selected = value === opt.id
           return (
             <div
@@ -84,14 +73,14 @@ export function ProgramSelection({ value, onChange, onContinue }: Props) {
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <Label htmlFor={opt.id} className="cursor-pointer text-lg font-semibold text-foreground">
-                    {SELECTED_PROGRAM_LABEL[opt.id]}
+                    {opt.label}
                   </Label>
                   <p className="text-xs text-muted-foreground">{opt.duration}</p>
                 </div>
                 <RadioGroupItem value={opt.id} id={opt.id} className="mt-1 border-muted-foreground" />
               </div>
               <p className="mt-3 text-sm font-medium text-accent">
-                {formatPriceCents(price, PROGRAM_FLOW_CURRENCY)}{' '}
+                {formatPriceCents(opt.price_cents, opt.currency)}{' '}
                 <span className="text-xs font-normal text-muted-foreground">one-time</span>
               </p>
               <span className="mt-2 inline-flex w-fit rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">

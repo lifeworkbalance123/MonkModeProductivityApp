@@ -18,6 +18,59 @@ export const PROGRAM_FLOW_PRICES: Record<SelectedProgram, number> = {
 
 export const PROGRAM_FLOW_CURRENCY = 'USD'
 
+export type ProgramTrackConfig = {
+  id: SelectedProgram
+  label: string
+  duration: string
+  benefit: string
+  intensity: string
+  price_cents: number
+  currency: string
+  sort_order: number
+  is_active: boolean
+  checkout_plan: ProgramCheckoutKind
+}
+
+/** Fallback used when DB config is unavailable. */
+export const DEFAULT_PROGRAM_TRACKS: ProgramTrackConfig[] = [
+  {
+    id: 'sprint_standard',
+    label: 'Sprint',
+    duration: '30 days',
+    benefit: 'Build focus stamina with a daily execution rhythm.',
+    intensity: 'Medium',
+    price_cents: 2999,
+    currency: 'USD',
+    sort_order: 1,
+    is_active: true,
+    checkout_plan: 'sprint',
+  },
+  {
+    id: 'sprint_monk',
+    label: 'Monk Mode',
+    duration: '21 days',
+    benefit: 'Ship one big project with deep-work blocks every day.',
+    intensity: 'High',
+    price_cents: 1999,
+    currency: 'USD',
+    sort_order: 2,
+    is_active: true,
+    checkout_plan: 'monk_mode',
+  },
+  {
+    id: 'transform',
+    label: 'Transform',
+    duration: '60 days',
+    benefit: 'Rewrite defaults: wake, sleep, anchors, and identity.',
+    intensity: 'Steady',
+    price_cents: 4999,
+    currency: 'USD',
+    sort_order: 3,
+    is_active: true,
+    checkout_plan: 'transform',
+  },
+]
+
 export function isSelectedProgram(v: string | null | undefined): v is SelectedProgram {
   return v === 'sprint_standard' || v === 'sprint_monk' || v === 'transform'
 }
