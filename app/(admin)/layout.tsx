@@ -21,6 +21,7 @@ const navLinks = [
   { label: 'Themes', href: '/admin/themes' },
   { label: 'Videos', href: '/admin/videos' },
   { label: 'Onboarding', href: '/admin/onboarding' },
+  { label: 'Testing Tools', href: '/admin/testing' },
 ] as const
 
 export default function AdminShellLayout({

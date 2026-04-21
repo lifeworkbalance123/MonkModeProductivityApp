@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { isAdmin } from '@/lib/admin'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   intakeFromRequestBody,
   pickDistractions,
@@ -13,6 +15,24 @@ export const runtime = 'nodejs'
 
 function json(body: Record<string, unknown>, status: number) {
   return NextResponse.json(body, { status })
+}
+
+async function checkUserPayment(userId: string, supabase: SupabaseClient) {
+  const { data, error } = await supabase
+    .from('users')
+    .select('is_pro, plan, is_trial_active')
+    .eq('id', userId)
+    .maybeSingle()
+
+  if (error) return false
+
+  const row = (data as { is_pro?: boolean; plan?: string | null; is_trial_active?: boolean } | null) ?? null
+  if (!row) return false
+  if (row.is_pro === true) return true
+  if (row.is_trial_active === true) return true
+
+  const plan = (row.plan ?? '').toLowerCase()
+  return plan === 'monthly' || plan === 'annual' || plan === 'lifetime' || plan === 'trial'
 }
 
 function supabaseWithUserJwt(token: string) {
@@ -55,6 +75,15 @@ export async function POST(req: Request) {
     const intake = intakeFromRequestBody(raw)
     if (!intake) {
       return json({ error: 'Invalid programType / selected_program' }, 400)
+    }
+
+    const skipPayment = raw.skipPayment === true
+    const adminBypass = isAdmin(user) && skipPayment
+    if (!adminBypass) {
+      const hasPaid = await checkUserPayment(user.id, supabase)
+      if (!hasPaid) {
+        return json({ error: 'Payment required' }, 402)
+      }
     }
 
     const err = validateIntake(intake)

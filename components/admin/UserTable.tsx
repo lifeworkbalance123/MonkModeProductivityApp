@@ -51,6 +51,11 @@ const EMAIL_TYPES = [
   're_engagement_14days',
 ] as const
 
+function isMissingResendEnv(message: string): boolean {
+  const m = message.toLowerCase()
+  return m.includes('resend_api_key') || m.includes('email_from')
+}
+
 export default function UserTable() {
   const [rows, setRows] = useState<AdminUserRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -79,6 +84,7 @@ export default function UserTable() {
   const [working, setWorking] = useState(false)
   const [refundCents, setRefundCents] = useState('')
   const [refundReason, setRefundReason] = useState('')
+  const [emailDisabledReason, setEmailDisabledReason] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -146,7 +152,13 @@ export default function UserTable() {
     const json = (await res.json().catch(() => ({}))) as { error?: string }
     setWorking(false)
     if (!res.ok) {
-      setMessage(json.error ?? `Error ${res.status}`)
+      const msg = json.error ?? `Error ${res.status}`
+      setMessage(msg)
+      if (path.includes('/send-email') && isMissingResendEnv(msg)) {
+        setEmailDisabledReason(
+          'Email disabled: missing RESEND_API_KEY/EMAIL_FROM in environment.',
+        )
+      }
       return
     }
     onOk()
@@ -329,6 +341,7 @@ export default function UserTable() {
                           className="h-7 text-[11px] px-2"
                           onClick={() => {
                             setActiveUser(u)
+                            setEmailDisabledReason(null)
                             setEmailOpen(true)
                           }}
                         >
@@ -544,6 +557,11 @@ export default function UserTable() {
           <DialogHeader>
             <DialogTitle>Send test lifecycle email</DialogTitle>
           </DialogHeader>
+          {emailDisabledReason ? (
+            <p className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              {emailDisabledReason}
+            </p>
+          ) : null}
           <Select value={emailType} onValueChange={setEmailType}>
             <SelectTrigger>
               <SelectValue />
@@ -557,7 +575,7 @@ export default function UserTable() {
             </SelectContent>
           </Select>
           <Button
-            disabled={working || !activeUser}
+            disabled={working || !activeUser || !!emailDisabledReason}
             onClick={() =>
               void postAction(
                 `/api/admin/users/${activeUser!.id}/send-email`,
@@ -566,7 +584,7 @@ export default function UserTable() {
               )
             }
           >
-            Send
+            {emailDisabledReason ? 'Email disabled' : 'Send'}
           </Button>
         </DialogContent>
       </Dialog>
