@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Lock, CheckCircle } from 'lucide-react'
 import { useProgramStatus, type ProgramStatusProgram } from '@/hooks/useProgramStatus'
@@ -8,32 +7,28 @@ import { useProgramStatus, type ProgramStatusProgram } from '@/hooks/useProgramS
 export function ProgramCards() {
   const { programs, activeProgram, loading } = useProgramStatus()
   const router = useRouter()
-  const [expandedProgram, setExpandedProgram] = useState<string | null>(null)
 
-  const handleCardClick = (program: ProgramStatusProgram) => {
+  const handleProgramAction = (program: ProgramStatusProgram) => {
     if (program.isLocked) {
       window.alert(program.lockMessage ?? 'Complete your current program first')
       return
     }
-
-    setExpandedProgram((current) =>
-      current === program.program_type ? null : program.program_type,
-    )
-  }
-
-  const handleProgramAction = (program: ProgramStatusProgram) => {
     if (program.isActive) {
       router.push('/today')
       return
     }
+    localStorage.setItem('selectedProgram', program.program_type)
     router.push(`/onboarding?program=${program.program_type}`)
   }
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="programs-grid">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-48 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800" />
+          <div
+            key={i}
+            className="h-[132px] animate-pulse rounded-xl border border-border bg-card"
+          />
         ))}
       </div>
     )
@@ -62,95 +57,56 @@ export function ProgramCards() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+      <div className="programs-grid">
         {programs.map((program) => (
           <div
             key={program.program_type}
-            onClick={() => handleCardClick(program)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                handleCardClick(program)
-              }
-            }}
-            className={`relative cursor-pointer rounded-xl border p-5 transition-all ${
-              expandedProgram === program.program_type ? 'program-card expanded' : 'program-card'
-            } ${
-              program.isActive ? 'ring-2 ring-green-500 shadow-md' : ''
-            } ${program.isLocked ? 'bg-gray-50 opacity-75 dark:bg-gray-900' : 'hover:border-gray-300 hover:shadow-lg'} ${
-              !program.isActive && !program.isLocked ? 'hover:scale-[1.02]' : ''
-            }`}
+            className={`program-card ${program.isActive ? 'is-active' : ''} ${program.isLocked ? 'is-locked' : ''}`}
           >
             {program.isLocked ? (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-xl bg-white/70 dark:bg-black/60">
-                <Lock className="mb-2 h-8 w-8 text-gray-500" />
-                <p className="px-4 text-center text-sm text-gray-600 dark:text-gray-300">
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-xl bg-background/70 p-3 backdrop-blur-[1px]">
+                <Lock className="mb-1.5 h-5 w-5 text-muted-foreground" />
+                <p className="text-center text-xs text-muted-foreground">
                   {program.lockMessage}
                 </p>
               </div>
             ) : null}
 
             {program.isActive ? (
-              <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-green-500 px-2 py-1 text-xs text-white">
+              <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-green-500 px-1.5 py-0.5 text-[10px] text-white">
                 <CheckCircle className="h-3 w-3" /> ACTIVE
               </div>
             ) : null}
 
-            <div className="flex h-full flex-col">
-              <div className="mb-3 text-4xl">{program.icon}</div>
-              <h3 className="text-xl font-bold text-foreground">{program.label}</h3>
-              <p className="mb-2 text-sm text-gray-500">{program.duration}</p>
-              <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">{program.benefit}</p>
+            <div className="flex h-full flex-col gap-2">
+              <div className="program-header">
+                <span className="program-icon">{program.icon}</span>
+                <h3 className="program-name">{program.label}</h3>
+              </div>
 
-              <div className="expanded-content mt-auto">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs text-gray-500">Intensity: {program.intensity}</span>
-                  <span className="text-lg font-bold text-foreground">{program.price}</span>
-                </div>
-
-                {program.isActive && program.activeProgress ? (
-                  <div className="mt-3">
-                    <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-800">
-                      <div
-                        className="h-1.5 rounded-full bg-green-600"
-                        style={{
-                          width: `${Math.min(100, (program.activeProgress.currentDay / program.activeProgress.totalDays) * 100)}%`,
-                        }}
-                      />
-                    </div>
-                    <p className="mt-1 text-center text-xs text-gray-500">
-                      Day {program.activeProgress.currentDay} of {program.activeProgress.totalDays}
-                    </p>
-                  </div>
-                ) : null}
-
-                {!program.isActive && !program.isLocked ? (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleProgramAction(program)
-                    }}
-                    className="mt-3 w-full rounded-lg bg-blue-600 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+              <div className="program-meta">
+                <span className="program-duration">{program.duration}</span>
+                <span className="program-price">{program.price}</span>
+                {program.intensity ? (
+                  <span
+                    className={`intensity-badge intensity-${program.intensity.toLowerCase()}`}
                   >
-                    Start {program.label}
-                  </button>
+                    <span className="intensity-dot" />
+                    {program.intensity}
+                  </span>
                 ) : null}
+              </div>
 
-                {program.isActive ? (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleProgramAction(program)
-                    }}
-                    className="mt-3 w-full rounded-lg bg-green-600 py-2 text-sm font-medium text-white transition hover:bg-green-700"
-                  >
-                    Continue Program
-                  </button>
-                ) : null}
+              <p className="program-description">{program.benefit}</p>
+
+              <div className="mt-auto">
+                <button
+                  type="button"
+                  onClick={() => handleProgramAction(program)}
+                  className="program-button"
+                >
+                  {program.isActive ? 'Continue Program' : `Start ${program.label}`}
+                </button>
               </div>
             </div>
           </div>

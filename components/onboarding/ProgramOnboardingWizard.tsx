@@ -68,6 +68,14 @@ export default function ProgramOnboardingWizard() {
     if (fromUrl && isSelectedProgram(fromUrl)) {
       setSelected(fromUrl)
       setFormData(emptyIntake(fromUrl))
+      localStorage.setItem('selectedProgram', fromUrl)
+      return
+    }
+
+    const fromStorage = urlParamToSelectedProgram(localStorage.getItem('selectedProgram'))
+    if (fromStorage && isSelectedProgram(fromStorage)) {
+      setSelected(fromStorage)
+      setFormData(emptyIntake(fromStorage))
     }
   }, [searchParams])
 

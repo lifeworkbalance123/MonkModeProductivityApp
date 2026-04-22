@@ -49,28 +49,34 @@ export default function DashboardPage() {
           <span className="sr-only">Loading data</span>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="dashboard-container space-y-6">
           {!statusLoading ? (
             activeProgram ? (
-              <div className="mx-auto w-full max-w-7xl space-y-6 px-4 pt-6 sm:px-6 lg:px-8">
-                <TodayChecklist programType={activeProgram.program_type} />
-                <div className="mt-2">
-                  <h2 className="mb-4 text-lg font-semibold text-foreground">Other Programs</h2>
+              <div className="programs-section mx-auto w-full max-w-7xl space-y-6 px-4 pt-6 sm:px-6 lg:px-8">
+                <div className="dashboard-header">
+                  <TodayChecklist programType={activeProgram.program_type} />
+                </div>
+                <div className="dashboard-header mt-2">
+                  <h2 className="mb-4 text-lg font-semibold text-foreground">
+                    Other Programs
+                  </h2>
                   <ProgramCards />
                 </div>
               </div>
             ) : programs.length > 0 ? (
-              <div className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
+              <div className="programs-section mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
                 <ProgramCards />
               </div>
             ) : null
           ) : null}
-          <DashboardApp
-            data={data}
-            onChange={setData}
-            dataContext={dataContext}
-            userId={user?.id}
-          />
+          <div className="dashboard-content">
+            <DashboardApp
+              data={data}
+              onChange={setData}
+              dataContext={dataContext}
+              userId={user?.id}
+            />
+          </div>
         </div>
       )}
     </div>
