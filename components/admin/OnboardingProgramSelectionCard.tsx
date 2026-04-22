@@ -19,15 +19,22 @@ import {
   type ProgramHeaderOverride,
 } from '@/lib/onboardingSettings'
 
-type SettingsPayload = {
+export type AdminOnboardingSettingsPayload = {
   program_selection_title: string
   program_selection_subtitle: string
   program_headers: Partial<Record<SelectedProgram, ProgramHeaderOverride>>
 }
 
-export function OnboardingProgramSelectionCard() {
+type OnboardingProgramSelectionCardProps = {
+  /** When set, skip the initial GET and hydrate from this snapshot (parent already fetched). */
+  serverSnapshot?: AdminOnboardingSettingsPayload | null
+}
+
+export function OnboardingProgramSelectionCard({
+  serverSnapshot,
+}: OnboardingProgramSelectionCardProps = {}) {
   const { showToast } = useToast()
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => serverSnapshot === undefined)
   const [saving, setSaving] = useState(false)
   const [settings, setSettings] = useState({
     program_selection_title: '',
@@ -54,6 +61,38 @@ export function OnboardingProgramSelectionCard() {
     return { Authorization: `Bearer ${token}` } as Record<string, string>
   }, [])
 
+  const applyFromPayload = useCallback((s: AdminOnboardingSettingsPayload | null) => {
+    if (!s) {
+      setSettings({
+        program_selection_title: DEFAULT_ONBOARDING_SELECTION_COPY.program_selection_title,
+        program_selection_subtitle: DEFAULT_ONBOARDING_SELECTION_COPY.program_selection_subtitle,
+      })
+      setPerProgram({
+        sprint_standard: { title: '', subtitle: '' },
+        sprint_monk: { title: '', subtitle: '' },
+        transform: { title: '', subtitle: '' },
+      })
+      return
+    }
+    setSettings({
+      program_selection_title: s.program_selection_title ?? '',
+      program_selection_subtitle: s.program_selection_subtitle ?? '',
+    })
+    const next: Record<SelectedProgram, { title: string; subtitle: string }> = {
+      sprint_standard: { title: '', subtitle: '' },
+      sprint_monk: { title: '', subtitle: '' },
+      transform: { title: '', subtitle: '' },
+    }
+    for (const id of ['sprint_standard', 'sprint_monk', 'transform'] as const) {
+      const ov = s.program_headers?.[id]
+      next[id] = {
+        title: typeof ov?.title === 'string' ? ov.title.trim() : '',
+        subtitle: typeof ov?.subtitle === 'string' ? ov.subtitle.trim() : '',
+      }
+    }
+    setPerProgram(next)
+  }, [])
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
@@ -64,53 +103,31 @@ export function OnboardingProgramSelectionCard() {
       }
       const res = await fetch('/api/admin/onboarding/settings', { headers })
       const json = (await res.json()) as {
-        settings?: SettingsPayload | null
+        settings?: AdminOnboardingSettingsPayload | null
         error?: string
       }
       if (!res.ok) {
         showToast(json.error ?? 'Could not load onboarding settings', 'error')
         return
       }
-      const s = json.settings
-      if (!s) {
-        setSettings({
-          program_selection_title: DEFAULT_ONBOARDING_SELECTION_COPY.program_selection_title,
-          program_selection_subtitle: DEFAULT_ONBOARDING_SELECTION_COPY.program_selection_subtitle,
-        })
-        setPerProgram({
-          sprint_standard: { title: '', subtitle: '' },
-          sprint_monk: { title: '', subtitle: '' },
-          transform: { title: '', subtitle: '' },
-        })
-        return
-      }
-      setSettings({
-        program_selection_title: s.program_selection_title ?? '',
-        program_selection_subtitle: s.program_selection_subtitle ?? '',
-      })
-      const next: Record<SelectedProgram, { title: string; subtitle: string }> = {
-        sprint_standard: { title: '', subtitle: '' },
-        sprint_monk: { title: '', subtitle: '' },
-        transform: { title: '', subtitle: '' },
-      }
-      for (const id of ['sprint_standard', 'sprint_monk', 'transform'] as const) {
-        const ov = s.program_headers?.[id]
-        next[id] = {
-          title: typeof ov?.title === 'string' ? ov.title.trim() : '',
-          subtitle: typeof ov?.subtitle === 'string' ? ov.subtitle.trim() : '',
-        }
-      }
-      setPerProgram(next)
+      applyFromPayload(json.settings ?? null)
     } catch {
       showToast('Could not reach the server', 'error')
     } finally {
       setLoading(false)
     }
-  }, [authHeader, showToast])
+  }, [authHeader, showToast, applyFromPayload])
 
   useEffect(() => {
+    if (serverSnapshot !== undefined) return
     void load()
-  }, [load])
+  }, [serverSnapshot, load])
+
+  useEffect(() => {
+    if (serverSnapshot === undefined) return
+    applyFromPayload(serverSnapshot)
+    setLoading(false)
+  }, [serverSnapshot, applyFromPayload])
 
   async function saveSettings(e: React.FormEvent) {
     e.preventDefault()

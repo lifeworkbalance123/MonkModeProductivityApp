@@ -27,6 +27,7 @@ import {
   applyTemplateToWeek,
   categoryToColorClass,
   getTemplate,
+  timeSlotsFromTemplate,
   type ScheduleTemplate,
 } from '@/lib/scheduleTemplate'
 import { computeStreak, habitWeekProgress } from '@/lib/monk-streak'
@@ -563,15 +564,26 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
                           )
                         )
                           return
+                        if (slotsDebounceRef.current) {
+                          clearTimeout(slotsDebounceRef.current)
+                          slotsDebounceRef.current = null
+                        }
                         void (async () => {
                           if (!userId || !currentTemplate) return
-                          const ok = await applyTemplateToDate(
-                            userId,
-                            dateKey,
+                          const nextSlots = timeSlotsFromTemplate(
                             currentTemplate,
-                            true,
                           )
-                          if (ok) await loadDayData(dateKey)
+                          const { error, slots } =
+                            await replacePlannerSlotsForDate(
+                              dataContext,
+                              dateKey,
+                              nextSlots,
+                            )
+                          if (error) {
+                            showToast(error, 'error')
+                            return
+                          }
+                          setDayTimeSlots(slots)
                         })()
                       }}
                       className="rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-secondary"

@@ -16,6 +16,17 @@ export const PROGRAM_OPTIONS: readonly { value: SelectedProgram; label: string }
   { value: 'transform', label: 'Transform (60 days)' },
 ]
 
+/** Admin onboarding: program tabs for filtering `onboarding_step_templates` by `program_type`. */
+export const ADMIN_STEP_PROGRAM_TABS: readonly {
+  value: SelectedProgram
+  label: string
+  icon: string
+}[] = [
+  { value: 'sprint_standard', label: 'Sprint (30 days)', icon: '⚡' },
+  { value: 'sprint_monk', label: 'Monk Mode (21 days)', icon: '🧘' },
+  { value: 'transform', label: 'Transform (60 days)', icon: '🎯' },
+]
+
 /** Display / validation amounts (cents, USD). Stripe must use matching Price IDs. */
 export const PROGRAM_FLOW_PRICES: Record<SelectedProgram, number> = {
   sprint_standard: 2999,

@@ -522,3 +522,11 @@ html[data-color-theme='silent'] {
     min-width: 0 !important;
   }
 }
+
+/* Admin onboarding: reserve vertical space to reduce layout shift while data loads / refetches. */
+.program-cards-container {
+  min-height: 200px;
+}
+.steps-container {
+  min-height: 400px;
+}

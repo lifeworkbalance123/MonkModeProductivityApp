@@ -10,10 +10,19 @@ import { supabase } from '@/lib/supabase'
 import { useToast } from '@/context/ToastContext'
 import { DEFAULT_PROGRAM_TRACKS, type ProgramTrackConfig } from '@/lib/onboardingProgramFlow'
 
-export function ProgramTracksEditor() {
+type ProgramTracksEditorProps = {
+  /** When set, skip the initial GET and use this list (parent already fetched). */
+  serverSnapshot?: ProgramTrackConfig[] | null
+}
+
+export function ProgramTracksEditor({ serverSnapshot }: ProgramTracksEditorProps = {}) {
   const { showToast } = useToast()
-  const [tracks, setTracks] = useState<ProgramTrackConfig[]>(DEFAULT_PROGRAM_TRACKS)
-  const [loading, setLoading] = useState(true)
+  const [tracks, setTracks] = useState<ProgramTrackConfig[]>(() =>
+    serverSnapshot !== undefined && serverSnapshot?.length
+      ? serverSnapshot
+      : DEFAULT_PROGRAM_TRACKS,
+  )
+  const [loading, setLoading] = useState(() => serverSnapshot === undefined)
   const [saving, setSaving] = useState(false)
 
   const authHeader = useCallback(async () => {
@@ -47,8 +56,17 @@ export function ProgramTracksEditor() {
   }, [authHeader, showToast])
 
   useEffect(() => {
+    if (serverSnapshot !== undefined) return
     void load()
-  }, [load])
+  }, [serverSnapshot, load])
+
+  useEffect(() => {
+    if (serverSnapshot === undefined) return
+    setTracks(
+      serverSnapshot && serverSnapshot.length > 0 ? serverSnapshot : DEFAULT_PROGRAM_TRACKS,
+    )
+    setLoading(false)
+  }, [serverSnapshot])
 
   function updateTrack(id: ProgramTrackConfig['id'], patch: Partial<ProgramTrackConfig>) {
     setTracks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)))
