@@ -15,110 +15,132 @@ async function authHeaders() {
 }
 
 export default function AdminTestingPage() {
-  const [programType, setProgramType] = useState<ProgramType>('sprint_standard')
-  const [jumpDay, setJumpDay] = useState(1)
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<string>('')
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [selectedProgram, setSelectedProgram] = useState<ProgramType>('sprint_standard')
+  const [jumpDay, setJumpDay] = useState(1)
 
-  async function callApi(path: string, body: Record<string, unknown>) {
+  const handleStartProgram = async () => {
     setLoading(true)
-    setMessage('')
+    setError(null)
+    setSuccess(null)
+
     try {
       const headers = await authHeaders()
       if (!headers) {
-        setMessage('Sign in required')
-        return
+        throw new Error('Not logged in')
       }
-      const res = await fetch(path, {
+
+      const res = await fetch('/api/admin/testing/start-program', {
         method: 'POST',
         headers,
-        body: JSON.stringify(body),
+        body: JSON.stringify({ programType: selectedProgram }),
       })
-      const json = (await res.json()) as { error?: string; success?: boolean }
+
+      const data = (await res.json()) as { error?: string }
+
       if (!res.ok) {
-        setMessage(json.error ?? 'Request failed')
-        return
+        throw new Error(data.error || 'Failed to start program')
       }
-      setMessage('Success')
-    } catch {
-      setMessage('Request failed')
+
+      setSuccess(`Started ${selectedProgram} program successfully!`)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to start program')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleJumpToDay = async () => {
+    setLoading(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const headers = await authHeaders()
+      if (!headers) {
+        throw new Error('Not logged in')
+      }
+
+      const res = await fetch('/api/admin/testing/jump-to-day', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ programDay: jumpDay }),
+      })
+
+      const data = (await res.json()) as { error?: string }
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to jump to day')
+      }
+
+      setSuccess(`Jumped to day ${jumpDay} successfully!`)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to jump to day')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Admin Testing Tools</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Quickly test onboarding and progression without real payment.
-        </p>
-      </div>
+    <div className="p-6">
+      <h1 className="mb-6 text-2xl font-bold">Admin Testing Tools</h1>
 
-      <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-        <label className="block text-sm text-muted-foreground">
-          Program
+      {error ? (
+        <div className="mb-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+          {error}
+        </div>
+      ) : null}
+
+      {success ? (
+        <div className="mb-4 rounded border border-green-200 bg-green-50 px-4 py-3 text-green-700">
+          {success}
+        </div>
+      ) : null}
+
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="rounded-lg border p-4">
+          <h2 className="mb-4 text-lg font-semibold">Start Program (No Payment)</h2>
           <select
-            className="mt-1 w-full rounded border border-border bg-background px-3 py-2 text-foreground"
-            value={programType}
-            onChange={(e) => setProgramType(e.target.value as ProgramType)}
+            value={selectedProgram}
+            onChange={(e) => setSelectedProgram(e.target.value as ProgramType)}
+            className="mb-4 w-full rounded border p-2"
           >
-            <option value="sprint_standard">Sprint</option>
-            <option value="sprint_monk">Monk Mode</option>
-            <option value="transform">Transform</option>
+            <option value="sprint_standard">Sprint (30 days)</option>
+            <option value="sprint_monk">Monk Mode (21 days)</option>
+            <option value="transform">Transform (60 days)</option>
           </select>
-        </label>
-
-        <div className="flex flex-wrap gap-2">
           <button
             type="button"
+            onClick={() => void handleStartProgram()}
             disabled={loading}
-            className="rounded bg-accent px-3 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-60"
-            onClick={() =>
-              void callApi('/api/admin/testing/start-program', { programType })
-            }
+            className="w-full rounded bg-blue-600 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            Start Program (No Payment)
-          </button>
-          <button
-            type="button"
-            disabled={loading}
-            className="rounded border border-border px-3 py-2 text-sm text-foreground disabled:opacity-60"
-            onClick={() => void callApi('/api/admin/testing/reset-program', {})}
-          >
-            Reset Program (Keep Track)
+            {loading ? 'Starting...' : 'Start Program (No Payment)'}
           </button>
         </div>
-      </div>
 
-      <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-        <label className="block text-sm text-muted-foreground">
-          Jump to day
+        <div className="rounded-lg border p-4">
+          <h2 className="mb-4 text-lg font-semibold">Jump to Day</h2>
           <input
             type="number"
             min={1}
-            max={365}
-            className="mt-1 w-full rounded border border-border bg-background px-3 py-2 text-foreground"
+            max={60}
             value={jumpDay}
             onChange={(e) => setJumpDay(Number.parseInt(e.target.value, 10) || 1)}
+            className="mb-4 w-full rounded border p-2"
           />
-        </label>
-        <button
-          type="button"
-          disabled={loading}
-          className="rounded bg-accent px-3 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-60"
-          onClick={() =>
-            void callApi('/api/admin/testing/jump-to-day', { programDay: jumpDay })
-          }
-        >
-          Jump to Day
-        </button>
+          <button
+            type="button"
+            onClick={() => void handleJumpToDay()}
+            disabled={loading}
+            className="w-full rounded bg-blue-600 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {loading ? 'Jumping...' : 'Jump to Day'}
+          </button>
+        </div>
       </div>
-
-      {message ? (
-        <p className="text-sm text-muted-foreground">{message}</p>
-      ) : null}
     </div>
   )
 }

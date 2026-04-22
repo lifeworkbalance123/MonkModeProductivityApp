@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-service'
+import { isAdmin } from '@/lib/admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,8 +14,12 @@ export async function GET(request: NextRequest) {
 
     if (!token) {
       return NextResponse.json({
+        loggedIn: false,
+        message: 'Not logged in',
         isAdmin: false,
-        reason: 'not_authenticated',
+        userEmail: null,
+        adminEmailsFromEnv: process.env.ADMIN_EMAILS?.split(',') || [],
+        nodeEnv: process.env.NODE_ENV,
       })
     }
 
@@ -25,37 +30,33 @@ export async function GET(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({
+        loggedIn: false,
+        message: 'Not logged in',
         isAdmin: false,
-        reason: 'not_authenticated',
+        userEmail: null,
+        adminEmailsFromEnv: process.env.ADMIN_EMAILS?.split(',') || [],
+        nodeEnv: process.env.NODE_ENV,
         error: authError?.message,
       })
     }
 
-    const { data: userData, error } = await adminClient
-      .from('users')
-      .select('is_admin, email')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    if (error || !userData) {
-      return NextResponse.json({
-        isAdmin: false,
-        reason: 'user_not_found',
-        error: error?.message,
-      })
-    }
-
     return NextResponse.json({
-      isAdmin: userData.is_admin === true,
-      email: userData.email ?? user.email ?? null,
-      reason: userData.is_admin ? 'admin_confirmed' : 'not_admin',
+      loggedIn: true,
+      userEmail: user.email ?? null,
+      isAdmin: isAdmin(user),
+      adminEmailsFromEnv: process.env.ADMIN_EMAILS?.split(',') || [],
+      nodeEnv: process.env.NODE_ENV,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('Admin verify error:', message)
     return NextResponse.json({
+      loggedIn: false,
+      message: 'Internal server error',
       isAdmin: false,
-      reason: 'error',
+      userEmail: null,
+      adminEmailsFromEnv: process.env.ADMIN_EMAILS?.split(',') || [],
+      nodeEnv: process.env.NODE_ENV,
       error: message,
     })
   }

@@ -1,61 +1,49 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
-import { isAdmin } from '@/lib/admin'
+import { getAdminUser } from '@/lib/admin'
+import { createServiceRoleClient } from '@/lib/supabase-service'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-function supabaseWithUserJwt(token: string) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
-  if (!url || !anonKey) {
-    throw new Error('Missing Supabase env')
-  }
-  return createClient(url, anonKey, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  })
-}
-
 export async function POST(req: Request) {
   try {
-    const authHeader = req.headers.get('authorization')
-    const token = authHeader?.replace(/^Bearer\s+/i, '').trim() ?? ''
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const supabase = supabaseWithUserJwt(token)
-    const {
-      data: { user },
-      error: userErr,
-    } = await supabase.auth.getUser()
-
-    if (userErr || !user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    if (!isAdmin(user)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    const { user, error, status } = await getAdminUser(req)
+    if (error || !user?.id) {
+      if (status === 401) {
+        console.error('Admin test/jump-to-day: no authenticated user in request')
+      } else if (status === 403) {
+        console.error(
+          `Admin test/jump-to-day: user ${user?.email ?? 'unknown'} is not admin`,
+        )
+      }
+      return NextResponse.json({ error: error ?? 'Unauthorized' }, { status })
     }
 
     const body = (await req.json()) as { programDay?: number }
     const day = Number(body.programDay)
-    if (!Number.isFinite(day) || day < 1 || day > 365) {
-      return NextResponse.json({ error: 'programDay must be 1-365' }, { status: 400 })
+    if (!Number.isFinite(day) || day < 1 || day > 60) {
+      return NextResponse.json({ error: 'Invalid day (1-60)' }, { status: 400 })
     }
     const programDay = Math.floor(day)
+
+    const supabase = createServiceRoleClient()
 
     const { data: updated, error: upErr } = await supabase
       .from('user_programs')
       .update({ program_day: programDay })
       .eq('user_id', user.id)
+      .eq('status', 'active')
       .select('program_type')
       .maybeSingle()
     if (upErr) {
+      console.error('Admin test/jump-to-day: update user_programs failed:', upErr)
       return NextResponse.json({ error: upErr.message }, { status: 500 })
     }
     if (!updated?.program_type) {
-      return NextResponse.json({ error: 'No user_programs row found for user' }, { status: 404 })
+      return NextResponse.json(
+        { error: 'No active user_programs row found for user' },
+        { status: 404 },
+      )
     }
 
     const today = new Date().toISOString().split('T')[0]
@@ -69,11 +57,13 @@ export async function POST(req: Request) {
       { onConflict: 'user_id,log_date' },
     )
     if (logErr) {
+      console.error('Admin test/jump-to-day: upsert daily_logs failed:', logErr)
       return NextResponse.json({ error: logErr.message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, programDay })
   } catch (e) {
+    console.error('Admin test/jump-to-day: unexpected error:', e)
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'Server error' },
       { status: 500 },
