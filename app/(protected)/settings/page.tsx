@@ -27,6 +27,7 @@ import { supabase } from '@/lib/supabase'
 import { captureEvent } from '@/lib/analytics'
 import { mailtoSupport, publicSiteOrigin, SUPPORT_EMAIL } from '@/lib/site-contact'
 import ProgramControls from '@/components/settings/ProgramControls'
+import { Tooltip } from '@/components/ui/first-visit-tooltip'
 
 function formatBillingDate(iso: string | null): string | null {
   if (!iso) return null
@@ -352,13 +353,18 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Settings</h1>
-          <p className="text-sm text-muted-foreground">
-            Signed-in users can keep data in the browser, on our servers (Pro), or
-            both depending on plan.
-          </p>
-        </div>
+        <Tooltip
+          id="tooltip_settings"
+          text="Adjust notifications, pause your program, or invite a buddy. Your discipline, your rules."
+        >
+          <div>
+            <h1 className="text-2xl font-semibold">Settings</h1>
+            <p className="text-sm text-muted-foreground">
+              Signed-in users can keep data in the browser, on our servers (Pro), or
+              both depending on plan.
+            </p>
+          </div>
+        </Tooltip>
         <Card className="p-4 space-y-4">
           <div>
             <h2 className="font-medium mb-1">Appearance</h2>

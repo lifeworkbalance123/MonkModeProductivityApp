@@ -3,6 +3,11 @@
 import { Suspense } from 'react'
 import ProgramOnboardingWizard from '@/components/onboarding/ProgramOnboardingWizard'
 
+/**
+ * Funnel state (`currentStepIndex`, `steps`, `formData`, `handleContinue`, `handleBack`)
+ * lives in ProgramOnboardingWizard — see `components/onboarding/ProgramOnboardingWizard.tsx`.
+ */
+
 export default function OnboardingPage() {
   return (
     <Suspense

@@ -5,10 +5,11 @@ import { useMemo, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
-  Tooltip,
+  Tooltip as RadixTooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { Tooltip } from '@/components/ui/first-visit-tooltip'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   addDays,
@@ -83,18 +84,22 @@ export function WeeklyPlannerApp({
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Weekly habit planner</h1>
-          <p className="text-sm text-muted-foreground">
-            {allowFullWeek
-              ? `Week of ${format(monday, 'MMM d')} — tap cells to log habits`
-              : `Today (${todayLabel}) — Free plan shows today only`}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center justify-center gap-2 md:justify-end">
+      <Tooltip
+        id="tooltip_planner"
+        text="Plan your week ahead. Set recurring habits, schedule deep work, and prep for your weekly review."
+      >
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold">Weekly habit planner</h1>
+            <p className="text-sm text-muted-foreground">
+              {allowFullWeek
+                ? `Week of ${format(monday, 'MMM d')} — tap cells to log habits`
+                : `Today (${todayLabel}) — Free plan shows today only`}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-2 md:justify-end">
           {navDisabled ? (
-            <Tooltip>
+            <RadixTooltip>
               <TooltipTrigger asChild>
                 <span className="inline-flex">
                   <button
@@ -108,7 +113,7 @@ export function WeeklyPlannerApp({
                 </span>
               </TooltipTrigger>
               <TooltipContent>{weekTooltip}</TooltipContent>
-            </Tooltip>
+            </RadixTooltip>
           ) : (
             <button
               type="button"
@@ -120,7 +125,7 @@ export function WeeklyPlannerApp({
             </button>
           )}
           {navDisabled ? (
-            <Tooltip>
+            <RadixTooltip>
               <TooltipTrigger asChild>
                 <span className="inline-flex">
                   <button
@@ -133,7 +138,7 @@ export function WeeklyPlannerApp({
                 </span>
               </TooltipTrigger>
               <TooltipContent>{weekTooltip}</TooltipContent>
-            </Tooltip>
+            </RadixTooltip>
           ) : (
             <button
               type="button"
@@ -144,7 +149,7 @@ export function WeeklyPlannerApp({
             </button>
           )}
           {navDisabled ? (
-            <Tooltip>
+            <RadixTooltip>
               <TooltipTrigger asChild>
                 <span className="inline-flex">
                   <button
@@ -158,7 +163,7 @@ export function WeeklyPlannerApp({
                 </span>
               </TooltipTrigger>
               <TooltipContent>{weekTooltip}</TooltipContent>
-            </Tooltip>
+            </RadixTooltip>
           ) : (
             <button
               type="button"
@@ -169,8 +174,9 @@ export function WeeklyPlannerApp({
               <ChevronRight className="w-4 h-4" />
             </button>
           )}
+          </div>
         </div>
-      </div>
+      </Tooltip>
 
       <Card className="p-4 overflow-x-auto">
         {data.habits.length === 0 ? (

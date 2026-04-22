@@ -10,6 +10,8 @@ import EnergyLog from '@/components/program/EnergyLog'
 import NextDayCountdown from '@/components/program/NextDayCountdown'
 import OneBigTask from '@/components/program/OneBigTask'
 import ProgramHeader from '@/components/program/ProgramHeader'
+import { Tooltip } from '@/components/ui/first-visit-tooltip'
+import { FEATURE_INTRO_TOOLTIP_TODAY } from '@/lib/feature-intro-tooltips'
 import WeeklyReview, { isReviewDay } from '@/components/program/WeeklyReview'
 import { useProgram } from '@/hooks/useProgram'
 import {
@@ -136,18 +138,20 @@ export default function TodayPage() {
         ) : null}
 
         {!loading && !enrolled ? (
-          <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-sm">
-            <h2 className="mb-3 text-xl font-semibold text-foreground">Start your 60-day journey</h2>
-            <p className="mb-6 text-sm text-muted-foreground">
-              Enroll in the program to unlock your daily lesson and one-tap action.
-            </p>
-            <Link
-              href="/onboarding"
-              className="inline-flex items-center justify-center rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground hover:bg-accent/90"
-            >
-              Begin Day 1 →
-            </Link>
-          </div>
+          <Tooltip id="tooltip_today" text={FEATURE_INTRO_TOOLTIP_TODAY}>
+            <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-sm">
+              <h2 className="mb-3 text-xl font-semibold text-foreground">Start your journey</h2>
+              <p className="mb-6 text-sm text-muted-foreground">
+                Enroll in the program to unlock your daily lesson and one-tap action.
+              </p>
+              <Link
+                href="/onboarding"
+                className="inline-flex items-center justify-center rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground hover:bg-accent/90"
+              >
+                Begin Day 1 →
+              </Link>
+            </div>
+          </Tooltip>
         ) : null}
 
         {!loading && enrolled && enrollment?.status === 'paused' ? (
@@ -241,7 +245,9 @@ export default function TodayPage() {
               </div>
             ) : null}
 
-            <ProgramHeader />
+            <Tooltip id="tooltip_today" text={FEATURE_INTRO_TOOLTIP_TODAY}>
+              <ProgramHeader />
+            </Tooltip>
 
             <BuddyEncouragementSection
               currentProgramDay={enrollment.currentDay}

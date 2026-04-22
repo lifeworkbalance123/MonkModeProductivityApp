@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -10,6 +10,11 @@ import {
   type ProgramTrackConfig,
   type SelectedProgram,
 } from '@/lib/onboardingProgramFlow'
+import {
+  DEFAULT_ONBOARDING_SELECTION_COPY,
+  resolveProgramSelectionCopy,
+  type OnboardingSettingsRow,
+} from '@/lib/onboardingSettings'
 import { formatPriceCents } from '@/hooks/usePricing'
 
 type Props = {
@@ -18,8 +23,68 @@ type Props = {
   onContinue: () => void
 }
 
+/** Flat shape for header copy (matches `/api/onboarding/settings` + resolve helpers). */
+type SelectionSettingsState = Pick<
+  OnboardingSettingsRow,
+  'program_selection_title' | 'program_selection_subtitle' | 'program_headers'
+>
+
+function toSettingsRow(s: SelectionSettingsState): OnboardingSettingsRow {
+  return {
+    id: 'client',
+    program_selection_title: s.program_selection_title,
+    program_selection_subtitle: s.program_selection_subtitle,
+    program_headers: s.program_headers,
+  }
+}
+
 export function ProgramSelection({ value, onChange, onContinue }: Props) {
   const [options, setOptions] = useState<ProgramTrackConfig[]>(DEFAULT_PROGRAM_TRACKS)
+  const [settings, setSettings] = useState<SelectionSettingsState>({
+    program_selection_title: DEFAULT_ONBOARDING_SELECTION_COPY.program_selection_title,
+    program_selection_subtitle: DEFAULT_ONBOARDING_SELECTION_COPY.program_selection_subtitle,
+    program_headers: {},
+  })
+
+  const fetchSettings = useCallback(async () => {
+    try {
+      const res = await fetch('/api/onboarding/settings', { cache: 'no-store' })
+      const data = (await res.json()) as Partial<SelectionSettingsState> | null
+      const d = DEFAULT_ONBOARDING_SELECTION_COPY
+      if (!data || typeof data !== 'object') {
+        setSettings({
+          program_selection_title: d.program_selection_title,
+          program_selection_subtitle: d.program_selection_subtitle,
+          program_headers: {},
+        })
+        return
+      }
+      setSettings({
+        program_selection_title:
+          typeof data.program_selection_title === 'string' && data.program_selection_title.trim()
+            ? data.program_selection_title.trim()
+            : d.program_selection_title,
+        program_selection_subtitle:
+          typeof data.program_selection_subtitle === 'string' && data.program_selection_subtitle.trim()
+            ? data.program_selection_subtitle.trim()
+            : d.program_selection_subtitle,
+        program_headers:
+          data.program_headers && typeof data.program_headers === 'object'
+            ? data.program_headers
+            : {},
+      })
+    } catch {
+      setSettings({
+        program_selection_title: DEFAULT_ONBOARDING_SELECTION_COPY.program_selection_title,
+        program_selection_subtitle: DEFAULT_ONBOARDING_SELECTION_COPY.program_selection_subtitle,
+        program_headers: {},
+      })
+    }
+  }, [])
+
+  useEffect(() => {
+    void fetchSettings()
+  }, [fetchSettings])
 
   useEffect(() => {
     let cancelled = false
@@ -39,15 +104,18 @@ export function ProgramSelection({ value, onChange, onContinue }: Props) {
     }
   }, [])
 
+  const { title, subtitle } = useMemo(
+    () => resolveProgramSelectionCopy(toSettingsRow(settings), value),
+    [settings, value],
+  )
+
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-8">
       <div className="text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-          Choose your program
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Select one track. You can change before payment only by going back.
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{title}</h1>
+        {subtitle ? (
+          <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
+        ) : null}
       </div>
 
       <RadioGroup value={value ?? undefined} onValueChange={(v) => onChange(v as SelectedProgram)} className="grid gap-4 md:grid-cols-3">

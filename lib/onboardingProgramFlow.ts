@@ -9,6 +9,13 @@ export const SELECTED_PROGRAM_LABEL: Record<SelectedProgram, string> = {
   transform: 'Transform',
 }
 
+/** Canonical program tabs / cards: id + marketing label including duration (prices via `PROGRAM_FLOW_PRICES`). */
+export const PROGRAM_OPTIONS: readonly { value: SelectedProgram; label: string }[] = [
+  { value: 'sprint_standard', label: 'Sprint (30 days)' },
+  { value: 'sprint_monk', label: 'Monk Mode (21 days)' },
+  { value: 'transform', label: 'Transform (60 days)' },
+]
+
 /** Display / validation amounts (cents, USD). Stripe must use matching Price IDs. */
 export const PROGRAM_FLOW_PRICES: Record<SelectedProgram, number> = {
   sprint_standard: 2999,

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { findPricingRow, formatPriceCents, usePricing } from '@/hooks/usePricing'
 import { PROGRAM_FALLBACK_CENTS, PROGRAM_FALLBACK_CURRENCY } from '@/lib/programCatalog'
+import { Tooltip } from '@/components/ui/first-visit-tooltip'
 
 export function HeroMonkModeCta() {
   const { prices } = usePricing()
@@ -11,11 +12,18 @@ export function HeroMonkModeCta() {
   const currency = row?.currency ?? PROGRAM_FALLBACK_CURRENCY
 
   return (
-    <Link
-      href="/onboarding?program=monk_mode"
-      className="rounded-md bg-accent px-5 py-3 font-semibold text-accent-foreground"
+    <Tooltip
+      id="tooltip_openapp"
+      text="Start your journey. Choose Sprint, Monk Mode, or Transform. First step: 2 minutes."
+      position="top"
+      className="inline-block"
     >
-      Start the Monk Mode program — {formatPriceCents(cents, currency)}
-    </Link>
+      <Link
+        href="/onboarding?program=monk_mode"
+        className="rounded-md bg-accent px-5 py-3 font-semibold text-accent-foreground"
+      >
+        Start the Monk Mode program — {formatPriceCents(cents, currency)}
+      </Link>
+    </Tooltip>
   )
 }

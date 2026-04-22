@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { formatPriceCents } from '@/hooks/usePricing'
 import { supabase } from '@/lib/supabase'
+import { completeOnboarding } from '@/lib/onboardingCompleteClient'
 import type { ProgramIntakePayload } from '@/lib/onboardingProgramFlow'
 import {
   PROGRAM_FLOW_CURRENCY,
@@ -38,17 +39,9 @@ export function PaymentStep({ intake, onBack }: Props) {
         setError('Sign in again to continue.')
         return
       }
-      const res = await fetch('/api/onboarding/complete', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(intake),
-      })
-      const data = (await res.json().catch(() => ({}))) as { error?: string }
-      if (!res.ok) {
-        setError(data.error ?? 'Could not save your answers.')
+      const saved = await completeOnboarding(intake)
+      if (!saved.ok) {
+        setError(saved.error ?? 'Could not save your answers.')
         return
       }
       const checkout = await startProgramCheckout(stripePlan)

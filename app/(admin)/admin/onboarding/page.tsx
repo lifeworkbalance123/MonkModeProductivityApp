@@ -28,31 +28,55 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/context/ToastContext'
 import type { OnboardingStepKind, OnboardingStepRow } from '@/lib/onboardingSteps'
+import { OnboardingProgramSelectionCard } from '@/components/admin/OnboardingProgramSelectionCard'
 import { ProgramTracksEditor } from '@/components/admin/ProgramTracksEditor'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { formatPriceCents } from '@/hooks/usePricing'
+import type { SelectedProgram } from '@/lib/onboardingProgramFlow'
+import {
+  PROGRAM_FLOW_CURRENCY,
+  PROGRAM_FLOW_PRICES,
+  PROGRAM_OPTIONS,
+} from '@/lib/onboardingProgramFlow'
 
-const KINDS: OnboardingStepKind[] = ['welcome', 'why', 'commitment', 'wake', 'ready', 'content']
+const KINDS: OnboardingStepKind[] = [
+  'welcome',
+  'why',
+  'commitment',
+  'wake',
+  'ready',
+  'content',
+  'goal',
+  'sleep',
+  'accountability',
+  'payment',
+]
 
 const emptyForm = {
   title: '',
   description: '',
   video_url: '',
+  image_url: '',
   action_label: 'Next',
   step_kind: 'content' as OnboardingStepKind,
   step_order: '0',
 }
 
 type CreateBody = {
+  program_type: SelectedProgram
   title: string
   description: string | null
   video_url: string | null
+  image_url: string | null
   action_label: string
   step_kind: OnboardingStepKind
 }
 
-/** Supabase/PostgREST when `onboarding_steps` was never migrated to this project. */
+/** Supabase/PostgREST when onboarding tables were never migrated to this project. */
 function looksLikeMissingOnboardingStepsTable(message: string): boolean {
   const m = message.toLowerCase()
   return (
+    m.includes('onboarding_step_templates') ||
     m.includes('onboarding_steps') ||
     (m.includes('could not find') && m.includes('schema cache'))
   )
@@ -60,6 +84,7 @@ function looksLikeMissingOnboardingStepsTable(message: string): boolean {
 
 export default function AdminOnboardingPage() {
   const { showToast } = useToast()
+  const [programTab, setProgramTab] = useState<SelectedProgram>('sprint_standard')
   const [steps, setSteps] = useState<OnboardingStepRow[]>([])
   const [loading, setLoading] = useState(true)
   const [catalogError, setCatalogError] = useState<string | null>(null)
@@ -82,7 +107,10 @@ export default function AdminOnboardingPage() {
     setLoading(true)
     setCatalogError(null)
     try {
-      const res = await fetch('/api/onboarding/steps')
+      const res = await fetch(
+        `/api/onboarding/steps?programType=${encodeURIComponent(programTab)}`,
+        { cache: 'no-store' },
+      )
       const json = (await res.json()) as { steps?: OnboardingStepRow[]; error?: string }
       if (!res.ok) {
         setCatalogError(json.error ?? 'Failed to load steps')
@@ -96,11 +124,12 @@ export default function AdminOnboardingPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [programTab])
 
-  useEffect(() => {
-    void load()
-  }, [load])
+  function cancelEdit() {
+    setEditingId(null)
+    setForm(emptyForm)
+  }
 
   function startEdit(s: OnboardingStepRow) {
     setEditingId(s.id)
@@ -108,6 +137,7 @@ export default function AdminOnboardingPage() {
       title: s.title,
       description: s.description ?? '',
       video_url: s.video_url ?? '',
+      image_url: s.image_url ?? '',
       action_label: s.action_label,
       step_kind: s.step_kind,
       step_order: String(s.step_order),
@@ -115,10 +145,14 @@ export default function AdminOnboardingPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  function cancelEdit() {
-    setEditingId(null)
-    setForm(emptyForm)
-  }
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  useEffect(() => {
+    cancelEdit()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset form when switching program track
+  }, [programTab])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -132,6 +166,7 @@ export default function AdminOnboardingPage() {
     const action_label = form.action_label.trim() || 'Next'
     const description = form.description.trim() || null
     const video_url = form.video_url.trim() || null
+    const image_url = form.image_url.trim() || null
     const step_order = Number.parseInt(form.step_order, 10)
     if (!title) {
       showToast('Title is required', 'error')
@@ -146,9 +181,11 @@ export default function AdminOnboardingPage() {
     try {
       const isEdit = !!editingId
       const createPayload: CreateBody = {
+        program_type: programTab,
         title,
         description,
         video_url,
+        image_url,
         action_label,
         step_kind: form.step_kind,
       }
@@ -162,6 +199,7 @@ export default function AdminOnboardingPage() {
                 title,
                 description,
                 video_url,
+                image_url,
                 action_label,
                 step_kind: form.step_kind,
                 step_order,
@@ -201,7 +239,7 @@ export default function AdminOnboardingPage() {
     const res = await fetch('/api/admin/onboarding-steps', {
       method: 'PATCH',
       headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ordered_ids }),
+      body: JSON.stringify({ program_type: programTab, ordered_ids }),
     })
     const json = (await res.json()) as { error?: string }
     if (!res.ok) {
@@ -246,6 +284,8 @@ export default function AdminOnboardingPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
+      <OnboardingProgramSelectionCard />
+
       <div>
         <h1 className="text-xl font-semibold text-foreground">Onboarding steps</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -253,9 +293,26 @@ export default function AdminOnboardingPage() {
           <Link href="/onboarding" className="text-accent underline hover:opacity-90">
             /onboarding
           </Link>{' '}
-          wizard. Use <code className="text-foreground">step_kind</code> for special layouts; use{' '}
+          wizard. Steps are configured per program (Sprint / Monk Mode / Transform). Use{' '}
+          <code className="text-foreground">step_kind</code> for special layouts; use{' '}
           <code className="text-foreground">content</code> for a simple title + body + button.
         </p>
+        <Tabs
+          value={programTab}
+          onValueChange={(v) => setProgramTab(v as SelectedProgram)}
+          className="mt-4 w-full"
+        >
+          <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 p-1 sm:w-fit">
+            {PROGRAM_OPTIONS.map(({ value, label }) => (
+              <TabsTrigger key={value} value={value} className="flex flex-col gap-0.5 px-3 py-2 text-xs sm:text-sm">
+                <span>{label}</span>
+                <span className="font-normal text-muted-foreground">
+                  {formatPriceCents(PROGRAM_FLOW_PRICES[value], PROGRAM_FLOW_CURRENCY)}
+                </span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
 
       {catalogError ? (
@@ -268,16 +325,17 @@ export default function AdminOnboardingPage() {
         >
           <p className="font-medium text-white">
             {looksLikeMissingOnboardingStepsTable(catalogError)
-              ? 'Database: onboarding_steps is missing on this Supabase project'
+              ? 'Database: onboarding_step_templates is missing on this Supabase project'
               : 'Could not load onboarding steps'}
           </p>
           <p className="mt-2 opacity-90">{catalogError}</p>
           {looksLikeMissingOnboardingStepsTable(catalogError) ? (
             <p className="mt-3 text-xs opacity-80">
-              Run the migration{' '}
-              <code className="rounded bg-black/30 px-1">supabase/migrations/20260419120000_onboarding_steps.sql</code>{' '}
-              on production (SQL Editor or <code className="rounded bg-black/30 px-1">supabase db push</code>), then
-              retry. Creates and edits will fail until the table exists.
+              Apply migrations including{' '}
+              <code className="rounded bg-black/30 px-1">
+                supabase/migrations/20260424201000_onboarding_step_templates.sql
+              </code>{' '}
+              (SQL Editor or <code className="rounded bg-black/30 px-1">supabase db push</code>), then retry.
             </p>
           ) : null}
           <div className="mt-4">
@@ -372,6 +430,18 @@ export default function AdminOnboardingPage() {
               id="ob-v"
               value={form.video_url}
               onChange={(e) => setForm((f) => ({ ...f, video_url: e.target.value }))}
+              className="border-border bg-background text-foreground"
+              placeholder="https://…"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="ob-img" className="text-muted-foreground">
+              Image URL (optional)
+            </Label>
+            <Input
+              id="ob-img"
+              value={form.image_url}
+              onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
               className="border-border bg-background text-foreground"
               placeholder="https://…"
             />

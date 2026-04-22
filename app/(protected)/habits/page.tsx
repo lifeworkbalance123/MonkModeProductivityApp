@@ -49,6 +49,7 @@ import {
   suggestHabitIconFromName,
 } from '@/lib/habit-icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tooltip } from '@/components/ui/first-visit-tooltip'
 
 export default function HabitsPage() {
   const { openUpgrade } = useUpgradeOffer()
@@ -217,12 +218,16 @@ export default function HabitsPage() {
       ) : null}
       {ready ? (
       <div className="max-w-xl mx-auto px-4 py-8 pt-24 space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Habits</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage the habits shown on your dashboard and weekly planner.
-          </p>
-          {atHabitLimit ? (
+        <Tooltip
+          id="tooltip_habits"
+          text="Track your daily anchors – lemon water, phone away, cold exposure. Consistency > intensity."
+        >
+          <div>
+            <h1 className="text-2xl font-semibold">Habits</h1>
+            <p className="text-sm text-muted-foreground">
+              Manage the habits shown on your dashboard and weekly planner.
+            </p>
+            {atHabitLimit ? (
             <div
               role="status"
               className="mt-3 rounded-lg border border-border bg-secondary/40 px-3 py-2 text-sm text-muted-foreground"
@@ -243,7 +248,8 @@ export default function HabitsPage() {
               </button>
             </div>
           ) : null}
-        </div>
+          </div>
+        </Tooltip>
         <Card className="p-4 space-y-3">
           {data.habits.length === 0 ? (
             <EmptyState

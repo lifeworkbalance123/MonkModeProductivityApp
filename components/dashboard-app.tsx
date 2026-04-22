@@ -35,6 +35,7 @@ import { usePlan } from '@/hooks/usePlan'
 import { useToast } from '@/context/ToastContext'
 import { GettingStartedChecklist } from '@/components/GettingStartedChecklist'
 import ProgramHeader from '@/components/program/ProgramHeader'
+import { Tooltip } from '@/components/ui/first-visit-tooltip'
 import type { DataServiceContext } from '@/lib/dataService'
 import {
   applyTimeBlockToPlannerWeek,
@@ -357,23 +358,27 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
         morningGratitudeFields={todayGratitudeSnapshot}
       />
       <div className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-2xl sm:p-6">
-        <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-xl font-semibold">{heading}</h1>
-            <p className="text-sm text-muted-foreground">
-              Week {weekNum} of 52
-              {weekOffset !== 0 && (
-                <button
-                  type="button"
-                  onClick={jumpToToday}
-                  className="ml-2 inline-flex min-h-11 items-center text-accent underline-offset-2 hover:underline font-medium md:min-h-0"
-                >
-                  Today
-                </button>
-              )}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
+        <Tooltip
+          id="tooltip_dashboard"
+          text="See your streak, badges, and weekly progress at a glance. Your transformation starts here."
+        >
+          <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-xl font-semibold">{heading}</h1>
+              <p className="text-sm text-muted-foreground">
+                Week {weekNum} of 52
+                {weekOffset !== 0 && (
+                  <button
+                    type="button"
+                    onClick={jumpToToday}
+                    className="ml-2 inline-flex min-h-11 items-center text-accent underline-offset-2 hover:underline font-medium md:min-h-0"
+                  >
+                    Today
+                  </button>
+                )}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               className="inline-flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-lg hover:bg-secondary md:h-9 md:w-9"
@@ -412,7 +417,8 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-        </div>
+          </div>
+        </Tooltip>
 
         <ProgramHeader />
 

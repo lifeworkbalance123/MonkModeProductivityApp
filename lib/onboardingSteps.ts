@@ -1,9 +1,12 @@
 /** Row from `public.onboarding_steps` (V2 program wizard). */
 export type OnboardingStepRow = {
   id: string
+  /** Present when row comes from `onboarding_step_templates`. */
+  program_type?: 'sprint_standard' | 'sprint_monk' | 'transform'
   step_order: number
   title: string
   description: string | null
+  image_url?: string | null
   video_url: string | null
   /** CMS media (optional). When set with `media_url`, shown instead of legacy `video_url`. */
   media_type?: string | null
@@ -24,6 +27,11 @@ export type OnboardingStepKind =
   | 'wake'
   | 'ready'
   | 'content'
+  /** DB `onboarding_step_templates.step_kind` (informational / generic layouts) */
+  | 'goal'
+  | 'sleep'
+  | 'accountability'
+  | 'payment'
   | 'goal_choice'
   | 'conditional'
   | 'environment'
@@ -38,6 +46,10 @@ export function isOnboardingStepKind(v: string): v is OnboardingStepKind {
     v === 'wake' ||
     v === 'ready' ||
     v === 'content' ||
+    v === 'goal' ||
+    v === 'sleep' ||
+    v === 'accountability' ||
+    v === 'payment' ||
     v === 'goal_choice' ||
     v === 'conditional' ||
     v === 'environment' ||

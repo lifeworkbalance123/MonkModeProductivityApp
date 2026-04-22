@@ -26,6 +26,7 @@ import {
 } from '@/lib/kanban-events'
 import { recordTodayGoalSnapshot } from '@/lib/goal-daily-snapshots'
 import OneBigTask from '@/components/program/OneBigTask'
+import { Tooltip } from '@/components/ui/first-visit-tooltip'
 
 const checkClass =
   'border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent data-[state=checked]:text-accent-foreground'
@@ -135,33 +136,38 @@ export default function GoalsPage() {
       {ready ? (
       <div className="max-w-xl mx-auto px-4 py-8 pt-24 space-y-6">
         <OneBigTask />
-        <div>
-          <h1 className="text-2xl font-semibold">Goals</h1>
-          <p className="text-sm text-muted-foreground">
-            Daily priorities shown on the dashboard (checkbox syncs both places).
-          </p>
-          {atGoalLimit ? (
-            <div
-              role="status"
-              className="mt-3 rounded-lg border border-border bg-secondary/40 px-3 py-2 text-sm text-muted-foreground"
-            >
-              You&apos;ve reached the Free limit of {FREE_GOAL_LIMIT} goals.
-              Upgrade to Pro for unlimited goals.{' '}
-              <button
-                type="button"
-                className="font-medium text-accent hover:underline"
-                onClick={() =>
-                  openUpgrade({
-                    featureContext:
-                      'Free plan includes up to 3 daily goals. Upgrade for unlimited goals and analytics.',
-                  })
-                }
+        <Tooltip
+          id="tooltip_goals"
+          text="Set a 30, 60, or 90\u2011day goal. Break it into weekly steps. Your program will remind you to review progress."
+        >
+          <div>
+            <h1 className="text-2xl font-semibold">Goals</h1>
+            <p className="text-sm text-muted-foreground">
+              Daily priorities shown on the dashboard (checkbox syncs both places).
+            </p>
+            {atGoalLimit ? (
+              <div
+                role="status"
+                className="mt-3 rounded-lg border border-border bg-secondary/40 px-3 py-2 text-sm text-muted-foreground"
               >
-                Upgrade
-              </button>
-            </div>
-          ) : null}
-        </div>
+                You&apos;ve reached the Free limit of {FREE_GOAL_LIMIT} goals.
+                Upgrade to Pro for unlimited goals.{' '}
+                <button
+                  type="button"
+                  className="font-medium text-accent hover:underline"
+                  onClick={() =>
+                    openUpgrade({
+                      featureContext:
+                        'Free plan includes up to 3 daily goals. Upgrade for unlimited goals and analytics.',
+                    })
+                  }
+                >
+                  Upgrade
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </Tooltip>
         <Card className="p-4 space-y-3">
           {data.goals.length === 0 ? (
             <EmptyState

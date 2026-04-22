@@ -17,6 +17,7 @@ import {
 } from '@/lib/dataService'
 import { morningRoutineTemplateSlots } from '@/lib/planner-templates'
 import { TIME_SLOT_CATEGORY_OPTIONS } from '@/components/time-schedule-card'
+import { Tooltip } from '@/components/ui/first-visit-tooltip'
 import { captureEvent } from '@/lib/analytics'
 import type { TimeSlot } from '@/lib/monk-types'
 
@@ -119,18 +120,23 @@ export default function SchedulePage() {
       ) : null}
       {ready ? (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight">Time Schedule</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Plan your day in blocks. Edits are saved with your dashboard data.
-          </p>
-          <Link
-            href="/dashboard"
-            className="mt-3 inline-block text-sm font-medium text-accent hover:underline"
-          >
-            ← Back to dashboard
-          </Link>
-        </div>
+        <Tooltip
+          id="tooltip_schedule"
+          text="Block time for deep work, meetings, and breaks. Protect your morning focus block – it's your most valuable hour."
+        >
+          <div className="mb-6">
+            <h1 className="text-2xl font-semibold tracking-tight">Time Schedule</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Plan your day in blocks. Edits are saved with your dashboard data.
+            </p>
+            <Link
+              href="/dashboard"
+              className="mt-3 inline-block text-sm font-medium text-accent hover:underline"
+            >
+              ← Back to dashboard
+            </Link>
+          </div>
+        </Tooltip>
         {data.timeSlots.length === 0 ? (
           <Card className="p-4 mb-6">
             <EmptyState
