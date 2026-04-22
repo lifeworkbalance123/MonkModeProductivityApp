@@ -5,7 +5,7 @@ import { DeepWorkModeCard } from '@/components/focus/deep-work-mode-card'
 import { DeepWorkStatsStrip } from '@/components/focus/deep-work-stats-strip'
 import { PomodoroTimerCard } from '@/components/focus/pomodoro-timer-card'
 import { Card } from '@/components/ui/card'
-import { Tooltip } from '@/components/ui/first-visit-tooltip'
+import { HoverTooltip } from '@/components/ui/HoverTooltip'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { useDataServiceContext } from '@/hooks/use-data-service-context'
@@ -45,10 +45,7 @@ export function FocusPageClient() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-xl space-y-8 px-4 py-8 pt-4 md:pt-2">
-        <Tooltip
-          id="tooltip_focus"
-          text="Start a Pomodoro (25 min) or a deep work block (50\u201190 min). No phone. No interruptions. Just focus."
-        >
+        <HoverTooltip text="Start a Pomodoro (25 min) or a deep work block (50\u201190 min). No phone. No interruptions. Just focus.">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
               Focus & Deep Work
@@ -58,7 +55,7 @@ export function FocusPageClient() {
               after the timer.
             </p>
           </div>
-        </Tooltip>
+        </HoverTooltip>
 
         <Card className="border-border p-4">
           <p className="mb-3 text-sm font-medium text-foreground">Timer alerts</p>

@@ -36,7 +36,7 @@ import { usePlan } from '@/hooks/usePlan'
 import { useToast } from '@/context/ToastContext'
 import { GettingStartedChecklist } from '@/components/GettingStartedChecklist'
 import ProgramHeader from '@/components/program/ProgramHeader'
-import { Tooltip } from '@/components/ui/first-visit-tooltip'
+import { HoverTooltip } from '@/components/ui/HoverTooltip'
 import type { DataServiceContext } from '@/lib/dataService'
 import {
   applyTimeBlockToPlannerWeek,
@@ -359,8 +359,7 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
         morningGratitudeFields={todayGratitudeSnapshot}
       />
       <div className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-2xl sm:p-6">
-        <Tooltip
-          id="tooltip_dashboard"
+        <HoverTooltip
           text="See your streak, badges, and weekly progress at a glance. Your transformation starts here."
         >
           <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
@@ -419,7 +418,7 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
             </button>
           </div>
           </div>
-        </Tooltip>
+        </HoverTooltip>
 
         <ProgramHeader />
 

@@ -24,7 +24,7 @@ import {
   YAxis,
 } from 'recharts'
 import { ErrorBanner } from '@/components/ErrorBanner'
-import { Tooltip } from '@/components/ui/first-visit-tooltip'
+import { HoverTooltip } from '@/components/ui/HoverTooltip'
 import { HabitHeatmap } from '@/components/analytics/HabitHeatmap'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -394,17 +394,14 @@ export function AnalyticsPageClient() {
       {ready && !planLoading ? (
         <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 pt-4 md:pt-2">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <Tooltip
-              id="tooltip_analytics"
-              text="See your focus time, habit streaks, and wake progression. Data doesn't lie – track your growth."
-            >
+            <HoverTooltip text="See your focus time, habit streaks, and wake progression. Data doesn't lie – track your growth.">
               <div>
                 <h1 className="text-2xl font-semibold">Analytics</h1>
                 <p className="text-sm text-muted-foreground">
                   Habit heatmaps, goal trends, deep work, and streak history.
                 </p>
               </div>
-            </Tooltip>
+            </HoverTooltip>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2 shrink-0">

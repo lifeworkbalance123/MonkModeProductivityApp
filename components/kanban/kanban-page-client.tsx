@@ -6,7 +6,7 @@ import { KanbanFreePreview } from '@/components/kanban/kanban-free-preview'
 import { useMonkData } from '@/hooks/use-monk-data'
 import { usePlan } from '@/hooks/usePlan'
 import { Loader2 } from 'lucide-react'
-import { Tooltip } from '@/components/ui/first-visit-tooltip'
+import { HoverTooltip } from '@/components/ui/HoverTooltip'
 
 export function KanbanPageClient() {
   const { data, setData, ready, loadError, reload } = useMonkData()
@@ -36,10 +36,7 @@ export function KanbanPageClient() {
       ) : null}
       {ready && !planLoading ? (
         <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 pt-4 md:pt-2">
-          <Tooltip
-            id="tooltip_kanban"
-            text="Turn your One Big Task into small steps. Drag cards from To Do → Doing → Done. Great for projects."
-          >
+          <HoverTooltip text="Turn your One Big Task into small steps. Drag cards from To Do → Doing → Done. Great for projects.">
             <div>
               <h1 className="text-2xl font-semibold">Kanban</h1>
               <p className="text-sm text-muted-foreground">
@@ -47,7 +44,7 @@ export function KanbanPageClient() {
                 focused.
               </p>
             </div>
-          </Tooltip>
+          </HoverTooltip>
           {!isPro ? (
             <KanbanFreePreview />
           ) : (
