@@ -701,3 +701,13 @@ html[data-color-theme='silent'] {
 .zoom-in {
   animation: zoomIn 0.15s ease-out forwards;
 }
+
+.program-card .expanded-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.program-card.expanded .expanded-content {
+  max-height: 150px;
+}

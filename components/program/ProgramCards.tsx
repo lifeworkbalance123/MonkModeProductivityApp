@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Lock, CheckCircle } from 'lucide-react'
 import { useProgramStatus, type ProgramStatusProgram } from '@/hooks/useProgramStatus'
@@ -7,15 +8,25 @@ import { useProgramStatus, type ProgramStatusProgram } from '@/hooks/useProgramS
 export function ProgramCards() {
   const { programs, activeProgram, loading } = useProgramStatus()
   const router = useRouter()
+  const [expandedProgram, setExpandedProgram] = useState<string | null>(null)
 
   const handleCardClick = (program: ProgramStatusProgram) => {
+    if (program.isLocked) {
+      window.alert(program.lockMessage ?? 'Complete your current program first')
+      return
+    }
+
+    setExpandedProgram((current) =>
+      current === program.program_type ? null : program.program_type,
+    )
+  }
+
+  const handleProgramAction = (program: ProgramStatusProgram) => {
     if (program.isActive) {
       router.push('/today')
-    } else if (program.isLocked) {
-      window.alert(program.lockMessage ?? 'Complete your current program first')
-    } else {
-      router.push(`/onboarding?program=${program.program_type}`)
+      return
     }
+    router.push(`/onboarding?program=${program.program_type}`)
   }
 
   if (loading) {
@@ -56,7 +67,17 @@ export function ProgramCards() {
           <div
             key={program.program_type}
             onClick={() => handleCardClick(program)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                handleCardClick(program)
+              }
+            }}
             className={`relative cursor-pointer rounded-xl border p-5 transition-all ${
+              expandedProgram === program.program_type ? 'program-card expanded' : 'program-card'
+            } ${
               program.isActive ? 'ring-2 ring-green-500 shadow-md' : ''
             } ${program.isLocked ? 'bg-gray-50 opacity-75 dark:bg-gray-900' : 'hover:border-gray-300 hover:shadow-lg'} ${
               !program.isActive && !program.isLocked ? 'hover:scale-[1.02]' : ''
@@ -83,7 +104,7 @@ export function ProgramCards() {
               <p className="mb-2 text-sm text-gray-500">{program.duration}</p>
               <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">{program.benefit}</p>
 
-              <div className="mt-auto">
+              <div className="expanded-content mt-auto">
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-xs text-gray-500">Intensity: {program.intensity}</span>
                   <span className="text-lg font-bold text-foreground">{program.price}</span>
@@ -106,13 +127,27 @@ export function ProgramCards() {
                 ) : null}
 
                 {!program.isActive && !program.isLocked ? (
-                  <button className="mt-3 w-full rounded-lg bg-blue-600 py-2 text-sm font-medium text-white transition hover:bg-blue-700">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleProgramAction(program)
+                    }}
+                    className="mt-3 w-full rounded-lg bg-blue-600 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+                  >
                     Start {program.label}
                   </button>
                 ) : null}
 
                 {program.isActive ? (
-                  <button className="mt-3 w-full rounded-lg bg-green-600 py-2 text-sm font-medium text-white transition hover:bg-green-700">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleProgramAction(program)
+                    }}
+                    className="mt-3 w-full rounded-lg bg-green-600 py-2 text-sm font-medium text-white transition hover:bg-green-700"
+                  >
                     Continue Program
                   </button>
                 ) : null}
