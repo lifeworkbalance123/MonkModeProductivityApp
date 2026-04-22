@@ -61,7 +61,7 @@ export async function GET(req: Request) {
 
     const { data: activeProgram } = await supabase
       .from('user_programs')
-      .select('program_type,status,program_day,duration_days')
+      .select('program_type,status,program_day')
       .eq('user_id', user.id)
       .eq('status', 'active')
       .limit(1)
@@ -69,7 +69,6 @@ export async function GET(req: Request) {
         program_type: ProgramType
         status: string
         program_day: number | null
-        duration_days: number | null
       }>()
 
     const programs = PROGRAM_CATALOG.map((program) => {
@@ -98,12 +97,11 @@ export async function GET(req: Request) {
             label: getProgramButtonText(activeProgram.program_type),
             currentDay: activeProgram.program_day || 1,
             totalDays:
-              activeProgram.duration_days ||
-              (activeProgram.program_type === 'sprint_standard'
+              activeProgram.program_type === 'sprint_standard'
                 ? 30
                 : activeProgram.program_type === 'sprint_monk'
                   ? 21
-                  : 60),
+                  : 60,
           }
         : null,
       programs,

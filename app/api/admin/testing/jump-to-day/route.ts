@@ -39,11 +39,39 @@ export async function POST(req: Request) {
       console.error('Admin test/jump-to-day: update user_programs failed:', upErr)
       return NextResponse.json({ error: upErr.message }, { status: 500 })
     }
-    if (!updated?.program_type) {
-      return NextResponse.json(
-        { error: 'No active user_programs row found for user' },
-        { status: 404 },
+    let activeProgramType = updated?.program_type ?? null
+
+    if (!activeProgramType) {
+      // No active row found: revive any existing row for this user, otherwise create a default sprint row.
+      const { data: existingAny, error: existingErr } = await supabase
+        .from('user_programs')
+        .select('program_type')
+        .eq('user_id', user.id)
+        .limit(1)
+        .maybeSingle<{ program_type: string }>()
+      if (existingErr) {
+        console.error('Admin test/jump-to-day: lookup existing program failed:', existingErr)
+        return NextResponse.json({ error: existingErr.message }, { status: 500 })
+      }
+
+      const fallbackProgramType = existingAny?.program_type ?? 'sprint_standard'
+      const { error: reviveErr } = await supabase.from('user_programs').upsert(
+        {
+          user_id: user.id,
+          program_type: fallbackProgramType,
+          program_day: programDay,
+          phase: 1,
+          status: 'active',
+          baseline_wake_time: '07:30:00',
+          baseline_bed_time: '23:00:00',
+        },
+        { onConflict: 'user_id' },
       )
+      if (reviveErr) {
+        console.error('Admin test/jump-to-day: create/revive program row failed:', reviveErr)
+        return NextResponse.json({ error: reviveErr.message }, { status: 500 })
+      }
+      activeProgramType = fallbackProgramType
     }
 
     const today = new Date().toISOString().split('T')[0]
@@ -51,7 +79,7 @@ export async function POST(req: Request) {
       {
         user_id: user.id,
         log_date: today,
-        program_type: updated.program_type,
+        program_type: activeProgramType,
         program_day: programDay,
       },
       { onConflict: 'user_id,log_date' },

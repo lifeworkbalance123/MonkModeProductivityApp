@@ -27,8 +27,6 @@ export async function POST(req: Request) {
     }
 
     const supabase = createServiceRoleClient()
-    const durationDays =
-      programType === 'sprint_standard' ? 30 : programType === 'sprint_monk' ? 21 : 60
 
     const { error: delErr } = await supabase
       .from('user_programs')
@@ -46,10 +44,8 @@ export async function POST(req: Request) {
       program_day: 1,
       phase: 1,
       status: 'active',
-      duration_days: durationDays,
       baseline_wake_time: '07:30:00',
       baseline_bed_time: '23:00:00',
-      started_at: new Date().toISOString(),
     })
     if (upErr) {
       console.error('Admin test/start-program: insert user_programs failed:', upErr)
