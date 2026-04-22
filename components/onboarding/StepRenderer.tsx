@@ -4,9 +4,9 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { IntroFormData } from '@/components/onboarding/intro/introFormTypes'
 import type { OnboardingStepRow } from '@/lib/onboardingSteps'
 import type { SelectedProgram } from '@/lib/onboardingProgramFlow'
+import { CommitmentStep } from '@/components/onboarding/CommitmentStep'
 import {
   AccountabilityStep,
-  CommitmentStep,
   ContentStep,
   GoalStep,
   PaymentTemplateStep,
@@ -37,7 +37,7 @@ export function StepRenderer({ step, onNext, formData, setFormData, programType 
     case 'why':
       return <WhyStep {...common} />
     case 'commitment':
-      return <CommitmentStep {...common} />
+      return <CommitmentStep {...common} programType={programType} />
     case 'wake':
       return <WakeStep {...common} />
     case 'goal':

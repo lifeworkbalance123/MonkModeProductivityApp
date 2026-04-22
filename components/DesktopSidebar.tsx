@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 type Props = {
   showProGate: (item: NavItem) => boolean
   onProLocked: (description: string) => void
+  programButtonText?: string
 }
 
 function ItemLink({
@@ -22,13 +23,19 @@ function ItemLink({
   active,
   showProGate,
   onProLocked,
+  programButtonText,
 }: {
   item: NavItem
   active: boolean
   showProGate: (item: NavItem) => boolean
   onProLocked: (description: string) => void
+  programButtonText?: string
 }) {
   const Icon = item.icon
+  const displayLabel =
+    item.href === '/today' && programButtonText?.trim()
+      ? programButtonText
+      : item.label
   const locked = showProGate(item)
   if (locked) {
     return (
@@ -45,7 +52,7 @@ function ItemLink({
         )}
       >
         <Icon className="h-4 w-4 shrink-0 opacity-80" />
-        <span className="flex-1 truncate">{item.label}</span>
+        <span className="flex-1 truncate">{displayLabel}</span>
         <ProBadge className="shrink-0" />
       </button>
     )
@@ -61,12 +68,12 @@ function ItemLink({
       )}
     >
       <Icon className="h-4 w-4 shrink-0" />
-      <span className="truncate">{item.label}</span>
+      <span className="truncate">{displayLabel}</span>
     </Link>
   )
 }
 
-export function DesktopSidebar({ showProGate, onProLocked }: Props) {
+export function DesktopSidebar({ showProGate, onProLocked, programButtonText }: Props) {
   const pathname = usePathname()
   const { themeId } = useColorTheme()
   const { isActive, isGroupOpen, setGroupOpen } = useSidebarNavCollapse(pathname)
@@ -130,6 +137,7 @@ export function DesktopSidebar({ showProGate, onProLocked }: Props) {
                       active={isActive(item.href)}
                       showProGate={showProGate}
                       onProLocked={onProLocked}
+                      programButtonText={programButtonText}
                     />
                   ))}
                 </div>

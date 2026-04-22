@@ -77,7 +77,12 @@ export function ProgramIntroSteps({ selectedProgram, onBack, onContinue, onSteps
 
   function goNext() {
     if (!step) return
-    if (step.step_kind === 'commitment' && needsCommitment && !formData.commitmentAccepted) return
+    if (
+      step.step_kind === 'commitment' &&
+      needsCommitment &&
+      (!formData.commitmentAccepted || !formData.commitmentResponse.trim())
+    )
+      return
     if (step.step_kind === 'payment' && !formData.paymentAcknowledged) return
     if (isLast) {
       onContinue(formData)
@@ -103,7 +108,7 @@ export function ProgramIntroSteps({ selectedProgram, onBack, onContinue, onSteps
   if (!step) return null
 
   return (
-    <div className="mx-auto w-full max-w-lg space-y-8 px-4 py-8">
+    <div className="onboarding-step w-full space-y-8">
       <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
         <div
           className="h-full rounded-full bg-accent transition-[width] duration-300"

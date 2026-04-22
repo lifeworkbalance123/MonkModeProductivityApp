@@ -10,6 +10,7 @@ import { useUpgradeOffer } from "@/context/UpgradeOfferContext"
 import { useAuth } from "@/context/AuthContext"
 import { useTrialBanner } from "@/hooks/use-trial-banner"
 import { usePlan } from "@/hooks/usePlan"
+import { useProgramStatus } from "@/hooks/useProgramStatus"
 import { allNavItems, type NavItem } from "@/lib/nav-config"
 import { DesktopSidebar } from "@/components/DesktopSidebar"
 import { MobileBottomNav } from "@/components/MobileBottomNav"
@@ -244,6 +245,7 @@ export function Navigation() {
 
   const showProGate = (item: NavItem) =>
     item.proOnly === true && !planLoading && !isPro
+  const { buttonText: programButtonText } = useProgramStatus(!!user)
 
   const showTrialStrip = useShowTrialStrip()
 
@@ -362,13 +364,18 @@ export function Navigation() {
         ) : null}
       </header>
 
-      <DesktopSidebar showProGate={showProGate} onProLocked={openProUpgrade} />
+      <DesktopSidebar
+        showProGate={showProGate}
+        onProLocked={openProUpgrade}
+        programButtonText={programButtonText}
+      />
 
       <MobileBottomNav
         onOpenMenu={() => setDrawerOpen(true)}
         menuOpen={drawerOpen}
         showMenuHint={menuHint}
         onDismissMenuHint={dismissMenuHint}
+        programButtonText={programButtonText}
       />
 
       <MobileDrawer

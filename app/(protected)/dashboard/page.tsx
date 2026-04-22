@@ -3,14 +3,18 @@
 import { useEffect } from 'react'
 import { Loader2 } from 'lucide-react'
 import { DashboardApp } from '@/components/dashboard-app'
+import { ProgramCards } from '@/components/dashboard/ProgramCards'
+import { TodayChecklist } from '@/components/dashboard/TodayChecklist'
 import { ErrorBanner } from '@/components/ErrorBanner'
 import { useMonkData } from '@/hooks/use-monk-data'
+import { useProgramStatus } from '@/hooks/useProgramStatus'
 import { useTrialBanner } from '@/hooks/use-trial-banner'
 import { useAuth } from '@/context/AuthContext'
 import { captureEvent } from '@/lib/analytics'
 
 export default function DashboardPage() {
   const { data, setData, ready, dataContext, loadError, reload } = useMonkData()
+  const { activeProgram, programs, loading: statusLoading } = useProgramStatus()
   const trial = useTrialBanner()
   const { user } = useAuth()
 
@@ -45,12 +49,29 @@ export default function DashboardPage() {
           <span className="sr-only">Loading data</span>
         </div>
       ) : (
-        <DashboardApp
-          data={data}
-          onChange={setData}
-          dataContext={dataContext}
-          userId={user?.id}
-        />
+        <div className="space-y-6">
+          {!statusLoading ? (
+            activeProgram ? (
+              <div className="mx-auto w-full max-w-7xl space-y-6 px-4 pt-6 sm:px-6 lg:px-8">
+                <TodayChecklist programType={activeProgram.program_type} />
+                <div className="mt-2">
+                  <h2 className="mb-4 text-lg font-semibold text-foreground">Other Programs</h2>
+                  <ProgramCards />
+                </div>
+              </div>
+            ) : programs.length > 0 ? (
+              <div className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
+                <ProgramCards />
+              </div>
+            ) : null
+          ) : null}
+          <DashboardApp
+            data={data}
+            onChange={setData}
+            dataContext={dataContext}
+            userId={user?.id}
+          />
+        </div>
       )}
     </div>
   )

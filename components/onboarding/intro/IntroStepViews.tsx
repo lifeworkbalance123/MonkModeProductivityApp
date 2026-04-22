@@ -6,12 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { formatPriceCents } from '@/hooks/usePricing'
-import {
-  parseCommitmentDescription,
-  parseWakeDescription,
-  parseWhyDescription,
-  type OnboardingStepRow,
-} from '@/lib/onboardingSteps'
+import { parseWakeDescription, parseWhyDescription, type OnboardingStepRow } from '@/lib/onboardingSteps'
 import type { SelectedProgram } from '@/lib/onboardingProgramFlow'
 import {
   PROGRAM_FLOW_CURRENCY,
@@ -103,56 +98,6 @@ export function WhyStep({ step, onNext, formData, setFormData }: FormProps) {
         size="lg"
         className="w-full bg-accent text-accent-foreground disabled:opacity-40 sm:min-w-[200px]"
         disabled={!canContinue}
-        onClick={onNext}
-      >
-        {step.action_label}
-      </Button>
-    </div>
-  )
-}
-
-export function CommitmentStep({ step, onNext, formData, setFormData }: FormProps) {
-  const { intro, pledge } = parseCommitmentDescription(step.description)
-  const on = formData.commitmentAccepted
-  const hasText = formData.commitmentResponse.trim().length > 0
-  return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-foreground">{step.title}</h2>
-      {step.video_url ? <IntroVideoEmbed url={step.video_url} title={step.title} /> : null}
-      <p className="text-sm leading-relaxed text-muted-foreground">{intro}</p>
-      <button
-        type="button"
-        onClick={() => setFormData((f) => ({ ...f, commitmentAccepted: !f.commitmentAccepted }))}
-        className={
-          'flex w-full items-start gap-3 rounded-xl border p-4 text-left transition-colors ' +
-          (on ? 'border-accent bg-accent/10' : 'border-border bg-card')
-        }
-      >
-        <span
-          className={
-            'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded border-2 text-xs font-bold ' +
-            (on ? 'border-accent bg-accent text-accent-foreground' : 'border-muted-foreground/40')
-          }
-        >
-          {on ? '✓' : ''}
-        </span>
-        <span className="text-sm leading-relaxed text-foreground">{pledge}</span>
-      </button>
-      <div className="space-y-2">
-        <Label htmlFor="intro-commitment-response">Write your commitment</Label>
-        <Textarea
-          id="intro-commitment-response"
-          value={formData.commitmentResponse}
-          onChange={(e) => setFormData((f) => ({ ...f, commitmentResponse: e.target.value }))}
-          className="min-h-[90px] resize-y border-border bg-background"
-          placeholder="I commit to..."
-        />
-      </div>
-      <Button
-        type="button"
-        size="lg"
-        className="w-full bg-accent text-accent-foreground disabled:opacity-40"
-        disabled={!on || !hasText}
         onClick={onNext}
       >
         {step.action_label}

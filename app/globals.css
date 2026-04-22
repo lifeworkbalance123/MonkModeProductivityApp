@@ -530,3 +530,140 @@ html[data-color-theme='silent'] {
 .steps-container {
   min-height: 400px;
 }
+
+/* Program intro / commitment step layout (see `ProgramIntroSteps`, `CommitmentStep`). */
+.onboarding-step {
+  box-sizing: border-box;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.section-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.understand-text {
+  font-size: 16px;
+  margin-bottom: 16px;
+  color: var(--muted-foreground);
+}
+
+.requirements-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0 0 24px 0;
+}
+
+.requirements-list li {
+  margin-bottom: 12px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--foreground);
+}
+
+.commitment-text {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 20px 0 12px 0;
+  color: var(--foreground);
+}
+
+.commitment-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: var(--muted-foreground);
+}
+
+.commitment-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 16px;
+  font-family: inherit;
+  resize: vertical;
+  margin-bottom: 20px;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.commitment-input:focus {
+  outline: none;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin: 20px 0;
+}
+
+.native-checkbox {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: #22c55e;
+  margin-right: 12px;
+  cursor: pointer;
+}
+
+.checkbox-text {
+  font-size: 14px;
+  color: var(--foreground);
+  line-height: 1.4;
+}
+
+.button-group {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.back-button {
+  flex: 1;
+  padding: 12px;
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.back-button:hover {
+  background-color: var(--secondary);
+}
+
+.continue-button {
+  flex: 2;
+  padding: 12px;
+  background-color: #22c55e;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.continue-button:hover:not(.disabled) {
+  background-color: #16a34a;
+}
+
+.continue-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
