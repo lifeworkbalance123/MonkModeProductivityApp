@@ -10,7 +10,7 @@ import type { SelectedProgram } from '@/lib/onboardingProgramFlow'
 type Props = {
   selectedProgram: SelectedProgram
   onBack: () => void
-  onContinue: () => void
+  onContinue: (introData: IntroFormData) => void
   /** Called when the step list has been fetched (including length 0). */
   onStepsLoaded?: (count: number) => void
 }
@@ -42,7 +42,7 @@ export function ProgramIntroSteps({ selectedProgram, onBack, onContinue, onSteps
         setSteps([])
         setLoadError(json.error ?? 'Could not load steps')
         onStepsLoadedRef.current?.(0)
-        onContinueRef.current()
+        onContinueRef.current(createEmptyIntroFormData())
         return
       }
       const list = json.steps ?? []
@@ -51,13 +51,13 @@ export function ProgramIntroSteps({ selectedProgram, onBack, onContinue, onSteps
       setFormData(createEmptyIntroFormData())
       onStepsLoadedRef.current?.(list.length)
       if (list.length === 0) {
-        onContinueRef.current()
+        onContinueRef.current(createEmptyIntroFormData())
       }
     } catch {
       setSteps([])
       setLoadError('Network error')
       onStepsLoadedRef.current?.(0)
-      onContinueRef.current()
+      onContinueRef.current(createEmptyIntroFormData())
     } finally {
       setLoading(false)
     }
@@ -80,7 +80,7 @@ export function ProgramIntroSteps({ selectedProgram, onBack, onContinue, onSteps
     if (step.step_kind === 'commitment' && needsCommitment && !formData.commitmentAccepted) return
     if (step.step_kind === 'payment' && !formData.paymentAcknowledged) return
     if (isLast) {
-      onContinue()
+      onContinue(formData)
     } else {
       setIndex((i) => i + 1)
     }

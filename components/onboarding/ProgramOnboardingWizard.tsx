@@ -10,6 +10,7 @@ import { PaymentStep } from '@/components/onboarding/PaymentStep'
 import { ProgramIntroSteps } from '@/components/onboarding/ProgramIntroSteps'
 import { ProgramQuestions } from '@/components/onboarding/ProgramQuestions'
 import { ProgramSelection } from '@/components/onboarding/ProgramSelection'
+import type { IntroFormData } from '@/components/onboarding/intro/introFormTypes'
 
 /** High-level funnel phases (intro has its own sub-steps inside `ProgramIntroSteps`). */
 export const ONBOARDING_FLOW_STEPS = ['program', 'intro', 'questions', 'auth', 'payment'] as const
@@ -108,7 +109,19 @@ export default function ProgramOnboardingWizard() {
     setCurrentStepIndex(phaseIndexOf('intro'))
   }
 
-  function goIntroContinue() {
+  function goIntroContinue(introData: IntroFormData) {
+    const whyText = introData.whyResponse.trim()
+    const commitmentText = introData.commitmentResponse.trim()
+    const patched: Partial<ProgramIntakePayload> = {
+      baseline_wake_time: introData.wakeTime || null,
+      monk_mode_confirmed: introData.commitmentAccepted || null,
+    }
+    if (whyText.length >= 2) {
+      patched.one_big_task = whyText
+    } else if (commitmentText.length >= 2 && (formData.one_big_task ?? '').trim().length < 2) {
+      patched.one_big_task = commitmentText
+    }
+    patchFormData(patched)
     setCurrentStepIndex(phaseIndexOf('questions'))
   }
 

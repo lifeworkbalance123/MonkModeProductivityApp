@@ -76,8 +76,9 @@ export function WelcomeStep({ step, onNext }: StepProps) {
   )
 }
 
-export function WhyStep({ step, onNext }: StepProps) {
+export function WhyStep({ step, onNext, formData, setFormData }: FormProps) {
   const { intro, cardTitle, cardBody } = parseWhyDescription(step.description)
+  const canContinue = formData.whyResponse.trim().length > 0
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-foreground">{step.title}</h2>
@@ -87,10 +88,21 @@ export function WhyStep({ step, onNext }: StepProps) {
         <p className="font-semibold text-accent">{cardTitle}</p>
         <p className="mt-2 whitespace-pre-line text-sm text-foreground">{cardBody}</p>
       </div>
+      <div className="space-y-2">
+        <Label htmlFor="intro-why-response">Your answer</Label>
+        <Textarea
+          id="intro-why-response"
+          value={formData.whyResponse}
+          onChange={(e) => setFormData((f) => ({ ...f, whyResponse: e.target.value }))}
+          className="min-h-[110px] resize-y border-border bg-background"
+          placeholder="Type your reason here..."
+        />
+      </div>
       <Button
         type="button"
         size="lg"
-        className="w-full bg-accent text-accent-foreground sm:min-w-[200px]"
+        className="w-full bg-accent text-accent-foreground disabled:opacity-40 sm:min-w-[200px]"
+        disabled={!canContinue}
         onClick={onNext}
       >
         {step.action_label}
@@ -102,6 +114,7 @@ export function WhyStep({ step, onNext }: StepProps) {
 export function CommitmentStep({ step, onNext, formData, setFormData }: FormProps) {
   const { intro, pledge } = parseCommitmentDescription(step.description)
   const on = formData.commitmentAccepted
+  const hasText = formData.commitmentResponse.trim().length > 0
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-foreground">{step.title}</h2>
@@ -125,11 +138,21 @@ export function CommitmentStep({ step, onNext, formData, setFormData }: FormProp
         </span>
         <span className="text-sm leading-relaxed text-foreground">{pledge}</span>
       </button>
+      <div className="space-y-2">
+        <Label htmlFor="intro-commitment-response">Write your commitment</Label>
+        <Textarea
+          id="intro-commitment-response"
+          value={formData.commitmentResponse}
+          onChange={(e) => setFormData((f) => ({ ...f, commitmentResponse: e.target.value }))}
+          className="min-h-[90px] resize-y border-border bg-background"
+          placeholder="I commit to..."
+        />
+      </div>
       <Button
         type="button"
         size="lg"
         className="w-full bg-accent text-accent-foreground disabled:opacity-40"
-        disabled={!on}
+        disabled={!on || !hasText}
         onClick={onNext}
       >
         {step.action_label}

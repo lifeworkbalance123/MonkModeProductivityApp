@@ -35,7 +35,7 @@ export function StepRenderer({ step, onNext, formData, setFormData, programType 
     case 'welcome':
       return <WelcomeStep step={step} onNext={onNext} />
     case 'why':
-      return <WhyStep step={step} onNext={onNext} />
+      return <WhyStep {...common} />
     case 'commitment':
       return <CommitmentStep {...common} />
     case 'wake':
