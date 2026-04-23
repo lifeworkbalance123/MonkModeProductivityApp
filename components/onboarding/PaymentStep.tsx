@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { formatPriceCents } from '@/hooks/usePricing'
 import { supabase } from '@/lib/supabase'
@@ -17,9 +18,17 @@ import { startProgramCheckout } from '@/lib/stripe-checkout'
 type Props = {
   intake: ProgramIntakePayload
   onBack: () => void
+  skipPayment?: boolean
 }
 
-export function PaymentStep({ intake, onBack }: Props) {
+function clearAdminTestFlags() {
+  sessionStorage.removeItem('admin_test_session')
+  sessionStorage.removeItem('admin_test_program')
+  localStorage.removeItem('skipPayment')
+}
+
+export function PaymentStep({ intake, onBack, skipPayment = false }: Props) {
+  const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const p = intake.selected_program
@@ -39,9 +48,27 @@ export function PaymentStep({ intake, onBack }: Props) {
         setError('Sign in again to continue.')
         return
       }
-      const saved = await completeOnboarding(intake)
+      const saved = await completeOnboarding(intake, { skipPayment })
       if (!saved.ok) {
         setError(saved.error ?? 'Could not save your answers.')
+        return
+      }
+      if (skipPayment) {
+        const res = await fetch('/api/program/start', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ ...intake, skipPayment: true }),
+        })
+        const data = (await res.json().catch(() => ({}))) as { error?: string }
+        if (!res.ok) {
+          setError(data.error ?? 'Could not start program.')
+          return
+        }
+        clearAdminTestFlags()
+        router.push('/today')
         return
       }
       const checkout = await startProgramCheckout(stripePlan)

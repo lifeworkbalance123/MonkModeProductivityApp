@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 type ProgramType = 'sprint_standard' | 'sprint_monk' | 'transform'
@@ -15,6 +16,7 @@ async function authHeaders() {
 }
 
 export default function AdminTestingPage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -44,7 +46,13 @@ export default function AdminTestingPage() {
         throw new Error(data.error || 'Failed to start program')
       }
 
+      // Mark this as an admin test flow and bypass payment in onboarding.
+      sessionStorage.setItem('admin_test_session', 'true')
+      sessionStorage.setItem('admin_test_program', selectedProgram)
+      localStorage.setItem('skipPayment', 'true')
+
       setSuccess(`Started ${selectedProgram} program successfully!`)
+      router.push(`/onboarding?program=${selectedProgram}&skipPayment=true`)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to start program')
     } finally {

@@ -1,8 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { completeOnboarding } from '@/lib/onboardingCompleteClient'
 import type { ProgramIntakePayload, SelectedProgram } from '@/lib/onboardingProgramFlow'
 import { isSelectedProgram, urlParamToSelectedProgram } from '@/lib/onboardingProgramFlow'
 import { AuthStep } from '@/components/onboarding/AuthStep'
@@ -38,12 +40,23 @@ function phaseIndexOf(p: OnboardingFlowStep): number {
   return ONBOARDING_FLOW_STEPS.indexOf(p)
 }
 
+function clearAdminTestFlags() {
+  sessionStorage.removeItem('admin_test_session')
+  sessionStorage.removeItem('admin_test_program')
+  localStorage.removeItem('skipPayment')
+}
+
 export default function ProgramOnboardingWizard() {
+  const router = useRouter()
   const searchParams = useSearchParams()
 
   /** Index into {@link ONBOARDING_FLOW_STEPS}. */
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
-  const steps = ONBOARDING_FLOW_STEPS
+  const [skipPayment, setSkipPayment] = useState(false)
+  const steps = useMemo(
+    () => (skipPayment ? ONBOARDING_FLOW_STEPS.filter((s) => s !== 'payment') : ONBOARDING_FLOW_STEPS),
+    [skipPayment],
+  )
   const phase = steps[currentStepIndex] ?? 'program'
 
   /** Number of CMS intro steps for the chosen program (0 if none / skipped). */
@@ -64,11 +77,19 @@ export default function ProgramOnboardingWizard() {
   }, [refreshAuth])
 
   useEffect(() => {
-    const fromUrl = urlParamToSelectedProgram(searchParams.get('program'))
-    if (fromUrl && isSelectedProgram(fromUrl)) {
-      setSelected(fromUrl)
-      setFormData(emptyIntake(fromUrl))
-      localStorage.setItem('selectedProgram', fromUrl)
+    const fromUrl = searchParams.get('skipPayment')
+    const urlSkip = fromUrl === '1' || fromUrl === 'true'
+    const localSkip = localStorage.getItem('skipPayment') === 'true'
+    const adminSkip = sessionStorage.getItem('admin_test_session') === 'true'
+    const nextSkip = urlSkip || localSkip || adminSkip
+    setSkipPayment(nextSkip)
+    if (nextSkip) localStorage.setItem('skipPayment', 'true')
+
+    const selectedFromUrl = urlParamToSelectedProgram(searchParams.get('program'))
+    if (selectedFromUrl && isSelectedProgram(selectedFromUrl)) {
+      setSelected(selectedFromUrl)
+      setFormData(emptyIntake(selectedFromUrl))
+      localStorage.setItem('selectedProgram', selectedFromUrl)
       return
     }
 
@@ -91,10 +112,13 @@ export default function ProgramOnboardingWizard() {
   }, [refreshAuth])
 
   useEffect(() => {
-    if (phase === 'auth' && signedIn) {
-      setCurrentStepIndex(phaseIndexOf('payment'))
+    if (phase !== 'auth' || !signedIn || !selected) return
+    if (skipPayment) {
+      void completeAdminBypassFlow(selected)
+      return
     }
-  }, [phase, signedIn])
+    setCurrentStepIndex(phaseIndexOf('payment'))
+  }, [phase, signedIn, selected, skipPayment])
 
   async function handleRecheckAuth() {
     await refreshAuth()
@@ -102,6 +126,10 @@ export default function ProgramOnboardingWizard() {
       data: { session },
     } = await supabase.auth.getSession()
     if (session?.user) {
+      if (skipPayment && selected) {
+        await completeAdminBypassFlow(selected)
+        return
+      }
       setCurrentStepIndex(phaseIndexOf('payment'))
     }
   }
@@ -138,13 +166,51 @@ export default function ProgramOnboardingWizard() {
     else setCurrentStepIndex(phaseIndexOf('program'))
   }
 
-  function goQuestionsContinue() {
-    if (!selected) return
-    if (signedIn) setCurrentStepIndex(phaseIndexOf('payment'))
-    else setCurrentStepIndex(phaseIndexOf('auth'))
+  async function completeAdminBypassFlow(program: SelectedProgram) {
+    const intake = { ...formData, selected_program: program }
+    const saved = await completeOnboarding(intake, { skipPayment: true })
+    if (!saved.ok) return
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (!token) return
+
+    const started = await fetch('/api/program/start', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ ...intake, skipPayment: true }),
+    })
+
+    if (!started.ok) return
+
+    clearAdminTestFlags()
+    router.push('/today')
   }
 
-  function goAuthContinue() {
+  async function goQuestionsContinue() {
+    if (!selected) return
+    if (signedIn) {
+      if (skipPayment) {
+        await completeAdminBypassFlow(selected)
+        return
+      }
+      setCurrentStepIndex(phaseIndexOf('payment'))
+      return
+    }
+    setCurrentStepIndex(phaseIndexOf('auth'))
+  }
+
+  async function goAuthContinue() {
+    if (!selected) return
+    if (skipPayment) {
+      await completeAdminBypassFlow(selected)
+      return
+    }
     setCurrentStepIndex(phaseIndexOf('payment'))
   }
 
@@ -176,10 +242,10 @@ export default function ProgramOnboardingWizard() {
         goProgramContinue()
         break
       case 'questions':
-        goQuestionsContinue()
+        void goQuestionsContinue()
         break
       case 'auth':
-        goAuthContinue()
+        void goAuthContinue()
         break
       default:
         break
@@ -223,7 +289,11 @@ export default function ProgramOnboardingWizard() {
       ) : null}
 
       {phase === 'payment' && selected ? (
-        <PaymentStep intake={{ ...formData, selected_program: selected }} onBack={handleBack} />
+        <PaymentStep
+          intake={{ ...formData, selected_program: selected }}
+          onBack={handleBack}
+          skipPayment={skipPayment}
+        />
       ) : null}
     </div>
   )

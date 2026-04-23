@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { isAdmin } from '@/lib/admin'
 import type { ProgramIntakePayload, SelectedProgram } from '@/lib/onboardingProgramFlow'
 import { isSelectedProgram } from '@/lib/onboardingProgramFlow'
 import {
@@ -45,8 +46,13 @@ export async function POST(request: Request) {
     }
 
     let body: ProgramIntakePayload
+    let skipPayment = false
     try {
-      body = (await request.json()) as ProgramIntakePayload
+      const raw = (await request.json()) as ProgramIntakePayload & {
+        skipPayment?: boolean
+      }
+      body = raw
+      skipPayment = raw.skipPayment === true
     } catch {
       return json({ error: 'Invalid JSON' }, 400)
     }
@@ -83,7 +89,13 @@ export async function POST(request: Request) {
       return json({ error: error.message }, 500)
     }
 
-    return json({ ok: true }, 200)
+    return json(
+      {
+        ok: true,
+        skipPaymentAccepted: skipPayment && isAdmin(user),
+      },
+      200,
+    )
   } catch (e) {
     console.error('POST /api/onboarding/complete', e)
     return json(

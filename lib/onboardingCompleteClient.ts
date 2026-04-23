@@ -4,6 +4,7 @@ import type { ProgramIntakePayload } from '@/lib/onboardingProgramFlow'
 /** Persists intake via POST /api/onboarding/complete (requires signed-in session). */
 export async function completeOnboarding(
   formData: ProgramIntakePayload,
+  opts?: { skipPayment?: boolean },
 ): Promise<{ ok: boolean; error?: string }> {
   const {
     data: { session },
@@ -18,7 +19,10 @@ export async function completeOnboarding(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(formData),
+    body: JSON.stringify({
+      ...formData,
+      skipPayment: opts?.skipPayment === true,
+    }),
   })
   const data = (await res.json().catch(() => ({}))) as { error?: string }
   if (!res.ok) {
