@@ -353,7 +353,7 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
   }
 
   return (
-    <div className="mx-auto min-w-0 max-w-7xl px-4 py-8 pt-24 sm:px-6 lg:px-8">
+    <div className="mx-auto min-w-0 max-w-7xl px-4 py-4 pt-2 sm:px-6 lg:px-8">
       <GettingStartedChecklist
         data={data}
         morningGratitudeFields={todayGratitudeSnapshot}

@@ -702,13 +702,20 @@ html[data-color-theme='silent'] {
   animation: zoomIn 0.15s ease-out forwards;
 }
 
-.programs-grid,
-.program-cards-grid {
+.programs-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   margin-top: 12px;
   margin-bottom: 24px;
+}
+
+.program-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 12px;
+  margin-bottom: 0;
 }
 
 .program-card {

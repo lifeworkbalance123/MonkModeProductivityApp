@@ -28,7 +28,7 @@ const DashboardContent = memo(function DashboardContent({
   serverActiveProgramType,
 }: DashboardContentProps) {
   return (
-    <div className="container mx-auto px-4 py-3">
+    <div className="container mx-auto px-4 pb-0 pt-3">
       <div className="mb-4">
         <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
         <p className="mt-0.5 text-xs text-muted-foreground">
@@ -97,7 +97,7 @@ export function DashboardPageClient({
           Loading...
         </div>
       ) : (
-        <div className="dashboard-container space-y-6">
+        <div className="dashboard-container flex flex-col gap-5">
           <DashboardContent
             welcomeName={effectiveWelcomeName}
             serverActiveProgramType={effectiveProgramType}
