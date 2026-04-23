@@ -402,9 +402,9 @@ export function AppPageChrome({
   children: React.ReactNode
 }) {
   return (
-    <>
+    <div className="flex min-h-screen w-full flex-col">
       <Navigation />
-      <MainShell className={className}>{children}</MainShell>
-    </>
+      <MainShell className={cn('min-h-0 flex-1', className)}>{children}</MainShell>
+    </div>
   )
 }

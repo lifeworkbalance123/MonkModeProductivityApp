@@ -29,15 +29,24 @@ export function MainShell({
   return (
     <div
       className={cn(
+        'flex min-h-0 flex-1 flex-col',
         user
           ? showTrialStrip
-            ? 'pt-[7.5rem] pb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:pt-14 md:pb-8 md:pl-64'
-            : 'pt-14 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:pt-6 md:pb-8 md:pl-64'
+            ? 'pt-[7.5rem] pb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:pt-14 md:pb-8'
+            : 'pt-14 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] md:pt-0 md:pb-8'
           : 'pt-20',
         className,
       )}
     >
-      {children}
+      <main className="flex min-h-0 flex-1 flex-col overflow-auto">
+        {user ? (
+          <div className="flex min-h-0 flex-1 flex-col md:ml-64 md:min-h-screen">
+            <div className="p-3">{children}</div>
+          </div>
+        ) : (
+          children
+        )}
+      </main>
     </div>
   )
 }

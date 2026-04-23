@@ -702,11 +702,12 @@ html[data-color-theme='silent'] {
   animation: zoomIn 0.15s ease-out forwards;
 }
 
-.programs-grid {
+.programs-grid,
+.program-cards-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
-  margin-top: 16px;
+  margin-top: 12px;
   margin-bottom: 24px;
 }
 
@@ -723,6 +724,18 @@ html[data-color-theme='silent'] {
   max-height: 150px;
   height: 100%;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+/* Dashboard program picker: horizontal row, ~120–140px without progress bar */
+.program-card.program-card--compact {
+  min-height: 120px;
+  max-height: none;
+  padding: 12px;
+  height: auto;
+}
+
+.program-card.program-card--compact:hover {
+  transform: translateY(-1px);
 }
 
 .program-card:hover {
@@ -839,16 +852,25 @@ html[data-color-theme='silent'] {
 }
 
 @media (max-width: 768px) {
-  .programs-grid {
+  .programs-grid,
+  .program-cards-grid {
     grid-template-columns: 1fr;
-    gap: 12px;
+    gap: 0.75rem;
     margin-top: 12px;
   }
 
-  .program-card {
+  .program-card:not(.program-card--compact) {
     min-height: auto;
     max-height: none;
-    padding: 14px;
+    padding: 0.75rem;
+  }
+
+  .program-card.program-card--compact {
+    padding: 0.75rem;
+  }
+
+  .program-card .benefit-text {
+    display: none;
   }
 
   .program-description {
