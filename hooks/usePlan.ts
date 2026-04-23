@@ -252,7 +252,8 @@ export function usePlan() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'INITIAL_SESSION') return
+      // Token refresh events are frequent and should not refetch entitlement.
+      if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') return
       void fetchEntitlement()
     })
     return () => subscription.unsubscribe()

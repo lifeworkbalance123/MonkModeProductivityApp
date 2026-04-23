@@ -68,7 +68,7 @@ export function useMonkData() {
     return () => {
       cancelled = true
     }
-  }, [userId, isPro])
+  }, [userId])
 
   useEffect(() => {
     function onOnline() {
