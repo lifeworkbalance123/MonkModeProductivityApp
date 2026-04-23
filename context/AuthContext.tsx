@@ -6,7 +6,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -31,7 +30,6 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const previousUserIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -39,18 +37,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session: initial } }) => {
       if (!mounted) return
       setSession(initial)
-      previousUserIdRef.current = initial?.user?.id ?? null
       setIsLoading(false)
     })
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      const nextUserId = nextSession?.user?.id ?? null
-      if (nextUserId !== previousUserIdRef.current) {
-        previousUserIdRef.current = nextUserId
-        setSession(nextSession)
-      }
+      setSession(nextSession)
       if (mounted) setIsLoading(false)
     })
 
