@@ -19,6 +19,7 @@ type Row = {
   phase?: number
   audio_url?: string | null
   video_url?: string | null
+  image_url?: string | null
   tip_topic?: string | null
   is_bonus?: boolean | number | string | null
 }
@@ -82,6 +83,7 @@ export async function POST(request: Request) {
       content_markdown: md,
       audio_url: r.audio_url ? String(r.audio_url) : null,
       video_url: r.video_url ? String(r.video_url) : null,
+      image_url: r.image_url ? String(r.image_url) : null,
       tip_topic: r.tip_topic ? String(r.tip_topic) : null,
     }
 
