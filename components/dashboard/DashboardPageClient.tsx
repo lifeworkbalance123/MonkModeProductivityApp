@@ -6,15 +6,16 @@ import { ProgramCards } from '@/components/dashboard/ProgramCards'
 import { TodayChecklist } from '@/components/dashboard/TodayChecklist'
 import { ErrorBanner } from '@/components/ErrorBanner'
 import { useMonkData } from '@/hooks/use-monk-data'
+import { useProgramStatus } from '@/hooks/useProgramStatus'
 import { useTrialBanner } from '@/hooks/use-trial-banner'
 import { useAuth } from '@/context/AuthContext'
 import { captureEvent } from '@/lib/analytics'
 import type { ProgramType } from '@/lib/programStatus'
 
 export interface DashboardPageClientProps {
-  welcomeName: string
-  serverActiveProgramType: ProgramType | null
-  userId: string
+  welcomeName?: string
+  serverActiveProgramType?: ProgramType | null
+  userId?: string
 }
 
 type DashboardContentProps = {
@@ -58,6 +59,7 @@ export function DashboardPageClient({
   userId,
 }: DashboardPageClientProps) {
   const { data, setData, ready, dataContext, loadError, reload } = useMonkData()
+  const { activeProgram } = useProgramStatus()
   const trial = useTrialBanner()
   const { user } = useAuth()
 
@@ -74,6 +76,14 @@ export function DashboardPageClient({
   }, [ready, trial.daysLeft, trial.expired, trial.visible, user?.id])
 
   const effectiveUserId = useMemo(() => user?.id ?? userId, [user?.id, userId])
+  const effectiveWelcomeName = useMemo(
+    () => welcomeName ?? user?.email?.split('@')[0] ?? '',
+    [welcomeName, user?.email],
+  )
+  const effectiveProgramType = useMemo<ProgramType | null>(
+    () => serverActiveProgramType ?? activeProgram?.program_type ?? null,
+    [serverActiveProgramType, activeProgram?.program_type],
+  )
 
   return (
     <div className="min-h-screen bg-background">
@@ -89,8 +99,8 @@ export function DashboardPageClient({
       ) : (
         <div className="dashboard-container space-y-6">
           <DashboardContent
-            welcomeName={welcomeName}
-            serverActiveProgramType={serverActiveProgramType}
+            welcomeName={effectiveWelcomeName}
+            serverActiveProgramType={effectiveProgramType}
           />
 
           <div className="dashboard-content">
