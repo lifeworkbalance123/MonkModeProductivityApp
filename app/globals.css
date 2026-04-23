@@ -886,3 +886,13 @@ html[data-color-theme='silent'] {
   margin-top: 8px;
   padding-top: 0;
 }
+
+.dashboard-container {
+  transition: none;
+  animation: none;
+  opacity: 1;
+}
+
+.dashboard-skeleton {
+  min-height: 120px;
+}

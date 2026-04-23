@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
-import { Loader2 } from 'lucide-react'
+import { memo, useEffect, useMemo } from 'react'
 import { DashboardApp } from '@/components/dashboard-app'
 import { ProgramCards } from '@/components/dashboard/ProgramCards'
 import { TodayChecklist } from '@/components/dashboard/TodayChecklist'
@@ -17,6 +16,41 @@ export interface DashboardPageClientProps {
   serverActiveProgramType: ProgramType | null
   userId: string
 }
+
+type DashboardContentProps = {
+  welcomeName: string
+  serverActiveProgramType: ProgramType | null
+}
+
+const DashboardContent = memo(function DashboardContent({
+  welcomeName,
+  serverActiveProgramType,
+}: DashboardContentProps) {
+  return (
+    <div className="container mx-auto px-4 py-3">
+      <div className="mb-4">
+        <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Welcome back, {welcomeName}
+        </p>
+      </div>
+
+      {serverActiveProgramType ? (
+        <div className="space-y-4">
+          <TodayChecklist programType={serverActiveProgramType} />
+          <div>
+            <h2 className="mb-2 text-sm font-semibold text-muted-foreground">
+              Other Programs
+            </h2>
+            <ProgramCards hideActiveProgramSummary />
+          </div>
+        </div>
+      ) : (
+        <ProgramCards />
+      )}
+    </div>
+  )
+})
 
 export function DashboardPageClient({
   welcomeName,
@@ -39,7 +73,7 @@ export function DashboardPageClient({
     })
   }, [ready, trial.daysLeft, trial.expired, trial.visible, user?.id])
 
-  const effectiveUserId = user?.id ?? userId
+  const effectiveUserId = useMemo(() => user?.id ?? userId, [user?.id, userId])
 
   return (
     <div className="min-h-screen bg-background">
@@ -49,37 +83,15 @@ export function DashboardPageClient({
         </div>
       ) : null}
       {!ready ? (
-        <div className="flex items-center justify-center pt-32">
-          <Loader2
-            className="h-8 w-8 animate-spin text-muted-foreground"
-            aria-hidden
-          />
-          <span className="sr-only">Loading data</span>
+        <div className="dashboard-skeleton mx-auto max-w-7xl px-4 py-6 text-sm text-muted-foreground">
+          Loading...
         </div>
       ) : (
         <div className="dashboard-container space-y-6">
-          <div className="container mx-auto px-4 py-3">
-            <div className="mb-4">
-              <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Welcome back, {welcomeName}
-              </p>
-            </div>
-
-            {serverActiveProgramType ? (
-              <div className="space-y-4">
-                <TodayChecklist programType={serverActiveProgramType} />
-                <div>
-                  <h2 className="mb-2 text-sm font-semibold text-muted-foreground">
-                    Other Programs
-                  </h2>
-                  <ProgramCards hideActiveProgramSummary />
-                </div>
-              </div>
-            ) : (
-              <ProgramCards />
-            )}
-          </div>
+          <DashboardContent
+            welcomeName={welcomeName}
+            serverActiveProgramType={serverActiveProgramType}
+          />
 
           <div className="dashboard-content">
             <DashboardApp
