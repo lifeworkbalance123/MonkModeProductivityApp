@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { PU } from '@/lib/program-ui-tokens'
+import { getUserIdSafe } from '@/lib/supabaseAuthSafe'
 
 export type DistractionCategory =
   | 'general'
@@ -36,16 +37,14 @@ export default function DistractionLog({ dayNumber }: { dayNumber: number }) {
   const [showHistory, setShowHistory] = useState(false)
 
   const loadTodayCount = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return
+    const userId = await getUserIdSafe()
+    if (!userId) return
 
     const from = startOfLocalDayIso()
     const { data, error } = await supabase
       .from('distraction_logs')
       .select('id, logged_at, trigger_text, category, day_number')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .gte('logged_at', from)
       .order('logged_at', { ascending: false })
 
@@ -66,13 +65,11 @@ export default function DistractionLog({ dayNumber }: { dayNumber: number }) {
   async function logDistraction() {
     setLogging(true)
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
+      const userId = await getUserIdSafe()
+      if (!userId) return
 
       const { error } = await supabase.from('distraction_logs').insert({
-        user_id: user.id,
+        user_id: userId,
         trigger_text: trigger.trim(),
         category,
         day_number: dayNumber,

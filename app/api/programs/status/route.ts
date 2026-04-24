@@ -5,13 +5,14 @@ import { getProgramButtonText, PROGRAM_CATALOG, type ProgramType } from '@/lib/p
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-function createAnonClient() {
+function createUserScopedClient(token: string) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
   if (!url || !key) {
     throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY')
   }
   return createClient(url, key, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false, autoRefreshToken: false },
   })
 }
@@ -39,10 +40,10 @@ export async function GET(req: Request) {
       })
     }
 
-    const supabase = createAnonClient()
+    const supabase = createUserScopedClient(token)
     const {
       data: { user },
-    } = await supabase.auth.getUser(token)
+    } = await supabase.auth.getUser()
 
     if (!user) {
       return NextResponse.json({

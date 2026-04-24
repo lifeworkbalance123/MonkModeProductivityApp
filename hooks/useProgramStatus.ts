@@ -37,6 +37,24 @@ export interface UseProgramStatusResult {
   refetch: () => Promise<void>
 }
 
+function isLockRaceError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error ?? '')
+  const lower = msg.toLowerCase()
+  return lower.includes('lock') && (lower.includes('stole') || lower.includes('released'))
+}
+
+async function getAccessTokenWithRetry(): Promise<string | undefined> {
+  try {
+    const { data } = await supabase.auth.getSession()
+    return data.session?.access_token
+  } catch (error) {
+    if (!isLockRaceError(error)) throw error
+    await new Promise((resolve) => setTimeout(resolve, 120))
+    const { data } = await supabase.auth.getSession()
+    return data.session?.access_token
+  }
+}
+
 export function useProgramStatus(enabled = true): UseProgramStatusResult {
   const [activeProgram, setActiveProgram] = useState<ProgramStatusActiveProgram | null>(null)
   const [programs, setPrograms] = useState<ProgramStatusProgram[]>([])
@@ -60,8 +78,7 @@ export function useProgramStatus(enabled = true): UseProgramStatusResult {
       setLoading(true)
       setError(null)
 
-      const { data } = await supabase.auth.getSession()
-      const token = data.session?.access_token
+      const token = await getAccessTokenWithRetry()
 
       const res = await fetch('/api/programs/status', {
         cache: 'no-store',
@@ -89,6 +106,23 @@ export function useProgramStatus(enabled = true): UseProgramStatusResult {
   useEffect(() => {
     void refetch()
   }, [refetch])
+
+  useEffect(() => {
+    if (!enabled) return
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      void refetch()
+    })
+    const onFocus = () => {
+      void refetch()
+    }
+    window.addEventListener('focus', onFocus)
+    return () => {
+      subscription.unsubscribe()
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [enabled, refetch])
 
   return useMemo(
     () => ({

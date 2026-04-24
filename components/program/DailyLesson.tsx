@@ -14,6 +14,7 @@ import type { MilestoneCelebrationPayload } from '@/lib/milestoneCelebration'
 import { markDayComplete, PROGRAM_LABELS } from '@/lib/programUtils'
 import LessonMedia from '@/components/program/LessonMedia'
 import { PU } from '@/lib/program-ui-tokens'
+import { getUserIdSafe } from '@/lib/supabaseAuthSafe'
 
 type DailyLessonProps = {
   dayNumber: number
@@ -46,10 +47,8 @@ export default function DailyLesson({
         setCompleted(true)
         return
       }
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) {
+      const userId = await getUserIdSafe()
+      if (!userId) {
         setCompleted(false)
         return
       }
@@ -57,7 +56,7 @@ export default function DailyLesson({
       const { data } = await supabase
         .from('daily_actions')
         .select('completed')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('day_number', dayNumber)
         .maybeSingle()
 
@@ -80,14 +79,12 @@ export default function DailyLesson({
     if (readOnly) return
     setCompleting(true)
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
+      const userId = await getUserIdSafe()
+      if (!userId) return
 
       const { error: upsertError } = await supabase.from('daily_actions').upsert(
         {
-          user_id: user.id,
+          user_id: userId,
           day_number: dayNumber,
           completed: true,
           completed_at: new Date().toISOString(),
@@ -100,7 +97,7 @@ export default function DailyLesson({
         return
       }
 
-      const completeResult = await markDayComplete(user.id, dayNumber)
+      const completeResult = await markDayComplete(userId, dayNumber)
       if (completeResult.ok && completeResult.milestone) {
         setMilestone(completeResult.milestone)
       }

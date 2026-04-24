@@ -7,6 +7,7 @@ import { fetchUnreadBuddyNotifications, markBuddyNotificationRead } from '@/lib/
 import { fetchMyBuddyPair, getBuddyPartnerUserId } from '@/lib/buddyPairs'
 import { supabase } from '@/lib/supabase'
 import { PU } from '@/lib/program-ui-tokens'
+import { getUserIdSafe } from '@/lib/supabaseAuthSafe'
 
 type Props = {
   /** Current calendar program day (not “viewing” day). */
@@ -25,11 +26,9 @@ export default function BuddyEncouragementSection({ currentProgramDay, browsingH
   const notifiedIds = useRef(new Set<string>())
 
   const loadPair = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    setMyUserId(user?.id ?? null)
-    if (!user) {
+    const userId = await getUserIdSafe()
+    setMyUserId(userId)
+    if (!userId) {
       setPair(null)
       return
     }

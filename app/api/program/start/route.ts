@@ -2,13 +2,9 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { isAdmin } from '@/lib/admin'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import {
-  intakeFromRequestBody,
-  pickDistractions,
-  pickGoals,
-  timeFieldsForUserPrograms,
-  validateIntake,
-} from '@/lib/onboardingIntakeValidation'
+import { intakeFromRequestBody, validateIntake } from '@/lib/onboardingIntakeValidation'
+import { persistActiveProgramFromIntake } from '@/lib/persistActiveProgramFromIntake'
+import { ensureUserRow } from '@/lib/ensureUserRow'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -64,6 +60,10 @@ export async function POST(req: Request) {
     if (userErr || !user?.id) {
       return json({ error: 'Unauthorized' }, 401)
     }
+    const ensuredUser = await ensureUserRow(supabase, user)
+    if (!ensuredUser.ok) {
+      return json({ error: ensuredUser.error }, 500)
+    }
 
     let raw: Record<string, unknown>
     try {
@@ -91,51 +91,9 @@ export async function POST(req: Request) {
       return json({ error: err }, 400)
     }
 
-    const goals = pickGoals(intake)
-    const dist = pickDistractions(intake)
-    const times = timeFieldsForUserPrograms(intake)
-
-    const programRow = {
-      user_id: user.id,
-      program_type: intake.selected_program,
-      program_day: 1,
-      phase: 1,
-      status: 'active',
-      one_big_task: intake.one_big_task?.trim() || null,
-      baseline_wake_time: times.baseline_wake_time,
-      baseline_bed_time: times.baseline_bed_time,
-      deadline_date: intake.deadline_date?.trim() || null,
-      primary_goal: goals.length ? JSON.stringify(goals) : null,
-      biggest_distraction: dist.length ? JSON.stringify(dist) : null,
-      accountability_preference: intake.accountability_preference ?? null,
-      monk_mode_confirmed: intake.monk_mode_confirmed ?? false,
-      weekend_wake_time: times.weekend_wake_time,
-      weekend_bed_time: times.weekend_bed_time,
-    }
-
-    const { error: upErr } = await supabase
-      .from('user_programs')
-      .upsert(programRow, { onConflict: 'user_id' })
-
-    if (upErr) {
-      console.error('program/start user_programs', upErr)
-      return json({ error: upErr.message }, 500)
-    }
-
-    const logDate = new Date().toISOString().split('T')[0]
-    const { error: logErr } = await supabase.from('daily_logs').upsert(
-      {
-        user_id: user.id,
-        log_date: logDate,
-        program_type: intake.selected_program,
-        program_day: 1,
-      },
-      { onConflict: 'user_id,log_date' },
-    )
-
-    if (logErr) {
-      console.error('program/start daily_logs', logErr)
-      return json({ error: logErr.message }, 500)
+    const persisted = await persistActiveProgramFromIntake(supabase, user.id, intake)
+    if (!persisted.ok) {
+      return json({ error: persisted.error }, 500)
     }
 
     return json({ success: true }, 200)

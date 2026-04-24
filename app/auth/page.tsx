@@ -129,7 +129,11 @@ function safeRedirectPath(input: string | null | undefined): string | null {
 /** Wrong/missing env — not the same as a failed HTTP request. */
 function friendlySupabaseSetupError(): string {
   const detail = getSupabaseConfigProblem() ?? 'Check .env.local.'
-  return `${detail} Restart the dev server after saving (stop npm run dev, then run it again). ${authCallbackRedirectHint()}`
+  return (
+    `${detail} Restart the dev server after saving (stop npm run dev, then run it again). ` +
+    `${authCallbackRedirectHint()} ` +
+    'Open the app at http://localhost:3000 (two slashes after http: — not http:///).'
+  )
 }
 
 /** Real fetch failure while env shape looked valid (VPN, firewall, wrong region URL, etc.). */
@@ -338,7 +342,7 @@ export default function AuthPage() {
         email: authEmail,
         password,
         options: {
-          emailRedirectTo: `${getAuthCallbackBaseUrl()}/auth/callback`,
+          emailRedirectTo: `${getAuthCallbackBaseUrl()}/auth/callback${postAuthRedirect ? `?redirect=${encodeURIComponent(postAuthRedirect)}` : ''}`,
         },
       })
       if (error) {

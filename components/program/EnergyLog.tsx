@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { PU } from '@/lib/program-ui-tokens'
+import { getUserIdSafe } from '@/lib/supabaseAuthSafe'
 
 export const ENERGY_TIME_SLOTS = [
   '06:00',
@@ -83,16 +84,14 @@ export default function EnergyLog({ dayNumber }: { dayNumber: number }) {
   const [showForm, setShowForm] = useState(false)
 
   const loadTodayLogs = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return
+    const userId = await getUserIdSafe()
+    if (!userId) return
 
     const from = startOfLocalDayIso()
     const { data, error } = await supabase
       .from('energy_logs')
       .select('id, rating, logged_at, time_slot, notes, day_number')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .gte('logged_at', from)
       .order('logged_at', { ascending: false })
 
@@ -113,17 +112,15 @@ export default function EnergyLog({ dayNumber }: { dayNumber: number }) {
     if (selectedRating == null) return
     setSaving(true)
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
+      const userId = await getUserIdSafe()
+      if (!userId) return
 
       const from = startOfLocalDayIso()
 
       const { error: delError } = await supabase
         .from('energy_logs')
         .delete()
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('time_slot', selectedSlot)
         .gte('logged_at', from)
 
@@ -133,7 +130,7 @@ export default function EnergyLog({ dayNumber }: { dayNumber: number }) {
       }
 
       const { error: insError } = await supabase.from('energy_logs').insert({
-        user_id: user.id,
+        user_id: userId,
         rating: selectedRating,
         time_slot: selectedSlot,
         notes: notes.trim(),

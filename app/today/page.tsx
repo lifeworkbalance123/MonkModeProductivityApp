@@ -14,10 +14,12 @@ import { Tooltip } from '@/components/ui/first-visit-tooltip'
 import { FEATURE_INTRO_TOOLTIP_TODAY } from '@/lib/feature-intro-tooltips'
 import WeeklyReview, { isReviewDay } from '@/components/program/WeeklyReview'
 import { useProgram } from '@/hooks/useProgram'
+import { useProgramStatus } from '@/hooks/useProgramStatus'
 import {
   getPublishedLessonsForDayAsync,
   type DailyLesson as DailyLessonData,
 } from '@/lib/lessonContent'
+import { getDailyProgramLessonForDay } from '@/lib/dailyProgramLessons'
 import { supabase } from '@/lib/supabase'
 import {
   getMaxDays,
@@ -33,6 +35,7 @@ import {
 
 export default function TodayPage() {
   const { enrollment, loading, enrolled, refresh } = useProgram()
+  const { activeProgram, loading: statusLoading } = useProgramStatus()
   const [lesson, setLesson] = useState<DailyLessonData | null>(null)
   const [bonusLesson, setBonusLesson] = useState<DailyLessonData | null>(null)
   const [activeTab, setActiveTab] = useState<'primary' | 'bonus'>('primary')
@@ -48,7 +51,7 @@ export default function TodayPage() {
     minutesDiff: number
   } | null>(null)
 
-  const programDay = enrollment?.currentDay ?? 1
+  const programDay = activeProgram?.currentDay ?? enrollment?.currentDay ?? 1
   const displayDay = viewingDay ?? programDay
   const canGoBack = displayDay > 1
   const canGoForward = viewingDay !== null && viewingDay < programDay
@@ -68,7 +71,7 @@ export default function TodayPage() {
   }, [viewingDay])
 
   useEffect(() => {
-    if (!enrollment) {
+    if (!enrollment && !activeProgram) {
       setLesson(null)
       setBonusLesson(null)
       setActiveTab('primary')
@@ -79,6 +82,29 @@ export default function TodayPage() {
     let cancelled = false
     async function fetchLesson() {
       setLessonLoading(true)
+      if (activeProgram) {
+        const row = await getDailyProgramLessonForDay(activeProgram.program_type, day)
+        const primary: DailyLessonData = row
+          ? {
+              day,
+              phase: 'student',
+              title: row.title,
+              lesson: row.content_markdown,
+              action: '',
+              actionLabel: '',
+              category: 'focus',
+              tip: row.tip_topic ?? undefined,
+            }
+          : (await getPublishedLessonsForDayAsync(day)).primary
+        if (!cancelled) {
+          setLesson(primary)
+          setBonusLesson(null)
+          setActiveTab('primary')
+          setLessonLoading(false)
+        }
+        return
+      }
+
       const { primary, bonus } = await getPublishedLessonsForDayAsync(day)
       if (!cancelled) {
         setLesson(primary)
@@ -91,7 +117,7 @@ export default function TodayPage() {
     return () => {
       cancelled = true
     }
-  }, [enrollment, displayDay])
+  }, [enrollment, activeProgram, displayDay])
 
   useEffect(() => {
     if (!enrollment) {
@@ -291,7 +317,7 @@ export default function TodayPage() {
                       fontWeight: '500',
                     }}
                   >
-                    {viewingDay ? `Viewing Day ${viewingDay}` : `Today — Day ${enrollment.currentDay}`}
+                    {viewingDay ? `Viewing Day ${viewingDay}` : `Today — Day ${programDay}`}
                   </span>
                   {viewingDay ? (
                     <button

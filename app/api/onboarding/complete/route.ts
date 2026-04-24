@@ -2,12 +2,9 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { isAdmin } from '@/lib/admin'
 import type { ProgramIntakePayload, SelectedProgram } from '@/lib/onboardingProgramFlow'
-import { isSelectedProgram } from '@/lib/onboardingProgramFlow'
-import {
-  pickDistractions,
-  pickGoals,
-  validateIntake,
-} from '@/lib/onboardingIntakeValidation'
+import { pickDistractions, pickGoals, validateIntake } from '@/lib/onboardingIntakeValidation'
+import { persistActiveProgramFromIntake } from '@/lib/persistActiveProgramFromIntake'
+import { ensureUserRow } from '@/lib/ensureUserRow'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -43,6 +40,10 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser()
     if (userErr || !user?.id) {
       return json({ error: 'Unauthorized' }, 401)
+    }
+    const ensuredUser = await ensureUserRow(supabase, user)
+    if (!ensuredUser.ok) {
+      return json({ error: ensuredUser.error }, 500)
     }
 
     let body: ProgramIntakePayload
@@ -89,10 +90,21 @@ export async function POST(request: Request) {
       return json({ error: error.message }, 500)
     }
 
+    const adminSkip = skipPayment && isAdmin(user)
+    let activeProgramPersisted = false
+    if (adminSkip) {
+      const persisted = await persistActiveProgramFromIntake(supabase, user.id, body)
+      if (!persisted.ok) {
+        return json({ error: persisted.error }, 500)
+      }
+      activeProgramPersisted = true
+    }
+
     return json(
       {
         ok: true,
-        skipPaymentAccepted: skipPayment && isAdmin(user),
+        skipPaymentAccepted: adminSkip,
+        activeProgramPersisted,
       },
       200,
     )

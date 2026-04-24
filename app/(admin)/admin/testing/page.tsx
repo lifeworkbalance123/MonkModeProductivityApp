@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 
 type ProgramType = 'sprint_standard' | 'sprint_monk' | 'transform'
@@ -23,41 +24,22 @@ export default function AdminTestingPage() {
   const [selectedProgram, setSelectedProgram] = useState<ProgramType>('sprint_standard')
   const [jumpDay, setJumpDay] = useState(1)
 
-  const handleStartProgram = async () => {
-    setLoading(true)
+  const handleStartProgram = (programType: ProgramType) => {
     setError(null)
     setSuccess(null)
+    console.log('Button clicked for:', programType)
+    console.log('Router exists:', !!router)
+    sessionStorage.setItem('admin_test_session', 'true')
+    sessionStorage.setItem('admin_test_program', programType)
+    localStorage.setItem('skipPayment', 'true')
 
-    try {
-      const headers = await authHeaders()
-      if (!headers) {
-        throw new Error('Not logged in')
-      }
-
-      const res = await fetch('/api/admin/testing/start-program', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ programType: selectedProgram }),
-      })
-
-      const data = (await res.json()) as { error?: string }
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to start program')
-      }
-
-      // Mark this as an admin test flow and bypass payment in onboarding.
-      sessionStorage.setItem('admin_test_session', 'true')
-      sessionStorage.setItem('admin_test_program', selectedProgram)
-      localStorage.setItem('skipPayment', 'true')
-
-      setSuccess(`Started ${selectedProgram} program successfully!`)
-      router.push(`/onboarding?program=${selectedProgram}&skipPayment=true`)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to start program')
-    } finally {
-      setLoading(false)
-    }
+    toast.success(`Starting ${programType} onboarding...`)
+    const href = `/onboarding?${new URLSearchParams({
+      program: programType,
+      skipPayment: 'true',
+    }).toString()}`
+    router.push(href)
+    console.log('Redirect attempted')
   }
 
   const handleJumpToDay = async () => {
@@ -121,7 +103,7 @@ export default function AdminTestingPage() {
           </select>
           <button
             type="button"
-            onClick={() => void handleStartProgram()}
+            onClick={() => handleStartProgram(selectedProgram)}
             disabled={loading}
             className="w-full rounded bg-blue-600 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
           >

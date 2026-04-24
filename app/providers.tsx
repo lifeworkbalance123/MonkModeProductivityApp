@@ -7,6 +7,7 @@ import { ToastProvider } from '@/context/ToastContext'
 import { UpgradeOfferProvider } from '@/context/UpgradeOfferContext'
 import { SentryErrorBoundary } from '@/components/SentryErrorBoundary'
 import { CookieBanner } from '@/components/CookieBanner'
+import { Toaster } from '@/components/ui/sonner'
 import { SupportFloatingButton } from '@/components/SupportFloatingButton'
 import { PostHogBootstrap } from '@/lib/posthog'
 import { AuthHashRedirect } from '@/components/AuthHashRedirect'
@@ -21,6 +22,7 @@ export function Providers({ children }: { children: ReactNode }) {
           <ToastProvider>
             <UpgradeOfferProvider>
               {children}
+              <Toaster richColors position="top-center" />
               <SupportFloatingButton />
               <CookieBanner />
             </UpgradeOfferProvider>

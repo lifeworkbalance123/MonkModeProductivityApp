@@ -5,7 +5,7 @@ import type { ProgramIntakePayload } from '@/lib/onboardingProgramFlow'
 export async function completeOnboarding(
   formData: ProgramIntakePayload,
   opts?: { skipPayment?: boolean },
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: string; activeProgramPersisted?: boolean }> {
   const {
     data: { session },
   } = await supabase.auth.getSession()
@@ -24,9 +24,12 @@ export async function completeOnboarding(
       skipPayment: opts?.skipPayment === true,
     }),
   })
-  const data = (await res.json().catch(() => ({}))) as { error?: string }
+  const data = (await res.json().catch(() => ({}))) as {
+    error?: string
+    activeProgramPersisted?: boolean
+  }
   if (!res.ok) {
     return { ok: false, error: data.error ?? 'Request failed' }
   }
-  return { ok: true }
+  return { ok: true, activeProgramPersisted: data.activeProgramPersisted === true }
 }

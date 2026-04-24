@@ -319,7 +319,7 @@ export default function ProgramOnboardingClient({
         }
       }
 
-      router.push('/today')
+      router.push('/dashboard')
     } finally {
       setLoading(false)
     }

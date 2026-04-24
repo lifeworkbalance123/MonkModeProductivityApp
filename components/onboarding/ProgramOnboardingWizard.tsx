@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -17,6 +17,10 @@ import type { IntroFormData } from '@/components/onboarding/intro/introFormTypes
 /** High-level funnel phases (intro has its own sub-steps inside `ProgramIntroSteps`). */
 export const ONBOARDING_FLOW_STEPS = ['program', 'intro', 'questions', 'auth', 'payment'] as const
 export type OnboardingFlowStep = (typeof ONBOARDING_FLOW_STEPS)[number]
+type Props = {
+  initialProgramFromUrl?: SelectedProgram | null
+  initialSkipPaymentFromUrl?: boolean
+}
 
 function emptyIntake(program: SelectedProgram): ProgramIntakePayload {
   return {
@@ -46,13 +50,28 @@ function clearAdminTestFlags() {
   localStorage.removeItem('skipPayment')
 }
 
-export default function ProgramOnboardingWizard() {
+function clearOnboardingSelectionFlags() {
+  localStorage.removeItem('selectedProgram')
+  sessionStorage.removeItem('selectedProgram')
+  localStorage.removeItem('onboardingReturnUrl')
+}
+
+export default function ProgramOnboardingWizard({
+  initialProgramFromUrl = null,
+  initialSkipPaymentFromUrl = false,
+}: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  /** Prevents auth-step effect from advancing to payment while admin bypass is finishing. */
+  const adminBypassNavigatingRef = useRef(false)
+  const urlSkipPayment =
+    initialSkipPaymentFromUrl ||
+    searchParams.get('skipPayment') === 'true' ||
+    searchParams.get('skipPayment') === '1'
 
   /** Index into {@link ONBOARDING_FLOW_STEPS}. */
-  const [currentStepIndex, setCurrentStepIndex] = useState(0)
-  const [skipPayment, setSkipPayment] = useState(false)
+  const [currentStepIndex, setCurrentStepIndex] = useState(initialProgramFromUrl ? phaseIndexOf('intro') : 0)
+  const [skipPayment, setSkipPayment] = useState(urlSkipPayment)
   const steps = useMemo(
     () => (skipPayment ? ONBOARDING_FLOW_STEPS.filter((s) => s !== 'payment') : ONBOARDING_FLOW_STEPS),
     [skipPayment],
@@ -62,8 +81,17 @@ export default function ProgramOnboardingWizard() {
   /** Number of CMS intro steps for the chosen program (0 if none / skipped). */
   const [introStepCount, setIntroStepCount] = useState(0)
   const [signedIn, setSignedIn] = useState(false)
-  const [selected, setSelected] = useState<SelectedProgram | null>(null)
-  const [formData, setFormData] = useState<ProgramIntakePayload>(() => emptyIntake('sprint_standard'))
+  const [selected, setSelected] = useState<SelectedProgram | null>(initialProgramFromUrl)
+  const [formData, setFormData] = useState<ProgramIntakePayload>(() =>
+    emptyIntake(initialProgramFromUrl ?? 'sprint_standard'),
+  )
+  const authRedirectPath = useMemo(() => {
+    const params = new URLSearchParams()
+    if (selected) params.set('program', selected)
+    if (skipPayment) params.set('skipPayment', 'true')
+    const suffix = params.toString()
+    return suffix ? `/onboarding?${suffix}` : '/onboarding'
+  }, [selected, skipPayment])
 
   const refreshAuth = useCallback(async () => {
     const {
@@ -77,28 +105,53 @@ export default function ProgramOnboardingWizard() {
   }, [refreshAuth])
 
   useEffect(() => {
-    const fromUrl = searchParams.get('skipPayment')
-    const urlSkip = fromUrl === '1' || fromUrl === 'true'
-    const localSkip = localStorage.getItem('skipPayment') === 'true'
+    if (initialProgramFromUrl) {
+      setSelected(initialProgramFromUrl)
+      setFormData(emptyIntake(initialProgramFromUrl))
+      setCurrentStepIndex(phaseIndexOf('intro'))
+      localStorage.setItem('selectedProgram', initialProgramFromUrl)
+    }
+  }, [initialProgramFromUrl])
+
+  useEffect(() => {
+    const urlSkip = urlSkipPayment
     const adminSkip = sessionStorage.getItem('admin_test_session') === 'true'
-    const nextSkip = urlSkip || localSkip || adminSkip
+    const nextSkip = urlSkip || adminSkip
     setSkipPayment(nextSkip)
     if (nextSkip) localStorage.setItem('skipPayment', 'true')
+    else localStorage.removeItem('skipPayment')
 
-    const selectedFromUrl = urlParamToSelectedProgram(searchParams.get('program'))
+    const rawProgramParam = searchParams.get('program')
+    const selectedFromUrl = urlParamToSelectedProgram(rawProgramParam)
+    if (rawProgramParam && !selectedFromUrl) {
+      console.warn(`Invalid program: ${rawProgramParam}`)
+      setSelected(null)
+      setCurrentStepIndex(phaseIndexOf('program'))
+      localStorage.removeItem('selectedProgram')
+      return
+    }
+
     if (selectedFromUrl && isSelectedProgram(selectedFromUrl)) {
       setSelected(selectedFromUrl)
       setFormData(emptyIntake(selectedFromUrl))
+      setCurrentStepIndex(phaseIndexOf('intro'))
       localStorage.setItem('selectedProgram', selectedFromUrl)
       return
     }
 
-    const fromStorage = urlParamToSelectedProgram(localStorage.getItem('selectedProgram'))
-    if (fromStorage && isSelectedProgram(fromStorage)) {
-      setSelected(fromStorage)
-      setFormData(emptyIntake(fromStorage))
+    const fromLocalStorage = urlParamToSelectedProgram(localStorage.getItem('selectedProgram'))
+    if (fromLocalStorage && isSelectedProgram(fromLocalStorage)) {
+      setSelected(fromLocalStorage)
+      setFormData(emptyIntake(fromLocalStorage))
+      return
     }
-  }, [searchParams])
+
+    const fromSessionStorage = urlParamToSelectedProgram(sessionStorage.getItem('selectedProgram'))
+    if (fromSessionStorage && isSelectedProgram(fromSessionStorage)) {
+      setSelected(fromSessionStorage)
+      setFormData(emptyIntake(fromSessionStorage))
+    }
+  }, [searchParams, urlSkipPayment])
 
   useEffect(() => {
     const {
@@ -112,6 +165,7 @@ export default function ProgramOnboardingWizard() {
   }, [refreshAuth])
 
   useEffect(() => {
+    if (adminBypassNavigatingRef.current) return
     if (phase !== 'auth' || !signedIn || !selected) return
     if (skipPayment) {
       void completeAdminBypassFlow(selected)
@@ -140,6 +194,9 @@ export default function ProgramOnboardingWizard() {
 
   function goProgramContinue() {
     if (!selected) return
+    localStorage.setItem('selectedProgram', selected)
+    sessionStorage.setItem('selectedProgram', selected)
+    localStorage.setItem('onboardingReturnUrl', authRedirectPath)
     setFormData(emptyIntake(selected))
     setIntroStepCount(0)
     setCurrentStepIndex(phaseIndexOf('intro'))
@@ -167,29 +224,44 @@ export default function ProgramOnboardingWizard() {
   }
 
   async function completeAdminBypassFlow(program: SelectedProgram) {
+    if (adminBypassNavigatingRef.current) return
+    adminBypassNavigatingRef.current = true
+
     const intake = { ...formData, selected_program: program }
     const saved = await completeOnboarding(intake, { skipPayment: true })
-    if (!saved.ok) return
+    if (!saved.ok) {
+      adminBypassNavigatingRef.current = false
+      return
+    }
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-    const token = session?.access_token
-    if (!token) return
+    if (!saved.activeProgramPersisted) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) {
+        adminBypassNavigatingRef.current = false
+        return
+      }
 
-    const started = await fetch('/api/program/start', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ ...intake, skipPayment: true }),
-    })
+      const started = await fetch('/api/program/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ ...intake, skipPayment: true }),
+      })
 
-    if (!started.ok) return
+      if (!started.ok) {
+        adminBypassNavigatingRef.current = false
+        return
+      }
+    }
 
+    router.replace('/dashboard')
+    clearOnboardingSelectionFlags()
     clearAdminTestFlags()
-    router.push('/today')
   }
 
   async function goQuestionsContinue() {
@@ -258,6 +330,8 @@ export default function ProgramOnboardingWizard() {
         <ProgramSelection
           value={selected}
           onChange={(p) => {
+            localStorage.setItem('selectedProgram', p)
+            sessionStorage.setItem('selectedProgram', p)
             setSelected(p)
             setFormData(emptyIntake(p))
           }}
@@ -285,7 +359,12 @@ export default function ProgramOnboardingWizard() {
       ) : null}
 
       {phase === 'auth' ? (
-        <AuthStep signedIn={signedIn} onContinue={handleContinue} onRecheck={handleRecheckAuth} />
+        <AuthStep
+          signedIn={signedIn}
+          onContinue={handleContinue}
+          authRedirectPath={authRedirectPath}
+          onRecheck={handleRecheckAuth}
+        />
       ) : null}
 
       {phase === 'payment' && selected ? (

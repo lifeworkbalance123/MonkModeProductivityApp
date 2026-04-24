@@ -10,7 +10,25 @@ import {
   type DeepWorkCmsState,
 } from '@/lib/deep-work-site-settings'
 
-const BUCKET = 'lesson-media'
+async function getAccessToken(): Promise<string | null> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (session?.access_token) return session.access_token
+  const { data } = await supabase.auth.refreshSession()
+  return data.session?.access_token ?? null
+}
+
+function isLikelyMp3(file: File): boolean {
+  if (file.name.toLowerCase().endsWith('.mp3')) return true
+  const t = (file.type || '').toLowerCase()
+  return (
+    t.includes('mpeg') ||
+    t === 'audio/mp3' ||
+    t === 'audio/x-mpeg' ||
+    t === '' /* some browsers omit type */
+  )
+}
 
 export default function AdminDeepWorkPage() {
   const [loading, setLoading] = useState(true)
@@ -67,7 +85,7 @@ export default function AdminDeepWorkPage() {
   }
 
   async function uploadMp3(slotIndex: number, file: File) {
-    if (!file.type.includes('mpeg') && !file.name.toLowerCase().endsWith('.mp3')) {
+    if (!isLikelyMp3(file)) {
       setMessage('Please choose an MP3 file.')
       return
     }
@@ -75,37 +93,39 @@ export default function AdminDeepWorkPage() {
     setUploadingSlot(slotIndex)
     setMessage(null)
     try {
-      const prevPath = tracks[slotIndex]?.storagePath
-      if (prevPath) {
-        await supabase.storage.from(BUCKET).remove([prevPath])
+      const token = await getAccessToken()
+      if (!token) {
+        setMessage('Sign in again to upload (no session).')
+        return
       }
 
-      const safe = file.name.replace(/[^\w.\-]+/g, '_')
-      const path = `deep-work/${key}-${Date.now()}-${safe}`
-      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
-        cacheControl: '3600',
-        contentType: 'audio/mpeg',
-        upsert: false,
-      })
-      if (upErr) throw upErr
-
-      const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path)
-      const publicUrl = pub.publicUrl
-
       const label = tracks[slotIndex]?.label?.trim() || `Track ${slotIndex + 1}`
+      const fd = new FormData()
+      fd.set('slot', String(slotIndex))
+      fd.set('file', file)
+      fd.set('label', label)
 
-      const { error: dbErr } = await supabase.from('site_settings').upsert(
-        {
-          key,
-          value: label,
-          media_type: 'audio',
-          media_url: publicUrl,
-          media_storage_path: path,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'key' },
-      )
-      if (dbErr) throw dbErr
+      const res = await fetch('/api/admin/deep-work/upload-audio', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      })
+      const payload = (await res.json().catch(() => ({}))) as {
+        error?: string
+        publicUrl?: string
+        storagePath?: string
+      }
+      if (!res.ok) {
+        setMessage(payload.error ?? `Upload failed (${res.status})`)
+        return
+      }
+
+      const publicUrl = payload.publicUrl
+      const path = payload.storagePath
+      if (!publicUrl || !path) {
+        setMessage('Upload succeeded but response was incomplete. Refresh the page.')
+        return
+      }
 
       setTracks((prev) => {
         const next = [...prev]
@@ -127,25 +147,27 @@ export default function AdminDeepWorkPage() {
 
   async function clearMp3(slotIndex: number) {
     const key = DEEP_WORK_MP3_KEYS[slotIndex]
-    const prevPath = tracks[slotIndex]?.storagePath
     setMessage(null)
     try {
-      if (prevPath) {
-        await supabase.storage.from(BUCKET).remove([prevPath])
+      const token = await getAccessToken()
+      if (!token) {
+        setMessage('Sign in again to remove the file.')
+        return
       }
-      const label = tracks[slotIndex]?.label?.trim() || `Track ${slotIndex + 1}`
-      const { error } = await supabase.from('site_settings').upsert(
-        {
-          key,
-          value: label,
-          media_type: null,
-          media_url: null,
-          media_storage_path: null,
-          updated_at: new Date().toISOString(),
+
+      const res = await fetch('/api/admin/deep-work/clear-audio', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-        { onConflict: 'key' },
-      )
-      if (error) throw error
+        body: JSON.stringify({ slot: slotIndex }),
+      })
+      const payload = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        setMessage(payload.error ?? `Remove failed (${res.status})`)
+        return
+      }
       setTracks((prev) => {
         const next = [...prev]
         next[slotIndex] = {
@@ -199,8 +221,9 @@ export default function AdminDeepWorkPage() {
         </Link>
         <h1 className="mt-4 text-2xl font-semibold tracking-tight">Deep Work (Focus page)</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Intro copy and up to three MP3 ambient tracks for the Deep Work fullscreen player. Files upload to the{' '}
-          <code className="rounded bg-muted px-1 text-xs">lesson-media</code> bucket.
+          Intro copy and up to three MP3 ambient tracks for the Deep Work fullscreen player. MP3s are stored in the{' '}
+          <code className="rounded bg-muted px-1 text-xs">lesson-media</code> bucket via a server-side upload (same
+          admin rules as the rest of the admin panel).
         </p>
       </div>
 

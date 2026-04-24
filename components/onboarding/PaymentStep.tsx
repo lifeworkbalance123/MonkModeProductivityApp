@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { formatPriceCents } from '@/hooks/usePricing'
 import { supabase } from '@/lib/supabase'
@@ -27,8 +28,15 @@ function clearAdminTestFlags() {
   localStorage.removeItem('skipPayment')
 }
 
+function clearOnboardingSelectionFlags() {
+  localStorage.removeItem('selectedProgram')
+  sessionStorage.removeItem('selectedProgram')
+  localStorage.removeItem('onboardingReturnUrl')
+}
+
 export function PaymentStep({ intake, onBack, skipPayment = false }: Props) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const p = intake.selected_program
@@ -40,6 +48,12 @@ export function PaymentStep({ intake, onBack, skipPayment = false }: Props) {
     setBusy(true)
     setError(null)
     try {
+      const urlSkip =
+        searchParams.get('skipPayment') === 'true' ||
+        searchParams.get('skipPayment') === '1'
+      const adminSkip = sessionStorage.getItem('admin_test_session') === 'true'
+      const shouldSkipPayment = skipPayment || urlSkip || adminSkip
+
       const {
         data: { session },
       } = await supabase.auth.getSession()
@@ -48,12 +62,14 @@ export function PaymentStep({ intake, onBack, skipPayment = false }: Props) {
         setError('Sign in again to continue.')
         return
       }
-      const saved = await completeOnboarding(intake, { skipPayment })
+      const saved = await completeOnboarding(intake, {
+        skipPayment: shouldSkipPayment,
+      })
       if (!saved.ok) {
         setError(saved.error ?? 'Could not save your answers.')
         return
       }
-      if (skipPayment) {
+      if (shouldSkipPayment) {
         const res = await fetch('/api/program/start', {
           method: 'POST',
           headers: {
@@ -67,8 +83,9 @@ export function PaymentStep({ intake, onBack, skipPayment = false }: Props) {
           setError(data.error ?? 'Could not start program.')
           return
         }
+        clearOnboardingSelectionFlags()
         clearAdminTestFlags()
-        router.push('/today')
+        router.push('/dashboard')
         return
       }
       const checkout = await startProgramCheckout(stripePlan)
