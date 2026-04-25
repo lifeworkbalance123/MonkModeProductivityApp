@@ -63,9 +63,17 @@ type Props = {
   onChange: (next: MonkData) => void
   dataContext: DataServiceContext
   userId?: string
+  /** Increment after global schedule clear so per-day planner UI reloads without full page refresh. */
+  scheduleReloadTick?: number
 }
 
-export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
+export function DashboardApp({
+  data,
+  onChange,
+  dataContext,
+  userId,
+  scheduleReloadTick = 0,
+}: Props) {
   const { showToast } = useToast()
   const { isPro, isLoading: planLoading } = usePlan()
   const journalEvening = !planLoading && isPro
@@ -194,12 +202,12 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
   useEffect(() => {
     let cancelled = false
     void (async () => {
+      if (slotsDebounceRef.current) {
+        clearTimeout(slotsDebounceRef.current)
+        slotsDebounceRef.current = null
+      }
       const prev = prevDateKeyRef.current
       if (prev !== null && prev !== dateKey) {
-        if (slotsDebounceRef.current) {
-          clearTimeout(slotsDebounceRef.current)
-          slotsDebounceRef.current = null
-        }
         await saveDashboardDayJournal(
           dataContext,
           prev,
@@ -216,7 +224,7 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
     return () => {
       cancelled = true
     }
-  }, [dateKey, loadDayData, dataContext])
+  }, [dateKey, loadDayData, dataContext, scheduleReloadTick])
 
   useEffect(() => {
     if (!userId) {

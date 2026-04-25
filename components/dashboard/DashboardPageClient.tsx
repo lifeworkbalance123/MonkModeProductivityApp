@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useCallback, useEffect, useMemo } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { DashboardApp } from '@/components/dashboard-app'
 import { ProgramCards } from '@/components/dashboard/ProgramCards'
 import { TodayChecklist } from '@/components/dashboard/TodayChecklist'
@@ -16,6 +16,7 @@ import { useToast } from '@/context/ToastContext'
 import { captureEvent } from '@/lib/analytics'
 import type { ProgramType } from '@/lib/programStatus'
 import { supabase } from '@/lib/supabase'
+import { withAuthStorageLockRetry } from '@/lib/authStorageLock'
 import { ClearAllDataButton } from '@/components/schedule/ClearAllDataButton'
 
 export interface DashboardPageClientProps {
@@ -81,7 +82,8 @@ export function DashboardPageClient({
   serverActiveProgramType,
   userId,
 }: DashboardPageClientProps) {
-  const { data, setData, ready, dataContext, loadError, reload } = useMonkData()
+  const { data, setData, ready, dataContext, loadError, reload, flush } = useMonkData()
+  const [scheduleReloadTick, setScheduleReloadTick] = useState(0)
   const { activeProgram } = useProgramStatus()
   const trial = useTrialBanner()
   const { user } = useAuth()
@@ -112,7 +114,7 @@ export function DashboardPageClient({
   const clearScheduleData = useCallback(async () => {
     const {
       data: { session },
-    } = await supabase.auth.getSession()
+    } = await withAuthStorageLockRetry(() => supabase.auth.getSession())
     const token = session?.access_token
 
     const res = await fetch('/api/schedule/clear', {
@@ -152,6 +154,11 @@ export function DashboardPageClient({
                     /* ignore */
                   }
                   setData((d) => ({ ...d, timeSlots: [] }))
+                  const persist = await flush()
+                  if (!persist.ok && persist.error) {
+                    throw new Error(persist.error)
+                  }
+                  setScheduleReloadTick((n) => n + 1)
                   showToast('Cleared schedule data.', 'success')
                 }}
               />
@@ -164,6 +171,7 @@ export function DashboardPageClient({
               onChange={setData}
               dataContext={dataContext}
               userId={effectiveUserId}
+              scheduleReloadTick={scheduleReloadTick}
             />
           </div>
         </div>
