@@ -89,6 +89,12 @@ export default function AdminDeepWorkPage() {
       setMessage('Please choose an MP3 file.')
       return
     }
+    // Keep this aligned with bucket config (50 MiB) and avoid silent failures.
+    const MAX_BYTES = 50 * 1024 * 1024
+    if (file.size > MAX_BYTES) {
+      setMessage('That MP3 is too large (max 50MB).')
+      return
+    }
     const key = DEEP_WORK_MP3_KEYS[slotIndex]
     setUploadingSlot(slotIndex)
     setMessage(null)
@@ -100,30 +106,77 @@ export default function AdminDeepWorkPage() {
       }
 
       const label = tracks[slotIndex]?.label?.trim() || `Track ${slotIndex + 1}`
-      const fd = new FormData()
-      fd.set('slot', String(slotIndex))
-      fd.set('file', file)
-      fd.set('label', label)
+      const bucket = 'lesson-media'
+      const safe = file.name.replace(/[^\w.\-]+/g, '_')
+      let uploadPath = `deep-work/${key}-${Date.now()}-${safe}`
 
-      const res = await fetch('/api/admin/deep-work/upload-audio', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: fd,
+      // Prefer direct-to-storage upload (avoids host request size limits).
+      // If policies/env are misconfigured, fall back to the server route.
+      const prevPath = tracks[slotIndex]?.storagePath ?? null
+      if (prevPath) {
+        await supabase.storage.from(bucket).remove([prevPath])
+      }
+
+      const { error: upErr } = await supabase.storage.from(bucket).upload(uploadPath, file, {
+        cacheControl: '3600',
+        contentType: 'audio/mpeg',
+        upsert: false,
       })
-      const payload = (await res.json().catch(() => ({}))) as {
-        error?: string
-        publicUrl?: string
-        storagePath?: string
-      }
-      if (!res.ok) {
-        setMessage(payload.error ?? `Upload failed (${res.status})`)
-        return
+
+      let publicUrl: string | null = null
+      if (!upErr) {
+        const { data: pub } = supabase.storage.from(bucket).getPublicUrl(uploadPath)
+        publicUrl = pub.publicUrl ?? null
+
+        const { error: dbErr } = await supabase.from('site_settings').upsert(
+          {
+            key,
+            value: label,
+            media_type: 'audio',
+            media_url: publicUrl,
+            media_storage_path: uploadPath,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'key' },
+        )
+
+        if (dbErr) {
+          await supabase.storage.from(bucket).remove([uploadPath])
+          throw dbErr
+        }
+      } else {
+        // Fallback: server-side upload (service role) when client policies fail.
+        const fd = new FormData()
+        fd.set('slot', String(slotIndex))
+        fd.set('file', file)
+        fd.set('label', label)
+
+        const res = await fetch('/api/admin/deep-work/upload-audio', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
+        })
+        const payload = (await res.json().catch(() => ({}))) as {
+          error?: string
+          publicUrl?: string
+          storagePath?: string
+        }
+        if (!res.ok) {
+          setMessage(payload.error ?? `Upload failed (${res.status})`)
+          return
+        }
+        publicUrl = payload.publicUrl ?? null
+        const serverPath = payload.storagePath ?? null
+        if (!publicUrl || !serverPath) {
+          setMessage('Upload succeeded but response was incomplete. Refresh the page.')
+          return
+        }
+        // For consistency with the state update below.
+        uploadPath = serverPath
       }
 
-      const publicUrl = payload.publicUrl
-      const path = payload.storagePath
-      if (!publicUrl || !path) {
-        setMessage('Upload succeeded but response was incomplete. Refresh the page.')
+      if (!publicUrl) {
+        setMessage('Upload succeeded but no public URL was returned. Refresh the page.')
         return
       }
 
@@ -133,7 +186,7 @@ export default function AdminDeepWorkPage() {
           ...next[slotIndex],
           key,
           url: publicUrl,
-          storagePath: path,
+          storagePath: uploadPath,
         }
         return next
       })
