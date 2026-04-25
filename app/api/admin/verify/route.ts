@@ -40,10 +40,30 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    const okAdmin = isAdmin(user)
+    if (okAdmin && user.id) {
+      // Keep DB admin flag in sync with app-level admin access (email/metadata).
+      // Storage and site_settings RLS check `public.users.is_admin`.
+      const { error: upErr } = await adminClient
+        .from('users')
+        .upsert(
+          {
+            id: user.id,
+            email: user.email ?? null,
+            is_admin: true,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' },
+        )
+      if (upErr) {
+        console.warn('Admin verify: could not upsert users.is_admin', upErr.message)
+      }
+    }
+
     return NextResponse.json({
       loggedIn: true,
       userEmail: user.email ?? null,
-      isAdmin: isAdmin(user),
+      isAdmin: okAdmin,
       adminEmailsFromEnv: process.env.ADMIN_EMAILS?.split(',') || [],
       nodeEnv: process.env.NODE_ENV,
     })
