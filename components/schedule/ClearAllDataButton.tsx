@@ -11,7 +11,7 @@ type Props = {
   hasData?: boolean
 }
 
-export default function ClearAllDataButton({ className, onClear, hasData = true }: Props) {
+function ClearAllDataButton({ className, onClear, hasData = true }: Props) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
 
@@ -69,4 +69,7 @@ export default function ClearAllDataButton({ className, onClear, hasData = true 
     </>
   )
 }
+
+export { ClearAllDataButton }
+export default ClearAllDataButton
 
