@@ -20,6 +20,8 @@ import { TIME_SLOT_CATEGORY_OPTIONS } from '@/components/time-schedule-card'
 import { Tooltip } from '@/components/ui/first-visit-tooltip'
 import { captureEvent } from '@/lib/analytics'
 import type { TimeSlot } from '@/lib/monk-types'
+import ClearAllDataButton from '@/components/schedule/ClearAllDataButton'
+import { supabase } from '@/lib/supabase'
 
 export default function SchedulePage() {
   const { showToast } = useToast()
@@ -99,6 +101,22 @@ export default function SchedulePage() {
     })
   }
 
+  async function clearScheduleData() {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    const token = session?.access_token
+
+    const res = await fetch('/api/schedule/clear', {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    const payload = (await res.json().catch(() => ({}))) as { error?: string }
+    if (!res.ok) {
+      throw new Error(payload.error ?? `Clear failed (${res.status})`)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {loadError ? (
@@ -125,10 +143,26 @@ export default function SchedulePage() {
           text="Block time for deep work, meetings, and breaks. Protect your morning focus block – it's your most valuable hour."
         >
           <div className="mb-6">
-            <h1 className="text-2xl font-semibold tracking-tight">Time Schedule</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Plan your day in blocks. Edits are saved with your dashboard data.
-            </p>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h1 className="text-2xl font-semibold tracking-tight">Time Schedule</h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Plan your day in blocks. Edits are saved with your dashboard data.
+                </p>
+              </div>
+              <ClearAllDataButton
+                clearRequest={clearScheduleData}
+                onCleared={() => {
+                  try {
+                    localStorage.removeItem('monk-dashboard-day-v1')
+                  } catch {
+                    /* ignore */
+                  }
+                  setData((d) => ({ ...d, timeSlots: [] }))
+                  showToast('Cleared schedule data.', 'success')
+                }}
+              />
+            </div>
             <Link
               href="/dashboard"
               className="mt-3 inline-block text-sm font-medium text-accent hover:underline"
