@@ -151,8 +151,9 @@ export default function SchedulePage() {
                 </p>
               </div>
               <ClearAllDataButton
-                clearRequest={clearScheduleData}
-                onCleared={() => {
+                hasData={data.timeSlots.length > 0}
+                onClear={async () => {
+                  await clearScheduleData()
                   try {
                     localStorage.removeItem('monk-dashboard-day-v1')
                   } catch {
