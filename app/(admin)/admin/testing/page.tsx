@@ -66,6 +66,9 @@ export default function AdminTestingPage() {
       }
 
       setSuccess(`Jumped to day ${jumpDay} successfully!`)
+      // Take the tester directly to that day. `/today` reads `?day=` as viewingDay,
+      // so even if program status caching lags, the page will show the requested day.
+      router.push(`/today?day=${jumpDay}`)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to jump to day')
     } finally {
