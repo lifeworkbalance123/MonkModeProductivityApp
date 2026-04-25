@@ -120,6 +120,40 @@ function TodayPageInner() {
         return
       }
 
+      // Production users may have `program_enrollments.program_type` set (Sprint/Transform/etc.)
+      // but no active `user_programs` row yet. In that case, still try to load the CMS lesson so
+      // Discussions can attach to a real `daily_lessons.id`.
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        if (user?.id) {
+          const pt = await getProgramType(user.id)
+          if (pt !== '60day') {
+            const row = await getDailyProgramLessonForDay(pt, day)
+            if (row && !cancelled) {
+              setLesson({
+                day,
+                phase: 'student',
+                title: row.title,
+                lesson: row.content_markdown,
+                action: '',
+                actionLabel: '',
+                category: 'focus',
+                tip: row.tip_topic ?? undefined,
+              })
+              setBonusLesson(null)
+              setActiveTab('primary')
+              setCmsLessonId(row.id)
+              setLessonLoading(false)
+              return
+            }
+          }
+        }
+      } catch {
+        // Fall through to the published lesson below.
+      }
+
       const { primary, bonus } = await getPublishedLessonsForDayAsync(day)
       if (!cancelled) {
         setLesson(primary)
