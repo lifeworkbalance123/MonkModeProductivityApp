@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useEffect, useMemo } from 'react'
+import { memo, useCallback, useEffect, useMemo } from 'react'
 import { DashboardApp } from '@/components/dashboard-app'
 import { ProgramCards } from '@/components/dashboard/ProgramCards'
 import { TodayChecklist } from '@/components/dashboard/TodayChecklist'
@@ -12,8 +12,11 @@ import { useMonkData } from '@/hooks/use-monk-data'
 import { useProgramStatus } from '@/hooks/useProgramStatus'
 import { useTrialBanner } from '@/hooks/use-trial-banner'
 import { useAuth } from '@/context/AuthContext'
+import { useToast } from '@/context/ToastContext'
 import { captureEvent } from '@/lib/analytics'
 import type { ProgramType } from '@/lib/programStatus'
+import { supabase } from '@/lib/supabase'
+import { ClearAllDataButton } from '@/components/schedule/ClearAllDataButton'
 
 export interface DashboardPageClientProps {
   welcomeName?: string
@@ -24,11 +27,13 @@ export interface DashboardPageClientProps {
 type DashboardContentProps = {
   welcomeName: string
   serverActiveProgramType: ProgramType | null
+  headerActions?: React.ReactNode
 }
 
 const DashboardContent = memo(function DashboardContent({
   welcomeName,
   serverActiveProgramType,
+  headerActions,
 }: DashboardContentProps) {
   return (
     <div className="container mx-auto p-6">
@@ -39,7 +44,10 @@ const DashboardContent = memo(function DashboardContent({
             Welcome back, {welcomeName}
           </p>
         </div>
-        <ExpandAllButton className="shrink-0" />
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {headerActions}
+          <ExpandAllButton className="shrink-0" />
+        </div>
       </div>
 
       <CollapsibleSection
@@ -77,6 +85,7 @@ export function DashboardPageClient({
   const { activeProgram } = useProgramStatus()
   const trial = useTrialBanner()
   const { user } = useAuth()
+  const { showToast } = useToast()
 
   useEffect(() => {
     if (!user?.id || !trial.visible || trial.expired || !ready) return
@@ -100,6 +109,22 @@ export function DashboardPageClient({
     [serverActiveProgramType, activeProgram?.program_type],
   )
 
+  const clearScheduleData = useCallback(async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    const token = session?.access_token
+
+    const res = await fetch('/api/schedule/clear', {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    const payload = (await res.json().catch(() => ({}))) as { error?: string }
+    if (!res.ok) {
+      throw new Error(payload.error ?? `Clear failed (${res.status})`)
+    }
+  }, [])
+
   return (
     <div className="min-h-screen bg-background">
       {loadError ? (
@@ -116,6 +141,21 @@ export function DashboardPageClient({
           <DashboardContent
             welcomeName={effectiveWelcomeName}
             serverActiveProgramType={effectiveProgramType}
+            headerActions={
+              <ClearAllDataButton
+                hasData={data.timeSlots.length > 0}
+                onClear={async () => {
+                  await clearScheduleData()
+                  try {
+                    localStorage.removeItem('monk-dashboard-day-v1')
+                  } catch {
+                    /* ignore */
+                  }
+                  setData((d) => ({ ...d, timeSlots: [] }))
+                  showToast('Cleared schedule data.', 'success')
+                }}
+              />
+            }
           />
 
           <div className="dashboard-content container mx-auto p-6 pt-0">
