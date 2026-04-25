@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Heart, MessageCircle, Pencil, Trash2, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { withAuthStorageLockRetry } from '@/lib/authStorageLock'
 import type { LessonCommentApi } from '@/lib/lessonComments'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -36,7 +37,9 @@ function avatarInitial(c: LessonCommentApi) {
 }
 
 async function authJsonHeaders(): Promise<Record<string, string>> {
-  const { data: { session } } = await supabase.auth.getSession()
+  const {
+    data: { session },
+  } = await withAuthStorageLockRetry(() => supabase.auth.getSession())
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (session?.access_token) {
     headers.Authorization = `Bearer ${session.access_token}`
@@ -128,7 +131,9 @@ function CommentItem({
     if (!confirm('Delete this comment? Replies will be removed too.')) return
     setDelBusy(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const {
+        data: { session },
+      } = await withAuthStorageLockRetry(() => supabase.auth.getSession())
       const headers: Record<string, string> = {}
       if (session?.access_token) {
         headers.Authorization = `Bearer ${session.access_token}`

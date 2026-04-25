@@ -3,6 +3,7 @@
 import { useCallback, useState } from 'react'
 import { Share2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { withAuthStorageLockRetry } from '@/lib/authStorageLock'
 import { useToast } from '@/context/ToastContext'
 
 export type ShareButtonProps = {
@@ -43,7 +44,9 @@ export default function ShareButton({ lessonId, programType, day, className }: S
       setShowTooltip(true)
       setTimeout(() => setShowTooltip(false), 2000)
 
-      const { data: { session } } = await supabase.auth.getSession()
+      const {
+        data: { session },
+      } = await withAuthStorageLockRetry(() => supabase.auth.getSession())
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (session?.access_token) {
         headers.Authorization = `Bearer ${session.access_token}`

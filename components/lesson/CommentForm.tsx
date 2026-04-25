@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { withAuthStorageLockRetry } from '@/lib/authStorageLock'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 
@@ -108,7 +109,9 @@ function CommentForm(props: CommentFormProps) {
     setSaving(true)
     setError(null)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const {
+        data: { session },
+      } = await withAuthStorageLockRetry(() => supabase.auth.getSession())
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (session?.access_token) {
         headers.Authorization = `Bearer ${session.access_token}`
