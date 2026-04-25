@@ -6,9 +6,11 @@ import {
   timeFieldsForUserPrograms,
   validateIntake,
 } from '@/lib/onboardingIntakeValidation'
+import { upsertProgramEnrollmentForTrack } from '@/lib/programUtils'
 
 /**
- * Upserts `user_programs` (active day 1) and today's `daily_logs` row from validated intake.
+ * Upserts `user_programs` (active day 1), today's `daily_logs`, and matching `program_enrollments`
+ * from validated intake.
  * Used by POST /api/program/start and admin skip-payment completion.
  */
 export async function persistActiveProgramFromIntake(
@@ -64,6 +66,16 @@ export async function persistActiveProgramFromIntake(
   if (logErr) {
     console.error('persistActiveProgramFromIntake daily_logs', logErr)
     return { ok: false, error: logErr.message }
+  }
+
+  const en = await upsertProgramEnrollmentForTrack(
+    supabase,
+    userId,
+    intake.selected_program,
+    { startDate: logDate },
+  )
+  if (!en.ok) {
+    return { ok: false, error: en.error }
   }
 
   return { ok: true }

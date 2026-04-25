@@ -2,26 +2,22 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
+import { isAuthStorageLockError, sleep, withAuthStorageLockRetry } from '@/lib/authStorageLock'
 import { supabase } from '@/lib/supabase'
 import { userHasActiveProgram } from '@/lib/activeProgramClient'
-
-function isLockRaceError(error: unknown): boolean {
-  const msg = error instanceof Error ? error.message : String(error ?? '')
-  return msg.toLowerCase().includes('lock') && msg.toLowerCase().includes('stole')
-}
 
 async function readCurrentUserIdWithRetry(): Promise<string | null> {
   try {
     const {
       data: { user },
-    } = await supabase.auth.getUser()
+    } = await withAuthStorageLockRetry(() => supabase.auth.getUser())
     return user?.id ?? null
   } catch (error) {
-    if (!isLockRaceError(error)) throw error
-    await new Promise((resolve) => setTimeout(resolve, 120))
+    if (!isAuthStorageLockError(error)) throw error
+    await sleep(120)
     const {
       data: { session },
-    } = await supabase.auth.getSession()
+    } = await withAuthStorageLockRetry(() => supabase.auth.getSession())
     return session?.user?.id ?? null
   }
 }

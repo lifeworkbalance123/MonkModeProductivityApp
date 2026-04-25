@@ -36,6 +36,7 @@ import { usePlan } from '@/hooks/usePlan'
 import { useToast } from '@/context/ToastContext'
 import { GettingStartedChecklist } from '@/components/GettingStartedChecklist'
 import ProgramHeader from '@/components/program/ProgramHeader'
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
 import { HoverTooltip } from '@/components/ui/HoverTooltip'
 import type { DataServiceContext } from '@/lib/dataService'
 import {
@@ -450,77 +451,79 @@ export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
                   </div>
                 ))}
               </div>
-              <div className="mt-4 pt-3 border-t border-border/60 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Video className="w-4 h-4 text-accent shrink-0" />
-                  <span className="text-sm font-medium">
-                    Morning video & motivation text
-                  </span>
+              <CollapsibleSection
+                title="Morning Motivation & Video"
+                storageKey="morning-section-expanded"
+                defaultExpanded={false}
+                icon={<Video className="size-4 text-accent" aria-hidden />}
+                className="mb-0 mt-4 rounded-lg border border-border/60 bg-background/30"
+              >
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Upload plays in your browser for this session only. Paste a YouTube
+                    or direct video URL to keep it with your saved data.
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={onMorningVideoFile}
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-medium hover:bg-secondary md:min-h-0 md:px-2 md:py-1.5"
+                    >
+                      <Video className="w-3.5 h-3.5" />
+                      Upload video
+                    </button>
+                    <span className="text-xs text-muted-foreground">
+                      or paste a URL below
+                    </span>
+                  </div>
+                  <Input
+                    value={data.morningVideoUrl}
+                    onChange={(e) => setMorningVideoUrl(e.target.value)}
+                    className="h-9 text-sm bg-background/60 border-border"
+                    placeholder="Video URL (YouTube, or direct .mp4 / .webm link)"
+                  />
+                  <Textarea
+                    value={data.morningVideoNote}
+                    onChange={(e) => setMorningVideoNote(e.target.value)}
+                    className="min-h-[72px] text-sm bg-background/60 border-border resize-y"
+                    placeholder="Motivation text, intention, or notes for this morning…"
+                  />
+                  {localVideoPreviewUrl ? (
+                    <video
+                      src={localVideoPreviewUrl}
+                      controls
+                      className="w-full max-w-md rounded-md border border-border"
+                    />
+                  ) : null}
+                  {!localVideoPreviewUrl &&
+                  data.morningVideoUrl.trim() &&
+                  youtubeEmbedFromUrl(data.morningVideoUrl) ? (
+                    <iframe
+                      title="Morning video"
+                      src={youtubeEmbedFromUrl(data.morningVideoUrl)!}
+                      className="aspect-video w-full max-w-md rounded-md border border-border"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : null}
+                  {!localVideoPreviewUrl &&
+                  data.morningVideoUrl.trim() &&
+                  !youtubeEmbedFromUrl(data.morningVideoUrl) ? (
+                    <video
+                      src={data.morningVideoUrl.trim()}
+                      controls
+                      className="w-full max-w-md rounded-md border border-border"
+                    />
+                  ) : null}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Upload plays in your browser for this session only. Paste a YouTube
-                  or direct video URL to keep it with your saved data.
-                </p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="video/*"
-                  className="hidden"
-                  onChange={onMorningVideoFile}
-                />
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-medium hover:bg-secondary md:min-h-0 md:px-2 md:py-1.5"
-                  >
-                    <Video className="w-3.5 h-3.5" />
-                    Upload video
-                  </button>
-                  <span className="text-xs text-muted-foreground">
-                    or paste a URL below
-                  </span>
-                </div>
-                <Input
-                  value={data.morningVideoUrl}
-                  onChange={(e) => setMorningVideoUrl(e.target.value)}
-                  className="h-9 text-sm bg-background/60 border-border"
-                  placeholder="Video URL (YouTube, or direct .mp4 / .webm link)"
-                />
-                <Textarea
-                  value={data.morningVideoNote}
-                  onChange={(e) => setMorningVideoNote(e.target.value)}
-                  className="min-h-[72px] text-sm bg-background/60 border-border resize-y"
-                  placeholder="Motivation text, intention, or notes for this morning…"
-                />
-                {localVideoPreviewUrl ? (
-                  <video
-                    src={localVideoPreviewUrl}
-                    controls
-                    className="w-full max-w-md rounded-md border border-border"
-                  />
-                ) : null}
-                {!localVideoPreviewUrl &&
-                data.morningVideoUrl.trim() &&
-                youtubeEmbedFromUrl(data.morningVideoUrl) ? (
-                  <iframe
-                    title="Morning video"
-                    src={youtubeEmbedFromUrl(data.morningVideoUrl)!}
-                    className="aspect-video w-full max-w-md rounded-md border border-border"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                ) : null}
-                {!localVideoPreviewUrl &&
-                data.morningVideoUrl.trim() &&
-                !youtubeEmbedFromUrl(data.morningVideoUrl) ? (
-                  <video
-                    src={data.morningVideoUrl.trim()}
-                    controls
-                    className="w-full max-w-md rounded-md border border-border"
-                  />
-                ) : null}
-              </div>
+              </CollapsibleSection>
             </Card>
 
             <TimeScheduleCard

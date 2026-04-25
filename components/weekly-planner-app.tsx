@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
-  Tooltip as RadixTooltip,
+  TooltipRoot,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
@@ -96,7 +96,7 @@ export function WeeklyPlannerApp({
           </div>
           <div className="flex flex-wrap items-center justify-center gap-2 md:justify-end">
           {navDisabled ? (
-            <RadixTooltip>
+            <TooltipRoot>
               <TooltipTrigger asChild>
                 <span className="inline-flex">
                   <button
@@ -110,7 +110,7 @@ export function WeeklyPlannerApp({
                 </span>
               </TooltipTrigger>
               <TooltipContent>{weekTooltip}</TooltipContent>
-            </RadixTooltip>
+            </TooltipRoot>
           ) : (
             <button
               type="button"
@@ -122,7 +122,7 @@ export function WeeklyPlannerApp({
             </button>
           )}
           {navDisabled ? (
-            <RadixTooltip>
+            <TooltipRoot>
               <TooltipTrigger asChild>
                 <span className="inline-flex">
                   <button
@@ -135,7 +135,7 @@ export function WeeklyPlannerApp({
                 </span>
               </TooltipTrigger>
               <TooltipContent>{weekTooltip}</TooltipContent>
-            </RadixTooltip>
+            </TooltipRoot>
           ) : (
             <button
               type="button"
@@ -146,7 +146,7 @@ export function WeeklyPlannerApp({
             </button>
           )}
           {navDisabled ? (
-            <RadixTooltip>
+            <TooltipRoot>
               <TooltipTrigger asChild>
                 <span className="inline-flex">
                   <button
@@ -160,7 +160,7 @@ export function WeeklyPlannerApp({
                 </span>
               </TooltipTrigger>
               <TooltipContent>{weekTooltip}</TooltipContent>
-            </RadixTooltip>
+            </TooltipRoot>
           ) : (
             <button
               type="button"

@@ -1,29 +1,48 @@
 'use client'
 
 import * as React from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 
 import { cn } from '@/lib/utils'
 
+// ---------------------------------------------------------------------------
+// Radix compound API — use `TooltipRoot` + `TooltipTrigger` + `TooltipContent`
+// (e.g. sidebar, weekly planner). `TooltipProvider` wraps subtrees that need
+// shared delay / hoverable settings.
+// ---------------------------------------------------------------------------
+
 function TooltipProvider({
-  delayDuration = 0,
+  delayDuration = 300,
+  disableHoverableContent = true,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
   return (
     <TooltipPrimitive.Provider
       data-slot="tooltip-provider"
       delayDuration={delayDuration}
+      disableHoverableContent={disableHoverableContent}
       {...props}
     />
   )
 }
 
-function Tooltip({
+function TooltipRoot({
+  delayDuration = 300,
+  disableHoverableContent = true,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) {
   return (
-    <TooltipProvider>
-      <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+    <TooltipProvider
+      delayDuration={delayDuration}
+      disableHoverableContent={disableHoverableContent}
+    >
+      <TooltipPrimitive.Root
+        data-slot="tooltip"
+        delayDuration={delayDuration}
+        disableHoverableContent={disableHoverableContent}
+        {...props}
+      />
     </TooltipProvider>
   )
 }
@@ -58,4 +77,96 @@ function TooltipContent({
   )
 }
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+// ---------------------------------------------------------------------------
+// Simple `Tooltip` — string content, hover + focus, delay (no Radix).
+// Hover-only: no always-on mode. Use default cursor-help on the wrapper, or
+// pass cursor-help on the child trigger (e.g. <span className="cursor-help">ⓘ</span>).
+// ---------------------------------------------------------------------------
+
+export interface TooltipProps {
+  content: string
+  children: ReactNode
+  position?: 'top' | 'bottom' | 'left' | 'right'
+  /** ms before showing */
+  delay?: number
+  /** Merged onto the outer wrapper (default includes cursor-help). */
+  className?: string
+}
+
+export function Tooltip({
+  content,
+  children,
+  position = 'top',
+  delay = 300,
+  className,
+}: TooltipProps) {
+  const [isVisible, setIsVisible] = useState(false)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const showTooltip = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    timeoutRef.current = setTimeout(() => {
+      setIsVisible(true)
+    }, delay)
+  }
+
+  const hideTooltip = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
+    }
+    setIsVisible(false)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    }
+  }, [])
+
+  const positionClasses = {
+    top: 'bottom-full left-1/2 -translate-x-1/2 mb-2',
+    bottom: 'top-full left-1/2 -translate-x-1/2 mt-2',
+    left: 'right-full top-1/2 -translate-y-1/2 mr-2',
+    right: 'left-full top-1/2 -translate-y-1/2 ml-2',
+  } as const
+
+  const arrowClasses =
+    position === 'top'
+      ? '-bottom-1 left-1/2 -translate-x-1/2'
+      : position === 'bottom'
+        ? '-top-1 left-1/2 -translate-x-1/2'
+        : position === 'left'
+          ? '-right-1 top-1/2 -translate-y-1/2'
+          : '-left-1 top-1/2 -translate-y-1/2'
+
+  return (
+    <div
+      className={cn('relative inline-flex cursor-help', className)}
+      onMouseEnter={showTooltip}
+      onMouseLeave={hideTooltip}
+      onFocus={showTooltip}
+      onBlur={hideTooltip}
+    >
+      {children}
+      {isVisible ? (
+        <div
+          role="tooltip"
+          className={cn(
+            'absolute z-50 max-w-xs whitespace-normal rounded-md px-2 py-1.5 text-xs shadow-lg',
+            'bg-foreground text-background',
+            positionClasses[position],
+          )}
+        >
+          {content}
+          <div
+            className={cn('absolute size-2 rotate-45 bg-foreground', arrowClasses)}
+            aria-hidden
+          />
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+export { TooltipRoot, TooltipTrigger, TooltipContent, TooltipProvider }

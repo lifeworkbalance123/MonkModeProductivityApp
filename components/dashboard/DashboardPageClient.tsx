@@ -4,6 +4,9 @@ import { memo, useEffect, useMemo } from 'react'
 import { DashboardApp } from '@/components/dashboard-app'
 import { ProgramCards } from '@/components/dashboard/ProgramCards'
 import { TodayChecklist } from '@/components/dashboard/TodayChecklist'
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
+import { CollapsibleTimeBlock } from '@/components/ui/CollapsibleTimeBlock'
+import { ExpandAllButton } from '@/components/ui/ExpandAllButton'
 import { ErrorBanner } from '@/components/ErrorBanner'
 import { useMonkData } from '@/hooks/use-monk-data'
 import { useProgramStatus } from '@/hooks/useProgramStatus'
@@ -28,27 +31,39 @@ const DashboardContent = memo(function DashboardContent({
   serverActiveProgramType,
 }: DashboardContentProps) {
   return (
-    <div className="container mx-auto px-4 pb-0 pt-3">
-      <div className="mb-4">
-        <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Welcome back, {welcomeName}
-        </p>
+    <div className="container mx-auto p-6">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Welcome back, {welcomeName}
+          </p>
+        </div>
+        <ExpandAllButton className="shrink-0" />
       </div>
 
-      {serverActiveProgramType ? (
-        <div className="space-y-4">
-          <TodayChecklist programType={serverActiveProgramType} />
-          <div>
-            <h2 className="mb-2 text-sm font-semibold text-muted-foreground">
-              Other Programs
-            </h2>
-            <ProgramCards hideActiveProgramSummary />
+      <CollapsibleSection
+        title="Today & programs"
+        storageKey="dashboard:section:today"
+        defaultExpanded
+      >
+        {serverActiveProgramType ? (
+          <div className="space-y-4">
+            <TodayChecklist programType={serverActiveProgramType} />
+            <CollapsibleTimeBlock
+              time="More"
+              title="Other programs"
+              subtitle="Switch or start another track"
+              storageKey="dashboard:block:other-programs"
+              defaultExpanded
+            >
+              <ProgramCards hideActiveProgramSummary />
+            </CollapsibleTimeBlock>
           </div>
-        </div>
-      ) : (
-        <ProgramCards />
-      )}
+        ) : (
+          <ProgramCards />
+        )}
+      </CollapsibleSection>
     </div>
   )
 })
@@ -103,7 +118,7 @@ export function DashboardPageClient({
             serverActiveProgramType={effectiveProgramType}
           />
 
-          <div className="dashboard-content">
+          <div className="dashboard-content container mx-auto p-6 pt-0">
             <DashboardApp
               data={data}
               onChange={setData}

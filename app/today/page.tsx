@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import BuddyEncouragementSection from '@/components/program/BuddyEncouragementSection'
 import DailyLessonComponent from '@/components/program/DailyLesson'
@@ -32,14 +33,17 @@ import {
   getWakeComparisonMessage,
   saveWakeTarget,
 } from '@/lib/wakeProgression'
+import CommentList from '@/components/lesson/CommentList'
 
-export default function TodayPage() {
+function TodayPageInner() {
+  const searchParams = useSearchParams()
   const { enrollment, loading, enrolled, refresh } = useProgram()
   const { activeProgram, loading: statusLoading } = useProgramStatus()
   const [lesson, setLesson] = useState<DailyLessonData | null>(null)
   const [bonusLesson, setBonusLesson] = useState<DailyLessonData | null>(null)
   const [activeTab, setActiveTab] = useState<'primary' | 'bonus'>('primary')
   const [lessonLoading, setLessonLoading] = useState(false)
+  const [cmsLessonId, setCmsLessonId] = useState<string | null>(null)
   const [viewingDay, setViewingDay] = useState<number | null>(null)
   const [actionCompletedCurrent, setActionCompletedCurrent] = useState(false)
   const [programType, setProgramType] = useState<ProgramType>('60day')
@@ -59,6 +63,15 @@ export default function TodayPage() {
   const browsingHistory = viewingDay !== null
 
   useEffect(() => {
+    const dayParam = searchParams.get('day')
+    if (!dayParam) return
+    const n = parseInt(dayParam, 10)
+    if (Number.isFinite(n) && n >= 1) {
+      setViewingDay(n)
+    }
+  }, [searchParams])
+
+  useEffect(() => {
     if (viewingDay != null && enrollment && viewingDay > enrollment.currentDay) {
       setViewingDay(null)
     }
@@ -75,6 +88,7 @@ export default function TodayPage() {
       setLesson(null)
       setBonusLesson(null)
       setActiveTab('primary')
+      setCmsLessonId(null)
       setLessonLoading(false)
       return
     }
@@ -100,6 +114,7 @@ export default function TodayPage() {
           setLesson(primary)
           setBonusLesson(null)
           setActiveTab('primary')
+          setCmsLessonId(row?.id ?? null)
           setLessonLoading(false)
         }
         return
@@ -110,6 +125,7 @@ export default function TodayPage() {
         setLesson(primary)
         setBonusLesson(bonus)
         setActiveTab('primary')
+        setCmsLessonId(null)
         setLessonLoading(false)
       }
     }
@@ -425,6 +441,11 @@ export default function TodayPage() {
                   onCompletionLoaded={onCompletionLoaded}
                   onComplete={() => void refresh()}
                 />
+                <CommentList
+                  lessonId={cmsLessonId}
+                  programType={activeProgram?.program_type}
+                  day={displayDay}
+                />
                 {wakeTarget ? (
                   <div
                     style={{
@@ -549,5 +570,20 @@ export default function TodayPage() {
         ) : null}
       </div>
     </div>
+  )
+}
+
+export default function TodayPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background py-24 text-muted-foreground">
+          <Loader2 className="h-8 w-8 animate-spin" aria-hidden />
+          <span className="text-sm">Loading…</span>
+        </div>
+      }
+    >
+      <TodayPageInner />
+    </Suspense>
   )
 }

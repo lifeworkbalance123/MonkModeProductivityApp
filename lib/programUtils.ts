@@ -159,6 +159,53 @@ export async function enrollProgramForUser(
   return true
 }
 
+/** CMS tracks that match `user_programs.program_type` + onboarding intake. */
+const ENROLLMENT_TRACKS_FROM_INTAKE = new Set<ProgramType>([
+  'sprint_standard',
+  'sprint_monk',
+  'transform',
+])
+
+/**
+ * Upserts `program_enrollments` for a CMS track (Day 1, active, today as start).
+ * Keeps Today (`useProgram`) and `user_programs` in sync after intake persistence.
+ */
+export async function upsertProgramEnrollmentForTrack(
+  client: SupabaseClient,
+  userId: string,
+  programType: ProgramType,
+  opts?: { startDate?: string },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!ENROLLMENT_TRACKS_FROM_INTAKE.has(programType)) {
+    return {
+      ok: false,
+      error: `program_enrollments not upserted for program_type: ${programType}`,
+    }
+  }
+  const date = opts?.startDate ?? todayDateKey()
+  const now = new Date().toISOString()
+  const { error } = await client.from('program_enrollments').upsert(
+    {
+      user_id: userId,
+      program_type: programType,
+      start_date: date,
+      current_day: 1,
+      phase: 'student',
+      status: 'active',
+      paused_at: null,
+      completed_days: [],
+      last_active_date: date,
+      updated_at: now,
+    },
+    { onConflict: 'user_id' },
+  )
+  if (error) {
+    console.error('upsertProgramEnrollmentForTrack', error)
+    return { ok: false, error: error.message }
+  }
+  return { ok: true }
+}
+
 export async function enrollUser(
   userId: string,
   startDate?: string,

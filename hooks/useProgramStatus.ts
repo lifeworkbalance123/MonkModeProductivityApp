@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { withAuthStorageLockRetry } from '@/lib/authStorageLock'
 import type { ProgramType } from '@/lib/programStatus'
 
 export interface ProgramStatusProgram {
@@ -37,22 +38,9 @@ export interface UseProgramStatusResult {
   refetch: () => Promise<void>
 }
 
-function isLockRaceError(error: unknown): boolean {
-  const msg = error instanceof Error ? error.message : String(error ?? '')
-  const lower = msg.toLowerCase()
-  return lower.includes('lock') && (lower.includes('stole') || lower.includes('released'))
-}
-
 async function getAccessTokenWithRetry(): Promise<string | undefined> {
-  try {
-    const { data } = await supabase.auth.getSession()
-    return data.session?.access_token
-  } catch (error) {
-    if (!isLockRaceError(error)) throw error
-    await new Promise((resolve) => setTimeout(resolve, 120))
-    const { data } = await supabase.auth.getSession()
-    return data.session?.access_token
-  }
+  const { data } = await withAuthStorageLockRetry(() => supabase.auth.getSession())
+  return data.session?.access_token
 }
 
 export function useProgramStatus(enabled = true): UseProgramStatusResult {

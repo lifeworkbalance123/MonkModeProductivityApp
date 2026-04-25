@@ -903,3 +903,12 @@ html[data-color-theme='silent'] {
 .dashboard-skeleton {
   min-height: 120px;
 }
+
+/* Collapsible sections — apply `collapsible-content` to the panel body; toggle `collapsed` when closed. */
+.collapsible-content {
+  transition: all 0.2s ease-out;
+}
+
+.collapsible-content.collapsed {
+  display: none;
+}

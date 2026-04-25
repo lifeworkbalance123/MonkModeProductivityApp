@@ -7,6 +7,7 @@ import { AnnouncementBanner } from '@/components/AnnouncementBanner'
 import { AppPageChrome } from '@/components/navigation'
 import OfflineBanner from '@/components/OfflineBanner'
 import { useAuth } from '@/context/AuthContext'
+import { withAuthStorageLockRetry } from '@/lib/authStorageLock'
 import { supabase } from '@/lib/supabase'
 
 export default function ProtectedLayoutClient({
@@ -33,7 +34,7 @@ export default function ProtectedLayoutClient({
       void (async () => {
         const {
           data: { session: latestSession },
-        } = await supabase.auth.getSession()
+        } = await withAuthStorageLockRetry(() => supabase.auth.getSession())
 
         if (latestSession) {
           redirectInFlightRef.current = false

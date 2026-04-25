@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
+import { withAuthStorageLockRetry } from '@/lib/authStorageLock'
 import { supabase } from '@/lib/supabase'
 import * as Sentry from '@sentry/nextjs'
 import { identifyAnalyticsUser, resetAnalyticsUser } from '@/lib/analytics'
@@ -34,11 +35,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true
 
-    supabase.auth.getSession().then(({ data: { session: initial } }) => {
-      if (!mounted) return
-      setSession(initial)
-      setIsLoading(false)
-    })
+    void (async () => {
+      try {
+        const { data } = await withAuthStorageLockRetry(() => supabase.auth.getSession())
+        if (!mounted) return
+        setSession(data.session)
+      } catch (err) {
+        console.warn('AuthProvider getSession:', err)
+        if (mounted) setSession(null)
+      } finally {
+        if (mounted) setIsLoading(false)
+      }
+    })()
 
     const {
       data: { subscription },
