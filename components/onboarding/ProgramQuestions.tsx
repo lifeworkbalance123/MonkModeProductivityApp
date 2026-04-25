@@ -53,13 +53,15 @@ function toggleArray<T extends string>(current: T[] | null | undefined, id: T, o
 
 export function ProgramQuestions({ selectedProgram, intake, onChange, onBack, onContinue }: Props) {
   const title = SELECTED_PROGRAM_LABEL[selectedProgram]
+  const coachAvailable = false
 
   function valid(): boolean {
     if (selectedProgram === 'sprint_standard') {
       return (
         (intake.one_big_task ?? '').trim().length >= 2 &&
         !!(intake.baseline_wake_time ?? '').trim() &&
-        !!intake.accountability_preference
+        !!intake.accountability_preference &&
+        (coachAvailable || intake.accountability_preference !== 'coach')
       )
     }
     if (selectedProgram === 'sprint_monk') {
@@ -67,7 +69,8 @@ export function ProgramQuestions({ selectedProgram, intake, onChange, onBack, on
         intake.monk_mode_confirmed === true &&
         (intake.one_big_task ?? '').trim().length >= 2 &&
         !!(intake.baseline_wake_time ?? '').trim() &&
-        !!intake.accountability_preference
+        !!intake.accountability_preference &&
+        (coachAvailable || intake.accountability_preference !== 'coach')
       )
     }
     const goals = intake.primary_goal ?? []
@@ -82,7 +85,8 @@ export function ProgramQuestions({ selectedProgram, intake, onChange, onBack, on
       intake.sleep_hours_goal >= 4 &&
       intake.sleep_hours_goal <= 10 &&
       dist.length > 0 &&
-      !!intake.accountability_preference
+      !!intake.accountability_preference &&
+      (coachAvailable || intake.accountability_preference !== 'coach')
     )
   }
 
@@ -122,14 +126,34 @@ export function ProgramQuestions({ selectedProgram, intake, onChange, onBack, on
               className="flex flex-wrap gap-4"
             >
               {ACC.map((a) => (
-                <div key={a.id} className="flex items-center gap-2">
-                  <RadioGroupItem value={a.id} id={`acc-${a.id}`} />
-                  <Label htmlFor={`acc-${a.id}`} className="cursor-pointer font-normal">
+                <div
+                  key={a.id}
+                  className={cn(
+                    'flex items-center gap-2',
+                    !coachAvailable && a.id === 'coach' ? 'opacity-45' : '',
+                  )}
+                  title={!coachAvailable && a.id === 'coach' ? 'Coaching is coming soon' : undefined}
+                >
+                  <RadioGroupItem
+                    value={a.id}
+                    id={`acc-${a.id}`}
+                    disabled={!coachAvailable && a.id === 'coach'}
+                  />
+                  <Label
+                    htmlFor={`acc-${a.id}`}
+                    className={cn(
+                      'font-normal',
+                      !coachAvailable && a.id === 'coach' ? 'cursor-not-allowed' : 'cursor-pointer',
+                    )}
+                  >
                     {a.label}
                   </Label>
                 </div>
               ))}
             </RadioGroup>
+            {!coachAvailable ? (
+              <p className="text-xs text-muted-foreground">Coaching is coming soon.</p>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -181,14 +205,34 @@ export function ProgramQuestions({ selectedProgram, intake, onChange, onBack, on
               className="flex flex-wrap gap-4"
             >
               {ACC.map((a) => (
-                <div key={a.id} className="flex items-center gap-2">
-                  <RadioGroupItem value={a.id} id={`accm-${a.id}`} />
-                  <Label htmlFor={`accm-${a.id}`} className="cursor-pointer font-normal">
+                <div
+                  key={a.id}
+                  className={cn(
+                    'flex items-center gap-2',
+                    !coachAvailable && a.id === 'coach' ? 'opacity-45' : '',
+                  )}
+                  title={!coachAvailable && a.id === 'coach' ? 'Coaching is coming soon' : undefined}
+                >
+                  <RadioGroupItem
+                    value={a.id}
+                    id={`accm-${a.id}`}
+                    disabled={!coachAvailable && a.id === 'coach'}
+                  />
+                  <Label
+                    htmlFor={`accm-${a.id}`}
+                    className={cn(
+                      'font-normal',
+                      !coachAvailable && a.id === 'coach' ? 'cursor-not-allowed' : 'cursor-pointer',
+                    )}
+                  >
                     {a.label}
                   </Label>
                 </div>
               ))}
             </RadioGroup>
+            {!coachAvailable ? (
+              <p className="text-xs text-muted-foreground">Coaching is coming soon.</p>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -325,14 +369,34 @@ export function ProgramQuestions({ selectedProgram, intake, onChange, onBack, on
               className="flex flex-wrap gap-4"
             >
               {ACC.map((a) => (
-                <div key={a.id} className="flex items-center gap-2">
-                  <RadioGroupItem value={a.id} id={`acct-${a.id}`} />
-                  <Label htmlFor={`acct-${a.id}`} className="cursor-pointer font-normal">
+                <div
+                  key={a.id}
+                  className={cn(
+                    'flex items-center gap-2',
+                    !coachAvailable && a.id === 'coach' ? 'opacity-45' : '',
+                  )}
+                  title={!coachAvailable && a.id === 'coach' ? 'Coaching is coming soon' : undefined}
+                >
+                  <RadioGroupItem
+                    value={a.id}
+                    id={`acct-${a.id}`}
+                    disabled={!coachAvailable && a.id === 'coach'}
+                  />
+                  <Label
+                    htmlFor={`acct-${a.id}`}
+                    className={cn(
+                      'font-normal',
+                      !coachAvailable && a.id === 'coach' ? 'cursor-not-allowed' : 'cursor-pointer',
+                    )}
+                  >
                     {a.label}
                   </Label>
                 </div>
               ))}
             </RadioGroup>
+            {!coachAvailable ? (
+              <p className="text-xs text-muted-foreground">Coaching is coming soon.</p>
+            ) : null}
           </div>
         </div>
       ) : null}
