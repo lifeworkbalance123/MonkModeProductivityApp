@@ -138,7 +138,7 @@ export default function GoalsPage() {
         <OneBigTask />
         <Tooltip
           id="tooltip_goals"
-          text="Set a 30, 60, or 90\u2011day goal. Break it into weekly steps. Your program will remind you to review progress."
+          text="Set a 30, 60, or 90 day goal. Break it into weekly steps. Your program will remind you to review progress."
         >
           <div>
             <h1 className="text-2xl font-semibold">Goals</h1>

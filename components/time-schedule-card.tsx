@@ -4,13 +4,14 @@ import Link from 'next/link'
 import {
   memo,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
 } from 'react'
 import { addMinutes, format, parse } from 'date-fns'
-import { Clock, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Clock, Plus, Trash2 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -147,8 +148,6 @@ const TimeScheduleSlotRow = memo(function TimeScheduleSlotRow({
   repeat,
   updateSlot,
   deleteSlot,
-  setActivityRef,
-  focusActivity,
   onApplyTimeBlockToWeek,
   setRepeatEnabled,
   toggleRepeatDay,
@@ -163,8 +162,6 @@ const TimeScheduleSlotRow = memo(function TimeScheduleSlotRow({
     updates: { time?: string; category?: string; activity?: string },
   ) => void
   deleteSlot: (id: string) => void
-  setActivityRef: (id: string, el: HTMLInputElement | null) => void
-  focusActivity: (id: string) => void
   onApplyTimeBlockToWeek?: (
     block: Pick<TimeSlot, 'time' | 'category' | 'activity' | 'colorClass'>,
     dayIndices: number[],
@@ -173,14 +170,28 @@ const TimeScheduleSlotRow = memo(function TimeScheduleSlotRow({
   toggleRepeatDay: (id: string, dayIndex: number) => void
   applyRepeat: (slot: TimeSlot) => void | Promise<void>
 }) {
+  const [draftActivity, setDraftActivity] = useState(slot.activity)
+  const [focused, setFocused] = useState(false)
+
+  useEffect(() => {
+    if (focused) return
+    setDraftActivity(slot.activity)
+  }, [slot.activity, focused])
+
+  const commitActivity = useCallback(() => {
+    const next = draftActivity
+    if (next === slot.activity) return
+    updateSlot(slot.id, { activity: next })
+  }, [draftActivity, slot.activity, slot.id, updateSlot])
+
   return (
-    <div className="rounded-lg border border-border/60 bg-secondary/20 p-2 space-y-2">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-3">
+    <div className="rounded-lg border border-border/60 bg-secondary/20 p-1 space-y-1">
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-2">
         <select
           value={coerced}
           onChange={(e) => updateSlot(slot.id, { time: e.target.value })}
           aria-label="Time"
-          className="h-11 w-full shrink-0 rounded-md border border-border bg-background/60 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring md:h-8 md:w-[7.25rem]"
+          className="h-7 w-full shrink-0 rounded-md border border-border bg-background/60 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring md:w-[7.25rem]"
         >
           {!timeOptions.some((o) => o.value === slot.time) ? (
             <option value={slot.time}>{slot.time}</option>
@@ -206,7 +217,7 @@ const TimeScheduleSlotRow = memo(function TimeScheduleSlotRow({
               updateSlot(slot.id, { category: e.target.value })
             }
             aria-label="Category"
-            className="h-11 w-full min-w-0 flex-1 rounded-md border border-border bg-background/60 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring md:h-8 md:max-w-[9rem] md:flex-none md:shrink-0"
+            className="h-7 w-full min-w-0 flex-1 rounded-md border border-border bg-background/60 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring md:max-w-[9rem] md:flex-none md:shrink-0"
           >
             {!TIME_SLOT_CATEGORY_OPTIONS.some(
               (c) => c.label === slot.category,
@@ -225,31 +236,31 @@ const TimeScheduleSlotRow = memo(function TimeScheduleSlotRow({
           title="Scroll sideways for longer activity text (desktop)"
         >
           <Input
-            ref={(el) => setActivityRef(slot.id, el)}
-            value={slot.activity}
-            onChange={(e) =>
-              updateSlot(slot.id, { activity: e.target.value })
-            }
+            value={draftActivity}
+            onChange={(e) => setDraftActivity(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => {
+              setFocused(false)
+              commitActivity()
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.currentTarget.blur()
+              } else if (e.key === 'Escape') {
+                setDraftActivity(slot.activity)
+                e.currentTarget.blur()
+              }
+            }}
             aria-label="Activity"
-            className="time-schedule-activity-input h-11 w-full min-w-[28ch] border-0 bg-transparent px-2 py-1 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0 rounded-none md:h-8 md:max-w-none md:shrink-0"
+            className="time-schedule-activity-input h-7 w-full min-w-[28ch] border-0 bg-transparent px-2 py-1 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-0 rounded-none md:max-w-none md:shrink-0"
           />
         </div>
-        <div className="flex w-full shrink-0 items-center justify-end gap-1 self-stretch pt-1 md:w-auto md:justify-start md:self-center md:pt-0">
+        <div className="flex w-full shrink-0 items-center justify-end gap-1 self-stretch md:w-auto md:justify-start md:self-center">
           <Button
             type="button"
             size="icon"
             variant="ghost"
-            className="md:h-8 md:w-8"
-            aria-label="Edit activity"
-            onClick={() => focusActivity(slot.id)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="text-destructive hover:text-destructive md:h-8 md:w-8"
+            className="text-destructive hover:text-destructive h-7 w-7"
             aria-label="Remove time block"
             onClick={() => deleteSlot(slot.id)}
           >
@@ -343,7 +354,6 @@ export function TimeScheduleCard({
   )
   const [savedVisible, setSavedVisible] = useState(false)
   const saveFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const activityRefs = useRef<Map<string, HTMLInputElement>>(new Map())
   const [repeatPrefs, setRepeatPrefs] = useState<Record<string, RepeatPref>>({})
 
   const timeOptions = useMemo(
@@ -438,18 +448,6 @@ export function TimeScheduleCard({
       },
     ])
   }, [getNewSlotId, pushChange, timeOptions])
-
-  const focusActivity = useCallback((id: string) => {
-    activityRefs.current.get(id)?.focus()
-  }, [])
-
-  const setActivityRef = useCallback(
-    (id: string, el: HTMLInputElement | null) => {
-      if (el) activityRefs.current.set(id, el)
-      else activityRefs.current.delete(id)
-    },
-    [],
-  )
 
   const getRepeat = useCallback(
     (id: string): RepeatPref =>
@@ -556,8 +554,6 @@ export function TimeScheduleCard({
               repeat={repeat}
               updateSlot={updateSlot}
               deleteSlot={deleteSlot}
-              setActivityRef={setActivityRef}
-              focusActivity={focusActivity}
               onApplyTimeBlockToWeek={onApplyTimeBlockToWeek}
               setRepeatEnabled={setRepeatEnabled}
               toggleRepeatDay={toggleRepeatDay}
