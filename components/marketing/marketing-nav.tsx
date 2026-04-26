@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { MonkCubedLogo } from '@/components/brand/MonkCubedLogo'
-import { PwaInstallButton } from '@/components/marketing/PwaInstallButton'
+import { PWAInstallButton } from '@/components/PWAInstallButton'
 
 const links = [
   { href: '#features', label: 'Features' },
@@ -25,7 +25,7 @@ export default function MarketingNav() {
           <Link href="/" className="flex min-w-0 shrink items-center gap-2" aria-label="monk cubed home">
             <MonkCubedLogo variant="onDark" className="text-lg" />
           </Link>
-          <PwaInstallButton />
+          <PWAInstallButton />
         </div>
 
         <nav className="hidden items-center gap-6 md:flex">

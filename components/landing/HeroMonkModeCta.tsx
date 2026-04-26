@@ -10,6 +10,7 @@ export function HeroMonkModeCta() {
   const row = findPricingRow(prices, 'monk_mode')
   const cents = row?.current_price ?? PROGRAM_FALLBACK_CENTS.monk_mode
   const currency = row?.currency ?? PROGRAM_FALLBACK_CURRENCY
+  const formatted = formatPriceCents(cents, currency)
 
   return (
     <HoverTooltip
@@ -17,12 +18,15 @@ export function HeroMonkModeCta() {
       position="top"
       className="inline-block"
     >
-      <Link
-        href="/onboarding?program=monk_mode"
-        className="rounded-md bg-accent px-5 py-3 font-semibold text-accent-foreground"
-      >
-        Start the Monk Mode program — {formatPriceCents(cents, currency)}
-      </Link>
+      <div className="program-cta-container">
+        <Link
+          href="/onboarding?program=monk_mode"
+          className="start-program-button"
+        >
+          Start Monk Mode
+        </Link>
+        <div className="program-price">{formatted} one-time</div>
+      </div>
     </HoverTooltip>
   )
 }
