@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { withAuthStorageLockRetry } from '@/lib/authStorageLock'
 import type { ProgramType } from '@/lib/programStatus'
 
 export interface ProgramStatusProgram {
@@ -38,11 +37,6 @@ export interface UseProgramStatusResult {
   refetch: () => Promise<void>
 }
 
-async function getAccessTokenWithRetry(): Promise<string | undefined> {
-  const { data } = await withAuthStorageLockRetry(() => supabase.auth.getSession())
-  return data.session?.access_token
-}
-
 export function useProgramStatus(enabled = true): UseProgramStatusResult {
   const [activeProgram, setActiveProgram] = useState<ProgramStatusActiveProgram | null>(null)
   const [programs, setPrograms] = useState<ProgramStatusProgram[]>([])
@@ -66,7 +60,8 @@ export function useProgramStatus(enabled = true): UseProgramStatusResult {
       setLoading(true)
       setError(null)
 
-      const token = await getAccessTokenWithRetry()
+      const { data } = await supabase.auth.getSession()
+      const token = data.session?.access_token
 
       const res = await fetch('/api/programs/status', {
         cache: 'no-store',
@@ -94,23 +89,6 @@ export function useProgramStatus(enabled = true): UseProgramStatusResult {
   useEffect(() => {
     void refetch()
   }, [refetch])
-
-  useEffect(() => {
-    if (!enabled) return
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      void refetch()
-    })
-    const onFocus = () => {
-      void refetch()
-    }
-    window.addEventListener('focus', onFocus)
-    return () => {
-      subscription.unsubscribe()
-      window.removeEventListener('focus', onFocus)
-    }
-  }, [enabled, refetch])
 
   return useMemo(
     () => ({

@@ -6,6 +6,7 @@ import { Providers } from './providers'
 import './globals.css'
 import { AUTH_ROOT_LANDING_BRIDGE_SCRIPT } from '@/lib/authRootLandingBridge'
 import { publicSiteOrigin } from '@/lib/site-contact'
+import { RegisterServiceWorker } from '@/components/pwa/RegisterServiceWorker'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -68,6 +69,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: AUTH_ROOT_LANDING_BRIDGE_SCRIPT }}
         />
         <Providers>{children}</Providers>
+        <RegisterServiceWorker />
         <Analytics />
       </body>
     </html>

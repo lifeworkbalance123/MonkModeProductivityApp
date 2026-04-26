@@ -23,6 +23,7 @@ export default function AdminTestingPage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [selectedProgram, setSelectedProgram] = useState<ProgramType>('sprint_standard')
   const [jumpDay, setJumpDay] = useState(1)
+  const [targetUserId, setTargetUserId] = useState('')
 
   const handleStartProgram = (programType: ProgramType) => {
     setError(null)
@@ -56,7 +57,11 @@ export default function AdminTestingPage() {
       const res = await fetch('/api/admin/testing/jump-to-day', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ programDay: jumpDay }),
+        body: JSON.stringify({
+          userId: targetUserId.trim() || undefined,
+          programType: selectedProgram,
+          newDay: jumpDay,
+        }),
       })
 
       const data = (await res.json()) as { error?: string }
@@ -116,6 +121,13 @@ export default function AdminTestingPage() {
 
         <div className="rounded-lg border p-4">
           <h2 className="mb-4 text-lg font-semibold">Jump to Day</h2>
+          <label className="mb-1 block text-sm font-medium">User ID (optional)</label>
+          <input
+            value={targetUserId}
+            onChange={(e) => setTargetUserId(e.target.value)}
+            placeholder="Leave blank to use your own user"
+            className="mb-4 w-full rounded border p-2"
+          />
           <input
             type="number"
             min={1}
@@ -124,6 +136,26 @@ export default function AdminTestingPage() {
             onChange={(e) => setJumpDay(Number.parseInt(e.target.value, 10) || 1)}
             className="mb-4 w-full rounded border p-2"
           />
+          <button
+            type="button"
+            onClick={async () => {
+              setError(null)
+              setSuccess(null)
+              const {
+                data: { user },
+              } = await supabase.auth.getUser()
+              if (!user?.id) {
+                setError('Not logged in')
+                return
+              }
+              setTargetUserId(user.id)
+              setSuccess('Filled with your user ID.')
+            }}
+            disabled={loading}
+            className="mb-3 w-full rounded bg-slate-700 py-2 text-white hover:bg-slate-800 disabled:opacity-50"
+          >
+            Fill with My User ID
+          </button>
           <button
             type="button"
             onClick={() => void handleJumpToDay()}

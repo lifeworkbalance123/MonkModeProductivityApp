@@ -396,7 +396,7 @@ export function DashboardApp({
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <div className="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-1 md:flex-none md:justify-start">
+            <div className="weekday-buttons flex min-w-0 flex-1 flex-wrap items-center justify-center gap-1 md:flex-none md:justify-start">
               {showSaved ? (
                 <span className="text-[11px] text-emerald-600 dark:text-emerald-400 shrink-0 md:order-last md:ml-1">
                   ✓ Saved
@@ -685,7 +685,7 @@ export function DashboardApp({
                 {data.goals.map((goal) => (
                   <div
                     key={goal.id}
-                    className="flex min-h-[44px] items-start gap-3 py-0.5 md:min-h-0 md:py-0"
+                    className="checklist-item flex min-h-[44px] items-start gap-3 py-0.5 md:min-h-0 md:py-0"
                   >
                     <Checkbox
                       checked={goal.completed}
@@ -730,7 +730,7 @@ export function DashboardApp({
                   return (
                     <div key={habit.id} className="space-y-1">
                       <div className="flex min-h-[44px] items-center justify-between gap-2 py-0.5 md:min-h-0 md:py-0">
-                        <div className="flex min-w-0 items-center gap-2">
+                        <div className="checklist-item flex min-w-0 items-center gap-2">
                           <Checkbox
                             checked={completed}
                             onCheckedChange={() => toggleHabit(habit.id)}
