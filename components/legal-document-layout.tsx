@@ -12,7 +12,7 @@ export function LegalDocumentLayout({
   children: ReactNode
 }) {
   return (
-    <AppPageChrome className="!bg-background !pt-24 text-foreground">
+    <AppPageChrome forceMarketingNav className="!bg-background !pt-24 text-foreground">
       <div className="flex min-h-screen flex-col bg-background text-foreground">
         <main className="flex-1 pb-16 pt-4 md:pt-2">
         <article className="mx-auto max-w-[760px] px-4 sm:px-6">

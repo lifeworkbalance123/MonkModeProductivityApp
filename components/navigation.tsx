@@ -232,7 +232,7 @@ function MarketingNavigation({
   )
 }
 
-export function Navigation() {
+export function Navigation({ forceMarketing = false }: { forceMarketing?: boolean } = {}) {
   const pathname = usePathname()
   const [marketingMobileOpen, setMarketingMobileOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -277,7 +277,7 @@ export function Navigation() {
     setMenuHint(false)
   }
 
-  if (!user) {
+  if (!user || forceMarketing) {
     return (
       <MarketingNavigation
         mobileOpen={marketingMobileOpen}
@@ -397,13 +397,15 @@ export function Navigation() {
 export function AppPageChrome({
   className,
   children,
+  forceMarketingNav = false,
 }: {
   className?: string
   children: React.ReactNode
+  forceMarketingNav?: boolean
 }) {
   return (
     <div className="flex min-h-screen w-full flex-col">
-      <Navigation />
+      <Navigation forceMarketing={forceMarketingNav} />
       <MainShell className={cn('min-h-0 flex-1', className)}>{children}</MainShell>
     </div>
   )

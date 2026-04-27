@@ -58,7 +58,7 @@ function PaymentSuccessBody() {
 
 export default function PaymentSuccessPage() {
   return (
-    <AppPageChrome>
+    <AppPageChrome forceMarketingNav>
       <div className="min-h-screen bg-background text-foreground">
         <Suspense
           fallback={

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useUpgradeOffer } from '@/context/UpgradeOfferContext'
 import { usePlan, notifyEntitlementRefresh } from '@/hooks/usePlan'
+import { formatPriceCents, useAppSubscriptionPrices } from '@/hooks/usePricing'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -159,6 +160,14 @@ export default function SettingsPage() {
     isTrial,
     trialEndDate,
   } = usePlan()
+  const {
+    monthlyCents,
+    annualCents,
+    monthlyCurrency,
+    annualCurrency,
+    annualPerMonthCents,
+  } = useAppSubscriptionPrices()
+  const saveYearlyVsMonthlyCents = Math.max(0, monthlyCents * 12 - annualCents)
   const [restoreBusy, setRestoreBusy] = useState(false)
   const [portalBusy, setPortalBusy] = useState(false)
   const [switchBusy, setSwitchBusy] = useState(false)
@@ -508,15 +517,24 @@ export default function SettingsPage() {
 
             {!planLoading && planKey === 'monthly' ? (
               <div className="space-y-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-foreground">Monthly Pro</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatPriceCents(monthlyCents, monthlyCurrency)}/month
+                  </p>
+                  <p className="text-xs text-muted-foreground">Prices shown in USD.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Billed monthly. Cancel anytime.
+                  </p>
+                </div>
                 <p className="text-sm text-muted-foreground">
-                  Current plan: Pro Monthly ($9.99/month)
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Next billing date: {nextBill ?? 'Pending sync'} · Amount: $9.99
+                  Next billing date: {nextBill ?? 'Pending sync'} · Amount:{' '}
+                  {formatPriceCents(monthlyCents, monthlyCurrency)}
                 </p>
                 <div className="rounded-md border border-accent/30 bg-accent/10 p-3 text-sm">
                   <p className="text-foreground">
-                    Switch to annual and save $59.89/year →
+                    Switch to annual (Save 48%) — save about{' '}
+                    {formatPriceCents(saveYearlyVsMonthlyCents, annualCurrency)}/year vs monthly →
                   </p>
                   <Button
                     type="button"
@@ -551,14 +569,23 @@ export default function SettingsPage() {
 
             {!planLoading && planKey === 'annual' ? (
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Current plan: Pro Annual ($59.99/year)
-                </p>
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-foreground">Annual Pro (Save 48%)</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatPriceCents(annualCents, annualCurrency)}/year
+                  </p>
+                  <p className="text-xs text-muted-foreground">Prices shown in USD.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Billed yearly. Cancel anytime. Equivalent to{' '}
+                    {formatPriceCents(annualPerMonthCents, annualCurrency)}/month.
+                  </p>
+                </div>
                 <p className="text-sm text-muted-foreground">
                   Renewal date: {nextBill ?? 'Pending sync'}
                 </p>
                 <span className="inline-flex rounded bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
-                  Great choice — you&apos;re saving $59.89 vs monthly
+                  About {formatPriceCents(saveYearlyVsMonthlyCents, annualCurrency)}/year less than 12
+                  monthly renewals
                 </span>
                 <details className="rounded-md border border-destructive/40 p-3 text-xs text-muted-foreground">
                   <summary className="cursor-pointer text-destructive">

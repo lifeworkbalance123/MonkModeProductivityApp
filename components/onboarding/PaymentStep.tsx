@@ -103,6 +103,7 @@ export function PaymentStep({ intake, onBack, skipPayment = false }: Props) {
       <p className="text-sm text-muted-foreground">
         {label} — {formatPriceCents(cents, PROGRAM_FLOW_CURRENCY)} one-time via Stripe.
       </p>
+      <p className="text-xs text-muted-foreground">Prices shown in USD.</p>
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
         <Button type="button" variant="outline" onClick={onBack} disabled={busy}>

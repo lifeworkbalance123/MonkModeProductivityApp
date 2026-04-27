@@ -44,7 +44,7 @@ export default function VideosPage() {
   }, [load])
 
   return (
-    <AppPageChrome>
+    <AppPageChrome forceMarketingNav>
       <div className="min-h-screen bg-background">
         <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
         <Tooltip

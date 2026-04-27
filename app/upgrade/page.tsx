@@ -14,7 +14,7 @@ function UpgradeBody() {
 
 export default function UpgradePage() {
   return (
-    <AppPageChrome>
+    <AppPageChrome forceMarketingNav>
       <div className="min-h-screen">
         <Suspense
           fallback={

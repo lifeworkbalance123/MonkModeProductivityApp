@@ -95,7 +95,7 @@ export default function SupportPage() {
   }, [query])
 
   return (
-    <AppPageChrome>
+    <AppPageChrome forceMarketingNav>
       <div className="min-h-screen bg-background text-foreground">
         <div className="mx-auto max-w-6xl px-4 pb-16 pt-4 md:pt-2">
         <div className="mx-auto max-w-2xl text-center">

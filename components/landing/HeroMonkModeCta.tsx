@@ -26,6 +26,7 @@ export function HeroMonkModeCta() {
           Start Monk Mode
         </Link>
         <div className="program-price">{formatted} one-time</div>
+        <div className="program-price">Prices shown in USD.</div>
       </div>
     </HoverTooltip>
   )

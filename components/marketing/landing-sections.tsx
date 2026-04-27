@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { findPricingRow, formatPriceCents, useAppSubscriptionPrices, usePricing } from '@/hooks/usePricing'
 import {
   PROGRAM_FALLBACK_CENTS,
@@ -40,26 +40,96 @@ export function SocialProofBar() {
   )
 }
 
+function FeatureBonusTooltip({ children }: { children: ReactNode }) {
+  return (
+    <span className="bonus-tooltip" tabIndex={0} role="note">
+      ⚡ Bonus
+      <span className="tooltip-text">{children}</span>
+    </span>
+  )
+}
+
 export function FeaturesSection() {
-  const features = [
-    ['🗓️ Weekly Planner', 'Time-box every 30-minute block of your week. 10 colour-coded categories. Drag to reschedule.'],
-    ['✅ Habit Tracker', 'Build daily rituals with visual progress bars and a streak counter that keeps you accountable.'],
-    ['🎯 Top 5 Goals', 'Intentionally limited to 5. Because focus beats a 50-item to-do list every time.'],
-    ['⏱️ Pomodoro & Deep Work', '25-minute Pomodoro sessions or 90-minute deep work sprints. Your focus, your rules.'],
-    ['📋 Kanban Board', 'Move tasks from To Do → In Progress → Done. Linked to your daily goals automatically.'],
-    ['📓 Gratitude Journal', 'Morning gratitude and evening reflection built into your daily routine.'],
-    ['📊 Progress Analytics', 'Habit heatmaps, streak history, and weekly reports. See your growth in numbers.'],
-    ['📚 Training Hub', 'Embedded videos and guides on Pomodoro, time boxing, atomic habits, and deep work.'],
-    ['☁️ Cloud Sync', 'All your data synced across every device, always backed up, never lost. (Pro feature)'],
+  const features: {
+    title: string
+    desc: string
+    bonus?: ReactNode
+  }[] = [
+    {
+      title: '🗓️ Weekly Planner',
+      desc: 'Time-box every 30-minute block of your week. 10 colour-coded categories. Drag to reschedule.',
+    },
+    {
+      title: '✅ Habit Tracker',
+      desc: 'Build daily rituals with visual progress bars and a streak counter that keeps you accountable.',
+    },
+    {
+      title: '🎯 Top 5 Goals',
+      desc: 'Intentionally limited to 5. Because focus beats a 50-item to-do list every time.',
+    },
+    {
+      title: '⏱️ Pomodoro & Deep Work',
+      desc: '25-minute Pomodoro sessions or 90-minute deep work sprints. Your focus, your rules.',
+    },
+    {
+      title: '📋 Kanban Board',
+      desc: 'Move tasks from To Do → In Progress → Done. Linked to your daily goals automatically.',
+    },
+    {
+      title: '📓 Gratitude Journal',
+      desc: 'Morning gratitude and evening reflection built into your daily routine.',
+    },
+    {
+      title: '📈 Progress Analytics',
+      desc: 'Habit heatmaps, streak history, and weekly reports. See your growth in numbers.',
+    },
+    {
+      title: '📚 Training Hub',
+      desc: 'Embedded videos and guides on Pomodoro, time boxing, atomic habits, and deep work.',
+      bonus: (
+        <>
+          ⚡ Bonus feature included with Pro.
+          <br />
+          As-is, best effort. Video links may change.
+        </>
+      ),
+    },
+    {
+      title: '☁️ Cloud Sync',
+      desc: 'All your data synced across every device, always backed up, never lost.',
+      bonus: (
+        <>
+          ⚡ Bonus feature included with Pro.
+          <br />
+          Provided as-is, best effort.
+          <br />
+          May change without notice.
+        </>
+      ),
+    },
+    {
+      title: '📊 CSV Export',
+      desc: 'Export habits and progress as CSV from your dashboard where available.',
+      bonus: (
+        <>
+          ⚡ Bonus feature included with Pro.
+          <br />
+          Format may change. No guarantee on data formatting.
+        </>
+      ),
+    },
   ]
   return (
     <section id="features" className="mx-auto max-w-[1100px] px-4 py-20">
       <h2 className="text-center text-3xl font-semibold text-foreground">Everything you need for structured depth</h2>
       <p className="mx-auto mt-3 max-w-2xl text-center text-muted-foreground">A complete productivity system built around one principle: intentional living.</p>
       <div className="mt-10 grid gap-4 md:grid-cols-3">
-        {features.map(([title, desc]) => (
+        {features.map(({ title, desc, bonus }) => (
           <div key={title} className="rounded-xl border border-border bg-card/60 p-5">
-            <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+            <h3 className="text-lg font-semibold text-foreground flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span>{title}</span>
+              {bonus ? <FeatureBonusTooltip>{bonus}</FeatureBonusTooltip> : null}
+            </h3>
             <p className="mt-2 text-sm text-muted-foreground">{desc}</p>
           </div>
         ))}
@@ -207,13 +277,18 @@ export function PricingSection() {
     () => [
       { title: 'Free', price: '$0', desc: 'Core habits, goals and dashboard.', featured: false },
       {
-        title: 'Pro',
+        title: annual ? 'Annual Pro (Save 48%)' : 'Monthly Pro',
         price: annual
-          ? `${formatPriceCents(annualPerMonthCents, annualCurrency)}/mo`
-          : `${formatPriceCents(monthlyCents, monthlyCurrency)}/mo`,
-        desc: annual
-          ? `billed as ${formatPriceCents(annualCents, annualCurrency)}/year`
-          : 'monthly billing',
+          ? `${formatPriceCents(annualCents, annualCurrency)}/year`
+          : `${formatPriceCents(monthlyCents, monthlyCurrency)}/month`,
+        desc: annual ? (
+          <>
+            Billed yearly. Cancel anytime. Equivalent to{' '}
+            {formatPriceCents(annualPerMonthCents, annualCurrency)}/month.
+          </>
+        ) : (
+          <>Billed monthly. Cancel anytime.</>
+        ),
         featured: true,
       },
     ],
@@ -262,6 +337,7 @@ export function PricingSection() {
     <section id="pricing" className="mx-auto max-w-[1100px] px-4 py-20">
       <h2 className="text-center text-3xl font-semibold text-foreground">Simple, honest pricing</h2>
       <p className="mx-auto mt-3 max-w-2xl text-center text-muted-foreground">Start free. Upgrade when you&apos;re ready. Cancel anytime.</p>
+      <p className="mt-2 text-center text-xs text-muted-foreground">Prices shown in USD.</p>
       <div className="mx-auto mt-6 flex max-w-sm items-center justify-between gap-3 rounded-full border border-accent/30 bg-background/60 p-1">
         <button
           type="button"
@@ -277,15 +353,18 @@ export function PricingSection() {
         >
           Annual
           <span className="absolute -right-1 -top-2 rounded bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
-            SAVE 50%
+            SAVE 48%
           </span>
         </button>
       </div>
       <div className="mt-10 grid gap-4 md:grid-cols-2">
         {plans.map((p) => (
-          <div key={p.title} className={`rounded-xl border p-5 ${p.featured ? 'border-accent/70 bg-accent/10' : 'border-border bg-card/60'}`}>
+          <div
+            key={p.featured ? 'pro' : 'free'}
+            className={`rounded-xl border p-5 ${p.featured ? 'border-accent/70 bg-accent/10' : 'border-border bg-card/60'}`}
+          >
             <h3 className="text-xl font-semibold text-foreground">{p.title}</h3>
-            <p className="mt-2 text-accent">{p.price}</p>
+            <p className="mt-2 text-2xl font-bold text-accent">{p.price}</p>
             <p className="mt-2 text-sm text-muted-foreground">{p.desc}</p>
             {p.title === 'Free' ? (
               <Link href="/auth" className="mt-4 inline-block rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
@@ -300,14 +379,14 @@ export function PricingSection() {
               >
                 {loading === 'annual' || loading === 'monthly'
                   ? 'Loading...'
-                  : p.title === 'Pro'
+                  : p.featured
                     ? annual
                       ? `Start free trial — ${formatPriceCents(annualCents, annualCurrency)}/yr`
                       : `Start free trial — ${formatPriceCents(monthlyCents, monthlyCurrency)}/mo`
                     : 'Start free trial'}
               </Button>
             )}
-            {p.title === 'Pro' && annual && annualSavingsLine ? (
+            {p.featured && annual && annualSavingsLine ? (
               <p className="mt-2 text-xs text-primary">{annualSavingsLine}</p>
             ) : null}
           </div>
