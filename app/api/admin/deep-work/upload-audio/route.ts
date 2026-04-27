@@ -43,8 +43,8 @@ export async function POST(request: Request) {
 
   const slotRaw = form.get('slot')
   const slot = typeof slotRaw === 'string' ? Number.parseInt(slotRaw, 10) : Number.NaN
-  if (!Number.isInteger(slot) || slot < 0 || slot > 2) {
-    return json({ error: 'Invalid slot (use 0, 1, or 2)' }, 400)
+  if (!Number.isInteger(slot) || slot < 0 || slot >= DEEP_WORK_MP3_KEYS.length) {
+    return json({ error: `Invalid slot (use 0–${DEEP_WORK_MP3_KEYS.length - 1})` }, 400)
   }
 
   const file = form.get('file')
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
 
   const { data: existing } = await admin
     .from('site_settings')
-    .select('value, media_storage_path')
+    .select('value, media_storage_path, is_active')
     .eq('key', key)
     .maybeSingle()
 
@@ -93,6 +93,9 @@ export async function POST(request: Request) {
     labelFromClient ??
     (((existing as { value?: string | null } | null)?.value ?? '').trim() || `Track ${slot + 1}`)
 
+  const prevActive = (existing as { is_active?: boolean | null } | null)?.is_active
+  const isActive = prevActive !== false
+
   const { error: dbErr } = await admin.from('site_settings').upsert(
     {
       key,
@@ -100,6 +103,7 @@ export async function POST(request: Request) {
       media_type: 'audio',
       media_url: publicUrl,
       media_storage_path: path,
+      is_active: isActive,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'key' },

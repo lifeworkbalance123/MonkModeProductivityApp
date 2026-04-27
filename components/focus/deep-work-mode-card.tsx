@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import type { Dispatch, RefObject, SetStateAction } from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDeepWorkTimer } from '@/hooks/useDeepWorkTimer'
 import { useDataServiceContext } from '@/hooks/use-data-service-context'
 import { usePlan } from '@/hooks/usePlan'
@@ -19,7 +19,12 @@ import {
   newDeepWorkSessionId,
 } from '@/lib/deep-work-sessions'
 import { supabase } from '@/lib/supabase'
-import { fetchDeepWorkCmsPublic, type DeepWorkCmsState } from '@/lib/deep-work-site-settings'
+import {
+  fetchDeepWorkCmsPublic,
+  filterLoadedActiveTracks,
+  type DeepWorkCmsState,
+  type DeepWorkMp3Slot,
+} from '@/lib/deep-work-site-settings'
 import {
   createOceanSound,
   createRainSound,
@@ -63,7 +68,8 @@ import { Expand, Minimize2, Brain } from 'lucide-react'
 
 const RING_R = 140
 
-type AmbientId = 'silence' | 'rain' | 'ocean' | 'white' | 'mp3_0' | 'mp3_1' | 'mp3_2'
+type BuiltinAmbient = 'silence' | 'rain' | 'ocean' | 'white'
+type AmbientId = BuiltinAmbient | DeepWorkMp3Slot
 
 type Props = {
   setSessions: Dispatch<SetStateAction<DeepWorkSession[]>>
@@ -160,6 +166,19 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
     void fetchDeepWorkCmsPublic(supabase).then(setDeepWorkCms)
   }, [])
 
+  const loadedMp3Tracks = useMemo(
+    () => (deepWorkCms ? filterLoadedActiveTracks(deepWorkCms) : []),
+    [deepWorkCms],
+  )
+
+  useEffect(() => {
+    if (!deepWorkCms) return
+    const builtins: BuiltinAmbient[] = ['silence', 'rain', 'ocean', 'white']
+    if (builtins.includes(ambient as BuiltinAmbient)) return
+    const t = deepWorkCms.tracks.find((tr) => tr.key === ambient)
+    if (!t?.url?.trim() || !t.isActive) setAmbient('silence')
+  }, [deepWorkCms, ambient])
+
   const onBreakZero = useCallback(() => {
     if (alarmSoundRef.current) {
       playTimerAlarm('deep-work-break')
@@ -251,38 +270,32 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
     stopMp3Loop(mp3AudioRef.current)
     mp3AudioRef.current = null
     if (!immersive || ambient === 'silence') return
-    const mp3Url =
-      ambient === 'mp3_0'
-        ? deepWorkCms?.tracks[0]?.url
-        : ambient === 'mp3_1'
-          ? deepWorkCms?.tracks[1]?.url
-          : ambient === 'mp3_2'
-            ? deepWorkCms?.tracks[2]?.url
-            : null
-    if (ambient === 'mp3_0' || ambient === 'mp3_1' || ambient === 'mp3_2') {
-      if (mp3Url) {
-        try {
-          mp3AudioRef.current = startMp3Loop(mp3Url)
-        } catch {
-          /* ignore */
-        }
-        return () => {
-          stopMp3Loop(mp3AudioRef.current)
-          mp3AudioRef.current = null
-        }
+
+    if (ambient === 'rain' || ambient === 'white' || ambient === 'ocean') {
+      try {
+        if (ambient === 'rain') ambientRef.current = createRainSound()
+        else if (ambient === 'white') ambientRef.current = createWhiteNoise()
+        else if (ambient === 'ocean') ambientRef.current = createOceanSound()
+      } catch {
+        /* ignore */
       }
-      return
+      return () => {
+        stopAmbient(ambientRef.current)
+        ambientRef.current = null
+      }
     }
-    try {
-      if (ambient === 'rain') ambientRef.current = createRainSound()
-      else if (ambient === 'white') ambientRef.current = createWhiteNoise()
-      else if (ambient === 'ocean') ambientRef.current = createOceanSound()
-    } catch {
-      /* ignore */
-    }
-    return () => {
-      stopAmbient(ambientRef.current)
-      ambientRef.current = null
+
+    const mp3Url = deepWorkCms?.tracks.find((tr) => tr.key === ambient)?.url ?? null
+    if (mp3Url) {
+      try {
+        mp3AudioRef.current = startMp3Loop(mp3Url)
+      } catch {
+        /* ignore */
+      }
+      return () => {
+        stopMp3Loop(mp3AudioRef.current)
+        mp3AudioRef.current = null
+      }
     }
   }, [ambient, immersive, deepWorkCms])
 
@@ -666,35 +679,35 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
                 </button>
               ))}
             </div>
-            {deepWorkCms?.tracks.some((t) => t.url) ? (
+            {loadedMp3Tracks.length > 0 ? (
               <>
                 <p className="mb-3 mt-5 text-center text-xs text-muted-foreground">
                   Curated (MP3)
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
-                  {deepWorkCms.tracks.map((t, i) => {
-                    if (!t.url) return null
-                    const id = (['mp3_0', 'mp3_1', 'mp3_2'] as const)[i]
-                    return (
-                      <button
-                        key={t.key}
-                        type="button"
-                        title={t.label}
-                        className={cn(
-                          'min-h-12 min-w-[3.5rem] rounded-lg border px-2 text-xs font-medium transition-colors',
-                          ambient === id
-                            ? 'border-accent bg-accent/20 text-foreground'
-                            : 'border-border bg-muted/40 text-muted-foreground hover:bg-muted/70',
-                        )}
-                        onClick={() => setAmbient(id)}
-                      >
-                        {t.label}
-                      </button>
-                    )
-                  })}
+                  {loadedMp3Tracks.map((t) => (
+                    <button
+                      key={t.key}
+                      type="button"
+                      title={t.label}
+                      className={cn(
+                        'min-h-12 min-w-[3.5rem] rounded-lg border px-2 text-xs font-medium transition-colors',
+                        ambient === t.key
+                          ? 'border-accent bg-accent/20 text-foreground'
+                          : 'border-border bg-muted/40 text-muted-foreground hover:bg-muted/70',
+                      )}
+                      onClick={() => setAmbient(t.key)}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
                 </div>
               </>
-            ) : null}
+            ) : (
+              <p className="mt-5 text-center text-xs text-muted-foreground">
+                No focus music available. Check back later.
+              </p>
+            )}
           </div>
         </div>
       ) : null}

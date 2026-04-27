@@ -37,16 +37,13 @@ export default function AdminDeepWorkPage() {
   const [tracks, setTracks] = useState<DeepWorkCmsState['tracks']>([])
   const [uploadingSlot, setUploadingSlot] = useState<number | null>(null)
   const [message, setMessage] = useState<string | null>(null)
-  const fileRef0 = useRef<HTMLInputElement>(null)
-  const fileRef1 = useRef<HTMLInputElement>(null)
-  const fileRef2 = useRef<HTMLInputElement>(null)
-  const fileRefs = [fileRef0, fileRef1, fileRef2] as const
+  const fileRefMap = useRef<Record<number, HTMLInputElement | null>>({})
 
   const load = useCallback(async () => {
     setLoading(true)
     const { data, error } = await supabase
       .from('site_settings')
-      .select('key, value, media_url, media_storage_path')
+      .select('key, value, media_url, media_storage_path, is_active')
       .in('key', [DEEP_WORK_INTRO_KEY, ...DEEP_WORK_MP3_KEYS])
 
     if (error) {
@@ -128,21 +125,27 @@ export default function AdminDeepWorkPage() {
         const { data: pub } = supabase.storage.from(bucket).getPublicUrl(uploadPath)
         publicUrl = pub.publicUrl ?? null
 
-        const { error: dbErr } = await supabase.from('site_settings').upsert(
-          {
-            key,
-            value: label,
-            media_type: 'audio',
-            media_url: publicUrl,
-            media_storage_path: uploadPath,
-            updated_at: new Date().toISOString(),
+        // Persist metadata with service role — anon client upsert often fails for new slot
+        // keys (INSERT under RLS) even when storage upload succeeds.
+        const commitRes = await fetch('/api/admin/deep-work/commit-track', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
           },
-          { onConflict: 'key' },
-        )
-
-        if (dbErr) {
+          body: JSON.stringify({
+            slot: slotIndex,
+            label,
+            publicUrl,
+            storagePath: uploadPath,
+            isActive: tracks[slotIndex]?.isActive !== false,
+          }),
+        })
+        const commitPayload = (await commitRes.json().catch(() => ({}))) as { error?: string }
+        if (!commitRes.ok) {
           await supabase.storage.from(bucket).remove([uploadPath])
-          throw dbErr
+          setMessage(commitPayload.error ?? `Save failed (${commitRes.status})`)
+          return
         }
       } else {
         // Fallback: server-side upload (service role) when client policies fail.
@@ -258,6 +261,53 @@ export default function AdminDeepWorkPage() {
     }
   }
 
+  async function saveSlotActive(slotIndex: number, isActive: boolean) {
+    const key = DEEP_WORK_MP3_KEYS[slotIndex]
+    const label = tracks[slotIndex]?.label?.trim() || `Track ${slotIndex + 1}`
+    setSaving(true)
+    setMessage(null)
+    try {
+      const { data: existing, error: selErr } = await supabase
+        .from('site_settings')
+        .select('key')
+        .eq('key', key)
+        .maybeSingle()
+      if (selErr) throw selErr
+
+      if (existing) {
+        const { error } = await supabase
+          .from('site_settings')
+          .update({
+            is_active: isActive,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('key', key)
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('site_settings').insert({
+          key,
+          value: label,
+          media_type: null,
+          media_url: null,
+          media_storage_path: null,
+          is_active: isActive,
+          updated_at: new Date().toISOString(),
+        })
+        if (error) throw error
+      }
+      setMessage(isActive ? 'Track is live on the Focus page.' : 'Track hidden from the Focus page.')
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Save failed')
+      setTracks((prev) => {
+        const next = [...prev]
+        next[slotIndex] = { ...next[slotIndex], isActive: !isActive }
+        return next
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="p-8 text-muted-foreground">
@@ -274,7 +324,7 @@ export default function AdminDeepWorkPage() {
         </Link>
         <h1 className="mt-4 text-2xl font-semibold tracking-tight">Deep Work (Focus page)</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Intro copy and up to three MP3 ambient tracks for the Deep Work fullscreen player. MP3s are stored in the{' '}
+          Intro copy and up to eight MP3 ambient tracks for the Deep Work fullscreen player. MP3s are stored in the{' '}
           <code className="rounded bg-muted px-1 text-xs">lesson-media</code> bucket via a server-side upload (same
           admin rules as the rest of the admin panel).
         </p>
@@ -307,14 +357,32 @@ export default function AdminDeepWorkPage() {
       </section>
 
       <section className="space-y-6 rounded-xl border border-border bg-card p-5">
-        <h2 className="text-lg font-medium">Ambient MP3 tracks (3 slots)</h2>
+        <h2 className="text-lg font-medium">Ambient MP3 tracks (8 slots)</h2>
         <p className="text-xs text-muted-foreground">
-          MP3 only. Users pick these in Deep Work fullscreen next to Rain / Ocean / White noise. Leave a slot empty to hide it.
+          MP3 only. Users only see tracks that have an uploaded file and &quot;Live on Focus page&quot; enabled. Slots
+          without audio never appear in the app.
         </p>
 
-        {[0, 1, 2].map((i) => (
-          <div key={DEEP_WORK_MP3_KEYS[i]} className="space-y-2 border-b border-border pb-6 last:border-0 last:pb-0">
+        {DEEP_WORK_MP3_KEYS.map((slotKey, i) => (
+          <div key={slotKey} className="space-y-2 border-b border-border pb-6 last:border-0 last:pb-0">
             <p className="text-sm font-medium">Slot {i + 1}</p>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={tracks[i]?.isActive !== false}
+                onChange={(e) => {
+                  const v = e.target.checked
+                  setTracks((prev) => {
+                    const next = [...prev]
+                    next[i] = { ...next[i], isActive: v }
+                    return next
+                  })
+                  void saveSlotActive(i, v)
+                }}
+                disabled={saving}
+              />
+              <span>Live on Focus page</span>
+            </label>
             <label className="block text-xs text-muted-foreground">
               Button label
               <input
@@ -334,7 +402,9 @@ export default function AdminDeepWorkPage() {
             </label>
             <div className="flex flex-wrap items-center gap-2">
               <input
-                ref={fileRefs[i]}
+                ref={(el) => {
+                  fileRefMap.current[i] = el
+                }}
                 type="file"
                 accept="audio/mpeg,audio/mp3,.mp3"
                 className="hidden"
@@ -347,7 +417,7 @@ export default function AdminDeepWorkPage() {
               <button
                 type="button"
                 disabled={uploadingSlot === i}
-                onClick={() => fileRefs[i].current?.click()}
+                onClick={() => fileRefMap.current[i]?.click()}
                 className="rounded-md border border-border bg-secondary px-3 py-1.5 text-sm hover:bg-secondary/80 disabled:opacity-50"
               >
                 {uploadingSlot === i ? 'Uploading…' : tracks[i]?.url ? 'Replace MP3' : 'Upload MP3'}
