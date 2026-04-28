@@ -23,6 +23,7 @@ export default function SharePage() {
   const { user } = useAuth()
   const { showToast } = useToast()
   const [stats, setStats] = useState<ShareStats | null>(null)
+  const [imageFailed, setImageFailed] = useState(false)
 
   useEffect(() => {
     if (!userId || !user?.id || user.id !== userId) return
@@ -51,6 +52,10 @@ export default function SharePage() {
     })
     return `/api/share/generate-image?${q.toString()}`
   }, [stats, userId])
+
+  useEffect(() => {
+    setImageFailed(false)
+  }, [imageUrl])
 
   async function saveImage() {
     if (!imageUrl) return
@@ -88,7 +93,18 @@ export default function SharePage() {
 
         <Card className="mt-5 p-4">
           {imageUrl ? (
-            <img src={imageUrl} alt="Shareable streak image" className="w-full rounded-lg border border-border" />
+            imageFailed ? (
+              <div className="rounded-lg border border-border bg-secondary/30 p-4 text-sm text-muted-foreground">
+                Could not generate the share image. Please refresh and try again.
+              </div>
+            ) : (
+              <img
+                src={imageUrl}
+                alt="Shareable streak image"
+                className="w-full rounded-lg border border-border"
+                onError={() => setImageFailed(true)}
+              />
+            )
           ) : (
             <div className="h-[360px] animate-pulse rounded-lg bg-secondary/50" />
           )}

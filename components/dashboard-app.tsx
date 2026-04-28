@@ -873,6 +873,9 @@ export function DashboardApp({
                             style={{
                               width: '28px',
                               height: '28px',
+                              // Prevent flexbox from stretching/shrinking into an oval on narrow layouts.
+                              flex: '0 0 28px',
+                              aspectRatio: '1 / 1',
                               borderRadius: '50%',
                               background: filled ? '#F59E0B' : '#0F172A',
                               border: `2px solid ${
