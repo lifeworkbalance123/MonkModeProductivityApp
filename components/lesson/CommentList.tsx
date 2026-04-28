@@ -84,10 +84,12 @@ function CommentList({ lessonId, programType, day, showShare = true }: CommentLi
         const {
           data: { session },
         } = await withAuthStorageLockRetry(() => supabase.auth.getSession())
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-        if (session?.access_token) {
-          headers.Authorization = `Bearer ${session.access_token}`
+        if (!session?.access_token) {
+          setComposeError('Please sign in to post comments.')
+          return
         }
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+        headers.Authorization = `Bearer ${session.access_token}`
         const res = await fetch('/api/lesson/comments', {
           method: 'POST',
           headers,
@@ -95,7 +97,11 @@ function CommentList({ lessonId, programType, day, showShare = true }: CommentLi
         })
         const json = (await res.json().catch(() => ({}))) as { error?: string }
         if (!res.ok) {
-          setComposeError(json.error ?? 'Could not post comment.')
+          setComposeError(
+            res.status === 401
+              ? 'Please sign in again to post comments.'
+              : (json.error ?? 'Could not post comment.'),
+          )
           return
         }
         setNewComment('')
@@ -126,6 +132,11 @@ function CommentList({ lessonId, programType, day, showShare = true }: CommentLi
         <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Add a comment
         </p>
+        {currentUserId ? null : (
+          <p className="mb-3 text-sm text-muted-foreground">
+            Sign in to post comments.
+          </p>
+        )}
         <CommentForm
           value={newComment}
           onChange={setNewComment}
@@ -133,6 +144,7 @@ function CommentList({ lessonId, programType, day, showShare = true }: CommentLi
           isSubmitting={posting}
           placeholder="Write a comment…"
           submitLabel="Post"
+          disabled={!currentUserId}
         />
         {composeError ? <p className="mt-2 text-sm text-destructive">{composeError}</p> : null}
       </div>

@@ -63,7 +63,7 @@ export default function HabitsPage() {
     loadError,
     reload,
   } = useMonkData()
-  const { isPro, isLoading: planLoading } = usePlan()
+  const { isPro, isLoading: planLoading, trialExpired } = usePlan()
   const [draft, setDraft] = useState('')
   const [draftIcon, setDraftIcon] = useState('')
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
@@ -76,13 +76,19 @@ export default function HabitsPage() {
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
-  const atHabitLimit =
-    !planLoading && !isPro && data.habits.length >= FREE_HABIT_LIMIT
+  const freeHabitCap = !planLoading && !isPro && trialExpired ? 1 : FREE_HABIT_LIMIT
+  const atHabitLimit = !planLoading && !isPro && data.habits.length >= freeHabitCap
 
   async function addHabit() {
     const name = draft.trim()
     if (!name) return
-    if (!planLoading && !isPro && data.habits.length >= FREE_HABIT_LIMIT) return
+    if (!planLoading && !isPro && data.habits.length >= freeHabitCap) {
+      openUpgrade({
+        featureContext:
+          'Free plan (after trial) includes 1 active habit. Upgrade for unlimited habits.',
+      })
+      return
+    }
     const icon =
       draftIcon.trim() || suggestHabitIconFromName(name) || ''
     const habit = { id: newHabitClientId(dataContext), name, icon }
@@ -101,6 +107,13 @@ export default function HabitsPage() {
   }
 
   function addDefaultHabits() {
+    if (!planLoading && !isPro && data.habits.length >= freeHabitCap) {
+      openUpgrade({
+        featureContext:
+          'Free plan (after trial) includes 1 active habit. Upgrade for unlimited habits.',
+      })
+      return
+    }
     const next = DEFAULT_STARTER_HABIT_NAMES.map((name, i) => ({
       id: newHabitClientId(dataContext),
       name,
@@ -109,12 +122,12 @@ export default function HabitsPage() {
         HABIT_ICON_PICKER_LIBRARY[i % HABIT_ICON_PICKER_LIBRARY.length] ??
         '',
     }))
-    setData({
-      ...data,
-      habits: [...data.habits, ...next],
-    })
+    const room = Math.max(0, freeHabitCap - data.habits.length)
+    const picked = !planLoading && !isPro ? next.slice(0, room) : next
+    if (picked.length === 0) return
+    setData({ ...data, habits: [...data.habits, ...picked] })
     void Promise.all(
-      next.map((h) =>
+      picked.map((h) =>
         saveHabit(dataContext, h).then((r) => {
           if (r.error) {
             showToast("Couldn't save changes. Please try again.", 'error')

@@ -43,11 +43,11 @@ export default function GoalsPage() {
     loadError,
     reload,
   } = useMonkData()
-  const { isPro, isLoading: planLoading } = usePlan()
+  const { isPro, isLoading: planLoading, trialExpired } = usePlan()
   const [draft, setDraft] = useState('')
 
-  const atGoalLimit =
-    !planLoading && !isPro && data.goals.length >= FREE_GOAL_LIMIT
+  const freeGoalCap = !planLoading && !isPro && trialExpired ? 1 : FREE_GOAL_LIMIT
+  const atGoalLimit = !planLoading && !isPro && data.goals.length >= freeGoalCap
 
   useEffect(() => {
     if (!ready) return
@@ -57,7 +57,13 @@ export default function GoalsPage() {
   async function addGoal() {
     const text = draft.trim()
     if (!text) return
-    if (!planLoading && !isPro && data.goals.length >= FREE_GOAL_LIMIT) return
+    if (!planLoading && !isPro && data.goals.length >= freeGoalCap) {
+      openUpgrade({
+        featureContext:
+          'Free plan (after trial) includes 1 daily goal. Upgrade for unlimited goals and analytics.',
+      })
+      return
+    }
     const goal = { id: newGoalClientId(dataContext), text, completed: false }
     setData({
       ...data,
@@ -150,7 +156,7 @@ export default function GoalsPage() {
                 role="status"
                 className="mt-3 rounded-lg border border-border bg-secondary/40 px-3 py-2 text-sm text-muted-foreground"
               >
-                You&apos;ve reached the Free limit of {FREE_GOAL_LIMIT} goals.
+                You&apos;ve reached the Free limit of {freeGoalCap} goal{freeGoalCap === 1 ? '' : 's'}.
                 Upgrade to Pro for unlimited goals.{' '}
                 <button
                   type="button"
@@ -158,7 +164,9 @@ export default function GoalsPage() {
                   onClick={() =>
                     openUpgrade({
                       featureContext:
-                        'Free plan includes up to 3 daily goals. Upgrade for unlimited goals and analytics.',
+                        freeGoalCap === 1
+                          ? 'Free plan (after trial) includes 1 daily goal. Upgrade for unlimited goals and analytics.'
+                          : `Free plan includes up to ${FREE_GOAL_LIMIT} daily goals. Upgrade for unlimited goals and analytics.`,
                     })
                   }
                 >

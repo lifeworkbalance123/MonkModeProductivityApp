@@ -169,19 +169,18 @@ export default function DailyLesson({
             {lesson.category}
           </span>
           {lesson.isBonus ? (
-            <span
-              style={{
-                background: `color-mix(in srgb, ${PU.chart2} 35%, ${PU.card})`,
-                color: PU.fg,
-                fontSize: '10px',
-                fontWeight: '600',
-                padding: '3px 8px',
-                borderRadius: '4px',
-                border: `1px solid color-mix(in srgb, ${PU.chart2} 50%, transparent)`,
-              }}
+            <div
+              className="tooltip"
+              tabIndex={0}
+              role="note"
+              aria-label="Bonus feature included with Pro. Provided as-is, best effort. May change or have interruptions."
             >
-              ✨ Bonus
-            </span>
+              <span className="bonus-badge">⚡ Bonus</span>
+              <span className="tooltiptext">
+                Bonus feature included with Pro. Provided as-is, best effort. May change or have
+                interruptions.
+              </span>
+            </div>
           ) : null}
         </div>
         {loading ? (

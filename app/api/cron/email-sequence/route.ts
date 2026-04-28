@@ -156,8 +156,8 @@ export async function GET(request: Request) {
         summary.expiry.attempted++
         try {
           await sendTrialExpiryEmail(row.email, row.first_name ?? null, {
-            monthly: '$9.99/mo',
-            annual: '$59.99/yr (save 50%)',
+            monthly: '$7.99/mo',
+            annual: '$49.99/yr (save 48%)',
             lifetime: '$149 once',
           })
           await sendAndMark(admin, row.id, { trial_expiry_email_sent: true })

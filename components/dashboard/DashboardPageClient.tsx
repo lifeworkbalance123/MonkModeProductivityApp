@@ -19,6 +19,8 @@ import type { ProgramType } from '@/lib/programStatus'
 import { supabase } from '@/lib/supabase'
 import { withAuthStorageLockRetry } from '@/lib/authStorageLock'
 import { ClearAllDataButton } from '@/components/schedule/ClearAllDataButton'
+import { Button } from '@/components/ui/button'
+import { useRouter } from 'next/navigation'
 
 export interface DashboardPageClientProps {
   welcomeName?: string
@@ -89,6 +91,7 @@ export function DashboardPageClient({
   const trial = useTrialBanner()
   const { user } = useAuth()
   const { showToast } = useToast()
+  const router = useRouter()
 
   useEffect(() => {
     if (!user?.id || !trial.visible || trial.expired || !ready) return
@@ -128,6 +131,14 @@ export function DashboardPageClient({
     }
   }, [])
 
+  const handleLogout = useCallback(async () => {
+    try {
+      await supabase.auth.signOut()
+    } finally {
+      router.replace('/auth')
+    }
+  }, [router])
+
   return (
     <div className="min-h-screen bg-background">
       {loadError ? (
@@ -148,6 +159,7 @@ export function DashboardPageClient({
               <ClearAllDataButton
                 hasData={data.timeSlots.length > 0}
                 onClear={async () => {
+                  // Prevent any pending autosave from re-writing cleared slots.
                   if (typeof window !== 'undefined') {
                     window.dispatchEvent(new Event('monk:schedule:cleared'))
                   }
@@ -157,6 +169,8 @@ export function DashboardPageClient({
                   } catch {
                     /* ignore */
                   }
+                  // Commit before flush() so useMonkData's dataRef sees cleared slots;
+                  // otherwise persistFullMonkData can re-upsert the old weekly template.
                   flushSync(() => {
                     setData((d) => ({ ...d, timeSlots: [] }))
                   })
@@ -182,6 +196,19 @@ export function DashboardPageClient({
           </div>
         </div>
       )}
+
+      {ready ? (
+        <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2">
+          <Button
+            type="button"
+            variant="secondary"
+            className="min-h-11 rounded-full px-8"
+            onClick={() => void handleLogout()}
+          >
+            Logout
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }

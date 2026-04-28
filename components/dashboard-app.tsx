@@ -34,6 +34,7 @@ import { computeStreak, habitWeekProgress } from '@/lib/monk-streak'
 import { youtubeEmbedFromUrl } from '@/lib/morning-video'
 import { usePlan } from '@/hooks/usePlan'
 import { useToast } from '@/context/ToastContext'
+import { useUpgradeOffer } from '@/context/UpgradeOfferContext'
 import { GettingStartedChecklist } from '@/components/GettingStartedChecklist'
 import ProgramHeader from '@/components/program/ProgramHeader'
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
@@ -52,6 +53,7 @@ import {
 } from '@/lib/dataService'
 import { captureEvent } from '@/lib/analytics'
 import { getWeeklyStreak, getWeekProgressMessage, type StreakData } from '@/lib/streak'
+import { countLocalDashboardDays, hasLocalDashboardDay } from '@/lib/dashboard-day-local'
 
 const daysShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -75,22 +77,14 @@ export function DashboardApp({
   scheduleReloadTick = 0,
 }: Props) {
   const { showToast } = useToast()
-  const { isPro, isLoading: planLoading } = usePlan()
+  const { openUpgrade } = useUpgradeOffer()
+  const { isPro, isLoading: planLoading, trialExpired } = usePlan()
   const journalEvening = !planLoading && isPro
   const analyticsAccess = !planLoading && isPro
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [localVideoPreviewUrl, setLocalVideoPreviewUrl] = useState<string | null>(
-    null,
-  )
+  const freeAfterTrial = !planLoading && !isPro && trialExpired
   const [trackedMorningJournal, setTrackedMorningJournal] = useState(false)
   const [trackedEveningJournal, setTrackedEveningJournal] = useState(false)
   const [weekStreak, setWeekStreak] = useState<StreakData | null>(null)
-
-  useEffect(() => {
-    return () => {
-      if (localVideoPreviewUrl) URL.revokeObjectURL(localVideoPreviewUrl)
-    }
-  }, [localVideoPreviewUrl])
 
   const [weekOffset, setWeekOffset] = useState(0)
   const [dayIndex, setDayIndex] = useState(() => {
@@ -116,6 +110,7 @@ export function DashboardApp({
   const [dayGratitude, setDayGratitude] = useState<string[]>(['', '', ''])
   const [dayAchievements, setDayAchievements] = useState<string[]>(['', '', ''])
   const [dayTimeSlots, setDayTimeSlots] = useState<TimeSlot[]>([])
+  const [weekTimeSlotCount, setWeekTimeSlotCount] = useState(0)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [currentTemplate, setCurrentTemplate] = useState<ScheduleTemplate | null>(null)
   const [showSaved, setShowSaved] = useState(false)
@@ -139,6 +134,20 @@ export function DashboardApp({
 
   const saveJournalOnly = useCallback(
     async (date: string) => {
+      if (freeAfterTrial && !hasLocalDashboardDay(date)) {
+        const count = countLocalDashboardDays()
+        const hasAnyText = [...gratitudeRef.current, ...achievementsRef.current].some(
+          (s) => String(s ?? '').trim().length > 0,
+        )
+        if (hasAnyText && count >= 3) {
+          showToast('Free plan limit: 3 journal days. Upgrade to keep journaling.', 'info')
+          openUpgrade({
+            featureContext:
+              'Free plan (after trial) includes up to 3 journal days. Upgrade for unlimited journaling and sync.',
+          })
+          return
+        }
+      }
       await saveDashboardDayJournal(
         dataContext,
         date,
@@ -148,7 +157,7 @@ export function DashboardApp({
       setShowSaved(true)
       setTimeout(() => setShowSaved(false), 2000)
     },
-    [dataContext],
+    [dataContext, freeAfterTrial, openUpgrade, showToast],
   )
 
   const loadDayData = useCallback(
@@ -208,6 +217,19 @@ export function DashboardApp({
     return () => window.removeEventListener('monk:schedule:cleared', onCleared)
   }, [])
 
+  const recomputeWeekSlotCount = useCallback(async () => {
+    if (!freeAfterTrial) {
+      setWeekTimeSlotCount(0)
+      return
+    }
+    const days = Array.from({ length: 7 }, (_, i) =>
+      format(addDays(weekStart, i), 'yyyy-MM-dd'),
+    )
+    const results = await Promise.all(days.map((d) => loadPlannerSlotsForDate(dataContext, d)))
+    const count = results.reduce((sum, slots) => sum + (slots?.length ?? 0), 0)
+    setWeekTimeSlotCount(count)
+  }, [dataContext, freeAfterTrial, weekStart])
+
   useEffect(() => {
     if (dateKey === todayKey) {
       setTodayGratitudeSnapshot([...dayGratitude])
@@ -223,23 +245,33 @@ export function DashboardApp({
       }
       const prev = prevDateKeyRef.current
       if (prev !== null && prev !== dateKey) {
-        await saveDashboardDayJournal(
-          dataContext,
-          prev,
-          gratitudeRef.current as [string, string, string],
-          achievementsRef.current as [string, string, string],
-        )
+        if (
+          !freeAfterTrial ||
+          hasLocalDashboardDay(prev) ||
+          countLocalDashboardDays() < 3 ||
+          ![...gratitudeRef.current, ...achievementsRef.current].some(
+            (s) => String(s ?? '').trim().length > 0,
+          )
+        ) {
+          await saveDashboardDayJournal(
+            dataContext,
+            prev,
+            gratitudeRef.current as [string, string, string],
+            achievementsRef.current as [string, string, string],
+          )
+        }
         await replacePlannerSlotsForDate(dataContext, prev, slotsRef.current)
         // Do not setDayTimeSlots from the save response: local state is already
         // correct, and replacing rows remounts inputs (cursor jump / lost keys).
       }
       prevDateKeyRef.current = dateKey
       await loadDayData(dateKey)
+      void recomputeWeekSlotCount()
     })()
     return () => {
       cancelled = true
     }
-  }, [dateKey, loadDayData, dataContext, scheduleReloadTick])
+  }, [dateKey, loadDayData, dataContext, scheduleReloadTick, recomputeWeekSlotCount])
 
   useEffect(() => {
     if (!userId) {
@@ -291,16 +323,6 @@ export function DashboardApp({
 
   const setMorningVideoNote = (value: string) => {
     onChange({ ...data, morningVideoNote: value })
-  }
-
-  const onMorningVideoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setLocalVideoPreviewUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev)
-      return URL.createObjectURL(file)
-    })
-    e.target.value = ''
   }
 
   const toggleHabit = (habitId: string) => {
@@ -483,25 +505,9 @@ export function DashboardApp({
               >
                 <div className="space-y-3">
                   <p className="text-xs text-muted-foreground">
-                    Upload plays in your browser for this session only. Paste a YouTube
-                    or direct video URL to keep it with your saved data.
+                    Paste a YouTube link to save your morning motivation video.
                   </p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="video/*"
-                    className="hidden"
-                    onChange={onMorningVideoFile}
-                  />
                   <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-medium hover:bg-secondary md:min-h-0 md:px-2 md:py-1.5"
-                    >
-                      <Video className="w-3.5 h-3.5" />
-                      Upload video
-                    </button>
                     <span className="text-xs text-muted-foreground">
                       or paste a URL below
                     </span>
@@ -510,7 +516,7 @@ export function DashboardApp({
                     value={data.morningVideoUrl}
                     onChange={(e) => setMorningVideoUrl(e.target.value)}
                     className="h-9 text-sm bg-background/60 border-border"
-                    placeholder="Video URL (YouTube, or direct .mp4 / .webm link)"
+                    placeholder="YouTube URL (e.g. https://www.youtube.com/watch?v=...)"
                   />
                   <Textarea
                     value={data.morningVideoNote}
@@ -518,16 +524,17 @@ export function DashboardApp({
                     className="min-h-[72px] text-sm bg-background/60 border-border resize-y"
                     placeholder="Motivation text, intention, or notes for this morning…"
                   />
-                  {localVideoPreviewUrl ? (
-                    <video
-                      src={localVideoPreviewUrl}
-                      controls
-                      className="w-full max-w-md rounded-md border border-border"
-                    />
-                  ) : null}
-                  {!localVideoPreviewUrl &&
-                  data.morningVideoUrl.trim() &&
+                  {data.morningVideoUrl.trim() &&
                   youtubeEmbedFromUrl(data.morningVideoUrl) ? (
+                    <div className="space-y-2">
+                      <a
+                        href={data.morningVideoUrl.trim()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex text-xs font-medium text-accent hover:underline"
+                      >
+                        Watch on YouTube
+                      </a>
                     <iframe
                       title="Morning video"
                       src={youtubeEmbedFromUrl(data.morningVideoUrl)!}
@@ -535,9 +542,9 @@ export function DashboardApp({
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
                     />
+                    </div>
                   ) : null}
-                  {!localVideoPreviewUrl &&
-                  data.morningVideoUrl.trim() &&
+                  {data.morningVideoUrl.trim() &&
                   !youtubeEmbedFromUrl(data.morningVideoUrl) ? (
                     <video
                       src={data.morningVideoUrl.trim()}
@@ -573,10 +580,22 @@ export function DashboardApp({
                     // DB rows here remounts list items and breaks text caret.
                     setShowSaved(true)
                     setTimeout(() => setShowSaved(false), 2000)
+                    void recomputeWeekSlotCount()
                   })()
                 }, 400)
               }}
               getNewSlotId={() => newTimeSlotClientId(dataContext)}
+              addDisabled={freeAfterTrial && weekTimeSlotCount >= 1}
+              onAddDisabledClick={() => {
+                showToast(
+                  'Free plan limit: 1 time block across the week. Delete your existing block to move it, or upgrade for unlimited timeboxing.',
+                  'info',
+                )
+                openUpgrade({
+                  featureContext:
+                    'Free plan (after trial) includes 1 time block across the week. Upgrade for unlimited timeboxing.',
+                })
+              }}
               headerActions={
                 <>
                   {currentTemplate && shouldSyncToCloud(dataContext) ? (

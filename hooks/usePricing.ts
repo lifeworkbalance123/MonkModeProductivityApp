@@ -55,19 +55,21 @@ export function useAppSubscriptionPrices() {
 
   const monthlyCents = monthlyRow?.current_price ?? DEFAULT_MONTHLY_CENTS
   const annualCents = annualRow?.current_price ?? DEFAULT_ANNUAL_CENTS
-  const monthlyCurrency = monthlyRow?.currency ?? 'AUD'
-  const annualCurrency = annualRow?.currency ?? 'AUD'
+  const monthlyCurrency = monthlyRow?.currency ?? 'USD'
+  const annualCurrency = annualRow?.currency ?? 'USD'
   const annualPerMonthCents = Math.round(annualCents / 12)
 
   const annualSavingsLine = useMemo(() => {
-    const full = annualRow?.full_price
-    if (full != null && full > annualCents) {
-      const saved = full - annualCents
-      return `You save ${formatPriceCents(saved, annualCurrency)} per year vs list price`
-    }
+    const annualList = annualRow?.full_price
+    const annualSaved = annualList != null ? annualList - annualCents : null
     const vsMonthly = monthlyCents * 12 - annualCents
-    if (vsMonthly > 0) {
-      return `You save ${formatPriceCents(vsMonthly, annualCurrency)} per year vs paying monthly`
+    const baseline = annualList != null && annualList > 0 ? annualList : monthlyCents * 12
+    const saved = annualSaved != null && annualSaved > 0 ? annualSaved : vsMonthly
+
+    if (baseline > 0 && saved > 0) {
+      const pct = Math.round((saved / baseline) * 100)
+      const baselineLine = `${formatPriceCents(baseline, annualCurrency)}/year`
+      return `${baselineLine} \u2192 Save ${pct}%`
     }
     return null
   }, [annualRow?.full_price, annualCents, annualCurrency, monthlyCents])

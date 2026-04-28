@@ -1,6 +1,16 @@
 /** Palette ids — CSS in `app/globals.css` (`data-color-theme` on `<html>`). */
 
-export const THEME_IDS = ['stoic', 'zen', 'nomad', 'forge', 'silent'] as const
+export const THEME_IDS = [
+  'stoic',
+  'zen',
+  'nomad',
+  'forge',
+  'silent',
+  'rose',
+  'lavender',
+  'peach',
+  'sage',
+] as const
 
 export type ColorThemeId = (typeof THEME_IDS)[number]
 
@@ -32,6 +42,10 @@ export const THEME_ACCENT_SWATCH: Record<ColorThemeId, string> = {
   nomad: '#D4A373',
   forge: '#E85D04',
   silent: '#C5A059',
+  rose: '#DB2777',
+  lavender: '#7C3AED',
+  peach: '#EA580C',
+  sage: '#65A30D',
 }
 
 export function applyColorThemeToDocument(theme: ColorThemeId) {

@@ -336,6 +336,10 @@ type Props = {
   showPlannerLink?: boolean
   /** Optional controls next to the title (e.g. weekly template). */
   headerActions?: ReactNode
+  /** Disable adding new blocks (e.g. Free tier cap). */
+  addDisabled?: boolean
+  /** Called when user attempts to add while disabled. */
+  onAddDisabledClick?: () => void
   className?: string
 }
 
@@ -347,6 +351,8 @@ export function TimeScheduleCard({
   onApplyTimeBlockToWeek,
   showPlannerLink = true,
   headerActions,
+  addDisabled = false,
+  onAddDisabledClick,
   className,
 }: Props) {
   const [increment, setIncrement] = useState<TimeScheduleIncrement>(() =>
@@ -569,7 +575,14 @@ export function TimeScheduleCard({
           variant="outline"
           size="sm"
           className="w-full gap-1.5 md:h-8 md:w-auto"
-          onClick={addEmptyRow}
+          onClick={() => {
+            if (addDisabled) {
+              onAddDisabledClick?.()
+              return
+            }
+            addEmptyRow()
+          }}
+          disabled={addDisabled}
         >
           <Plus className="h-4 w-4" aria-hidden />
           Add time block

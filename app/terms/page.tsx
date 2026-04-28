@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalDocumentLayout title="Terms of Service" lastUpdated="April 2026">
+    <LegalDocumentLayout title="Terms of Service" lastUpdated="April 27, 2026">
       <LegalSection title="Acceptance of terms">
         <p>
           By accessing or using monkcubed (the &quot;Service&quot;), you agree to these Terms of
@@ -38,9 +38,14 @@ export default function TermsPage() {
 
       <LegalSection title="Free vs Pro plans">
         <p>
-          <strong>Free tier:</strong> Includes core monkcubed features as described in the app or
-          on our website at the time you use them. Some data may be stored locally in your browser
-          rather than in the cloud.
+          <strong>Free tier:</strong> Includes core monkcubed features with limits as described on
+          our{" "}
+          <a href="/pricing" className="text-accent underline hover:no-underline">
+            Pricing
+          </a>{" "}
+          page and in the app. Some data may be stored locally in your browser rather than in the
+          cloud. Additional terms on modification, notice, and discontinuation of the Free tier
+          appear under <strong>Free tier availability</strong> below.
         </p>
         <p>
           <strong>Pro tier:</strong> Includes additional features such as cloud sync, advanced
@@ -52,6 +57,46 @@ export default function TermsPage() {
           We may modify, add, or remove features with notice where appropriate. If a change
           materially reduces what you paid for, your remedies may be governed by applicable consumer
           law in addition to these terms.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Data export and portability">
+        <p>
+          Where the Service provides export or download tools (for example CSV or PDF export from
+          account or settings screens), you may use them to retrieve your content. Availability and
+          format of exports may vary by feature and plan. If we discontinue the Free tier, we will
+          give eligible users reasonable opportunity to export their data before the effective date,
+          as described under <strong>Free tier availability</strong> below.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="free-tier" title="Free tier availability">
+        <p>
+          monkcubed offers a Free tier of the Service with limited features as described on our{" "}
+          <a href="/pricing" className="text-accent underline hover:no-underline">
+            Pricing
+          </a>{" "}
+          page.
+        </p>
+        <p>
+          <strong>Modification or discontinuation:</strong> monkcubed reserves the right to
+          modify, suspend, or discontinue the Free tier at its sole discretion.
+        </p>
+        <p>
+          <strong>Notice period:</strong> If we discontinue the Free tier entirely, we will provide
+          existing free users with at least thirty (30) days&apos; prior notice via the email
+          address associated with their account.
+        </p>
+        <p>
+          <strong>No liability:</strong> monkcubed shall not be liable to any user or third party
+          for any modification, suspension, or discontinuation of the Free tier, except that users
+          will be given the opportunity to export their data in accordance with the section titled{" "}
+          <strong>Data export and portability</strong> above prior to the effective date of
+          discontinuation.
+        </p>
+        <p>
+          <strong>Data retention:</strong> Following the discontinuation of the Free tier, monkcubed
+          has no obligation to retain Customer Data associated with Free tier accounts.
         </p>
       </LegalSection>
 
@@ -69,9 +114,98 @@ export default function TermsPage() {
         </p>
         <p>
           <strong>One-time purchases:</strong> Except where required by applicable law, one-time
-          purchases are <strong>non-refundable after 14 days</strong> from the date of purchase.
-          If you believe you are entitled to a refund under Australian Consumer Law or other
-          mandatory rules, contact us and we will assess your request in good faith.
+          purchases may have different refund windows depending on the product. Refund terms for
+          guided Programs (Sprint, Monk Mode, Transform) are described under{' '}
+          <a href="#refund-policy">Program refund policy</a> below. If you believe you are entitled
+          to a refund under Australian Consumer Law or other mandatory rules, contact us and we will
+          assess your request in good faith.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="refund-policy" title="Program refund policy">
+        <p>
+          <strong>7-day money-back guarantee (Programs only):</strong> If you are not satisfied with
+          a guided Program (Sprint, Monk Mode, Transform) for any reason, you may request a full
+          refund within <strong>7 calendar days</strong> of your purchase date.
+        </p>
+        <p>
+          <strong>How to request:</strong> Email{' '}
+          <a href="mailto:support@monkcubed.com">support@monkcubed.com</a> from the email address
+          used for purchase. Include your account email and the Program name.
+        </p>
+        <p>
+          <strong>After refund:</strong> Program access will be revoked. Any included Pro access
+          granted by that Program may be downgraded back to Free. Separate Pro subscriptions are
+          not refunded for unused time unless required by law.
+        </p>
+        <p>
+          <strong>Conditions:</strong> This guarantee applies to first-time Program purchases only.
+          After 7 days, Program sales are final except where required by law.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="refunds" title="Refunds and cancellations">
+        <p>
+          <strong>Pro Plan subscriptions:</strong> Monthly and annual Pro Plan subscriptions are
+          non-refundable once the billing period has commenced. You may cancel your subscription at
+          any time via your account settings or the Stripe Customer Portal. Cancellation takes
+          effect at the end of the current billing period. No partial refunds or credits for unused
+          time.
+        </p>
+        <p>
+          <strong>Programs (Sprint, Monk Mode, Transform) — 7-day money-back guarantee:</strong> If
+          you are not satisfied with any Program for any reason, you may request a full refund
+          within 7 calendar days of purchase. Details appear in{' '}
+          <a href="#refund-policy">Program refund policy</a>.
+        </p>
+        <p>
+          <strong>Abuse prevention:</strong> monkcubed reserves the right to deny refund requests
+          from users who repeatedly purchase and request refunds.
+        </p>
+        <p>
+          <strong>Bonus features:</strong> Bonus features (Cloud Sync, CSV Export, Training Hub) are
+          provided &quot;as-is&quot; and &quot;as available.&quot; No refunds are provided for
+          temporary unavailability or interruptions.
+        </p>
+        <p>
+          <strong>Free tier:</strong> monkcubed may modify, suspend, or discontinue the Free tier at
+          its sole discretion. If discontinued entirely, free users will receive 30 days&apos; prior
+          notice via email.
+        </p>
+        <p>
+          <strong>Chargebacks and disputes:</strong> If a customer initiates a chargeback or dispute,
+          monkcubed may suspend or terminate access to all services pending resolution.
+        </p>
+      </LegalSection>
+
+      <LegalSection id="bug-disclaimer" title="As-is / bug disclaimer (initial release)">
+        <div className="bug-disclaimer-note">
+          <strong>📢 Note on Initial Release:</strong> Minor bugs may be present. These do not
+          qualify for refunds unless they substantially block core features.{' '}
+          <a href="#bug-disclaimer">Read more →</a>
+        </div>
+        <p>
+          <strong>Initial release &amp; minor bugs:</strong> monkcubed is committed to delivering a
+          high-quality productivity experience. However, as with any software, the initial release
+          may contain minor bugs, visual inconsistencies, or performance issues that do not
+          substantially impair core functionality.
+        </p>
+        <p>
+          <strong>Refund limitation:</strong> The presence of minor bugs, non-critical issues, or
+          missing non-core features does not entitle you to a refund. Refunds are governed by the
+          policies in <a href="#refunds">Refunds and cancellations</a> above.
+        </p>
+        <p>
+          <strong>Substantial breach exception:</strong> If a bug or issue substantially prevents you
+          from using core features (habit tracking, timeboxing, Pomodoro timer) for an extended
+          period, please contact{' '}
+          <a href="mailto:support@monkcubed.com">support@monkcubed.com</a> and we will work to resolve
+          the issue or, at our discretion, offer a pro-rated refund.
+        </p>
+        <p>
+          <strong>Ongoing improvements:</strong> We actively monitor and fix reported issues. By
+          using monkcubed, you acknowledge that software may have imperfections and agree to report
+          issues constructively rather than demanding refunds for minor problems.
         </p>
       </LegalSection>
 

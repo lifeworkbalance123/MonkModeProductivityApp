@@ -1,10 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import { useProgramStatus } from '@/hooks/useProgramStatus'
 import { PU } from '@/lib/program-ui-tokens'
+import { BuddyShareModal } from '@/components/program/BuddyShareModal'
 
 export default function ProgramHeader() {
   const { activeProgram, loading } = useProgramStatus()
+  const [buddyOpen, setBuddyOpen] = useState(false)
 
   if (loading || !activeProgram) return null
 
@@ -19,6 +22,7 @@ export default function ProgramHeader() {
         : '#22C55E'
 
   return (
+    <>
     <div
       style={{
         background: PU.card,
@@ -56,17 +60,35 @@ export default function ProgramHeader() {
             <span style={{ color: PU.mutedFg, fontSize: '13px', marginLeft: '8px' }}>Program</span>
           </div>
         </div>
-        <div
-          style={{
-            background: `color-mix(in srgb, ${programColor} 20%, transparent)`,
-            color: programColor,
-            padding: '4px 12px',
-            borderRadius: '20px',
-            fontSize: '13px',
-            fontWeight: '600',
-          }}
-        >
-          Day {activeProgram.currentDay} of {totalDays}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={() => setBuddyOpen(true)}
+            style={{
+              background: `color-mix(in srgb, ${programColor} 14%, transparent)`,
+              color: programColor,
+              padding: '4px 10px',
+              borderRadius: '999px',
+              fontSize: '12px',
+              fontWeight: '700',
+              border: `1px solid color-mix(in srgb, ${programColor} 45%, ${PU.border})`,
+              cursor: 'pointer',
+            }}
+          >
+            Buddy
+          </button>
+          <div
+            style={{
+              background: `color-mix(in srgb, ${programColor} 20%, transparent)`,
+              color: programColor,
+              padding: '4px 12px',
+              borderRadius: '20px',
+              fontSize: '13px',
+              fontWeight: '600',
+            }}
+          >
+            Day {activeProgram.currentDay} of {totalDays}
+          </div>
         </div>
       </div>
 
@@ -94,5 +116,7 @@ export default function ProgramHeader() {
         <span style={{ color: PU.mutedFg, fontSize: '11px' }}>{progressPercent}%</span>
       </div>
     </div>
+    <BuddyShareModal open={buddyOpen} onOpenChange={setBuddyOpen} />
+    </>
   )
 }

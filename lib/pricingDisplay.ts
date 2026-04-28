@@ -12,8 +12,8 @@ export type PricingConfigRow = {
 }
 
 /** Fallbacks when table is empty or unavailable. */
-export const DEFAULT_MONTHLY_CENTS = 999
-export const DEFAULT_ANNUAL_CENTS = 7999
+export const DEFAULT_MONTHLY_CENTS = 799
+export const DEFAULT_ANNUAL_CENTS = 4999
 export const DEFAULT_LIFETIME_CENTS = 14900
 
 export function findPricingRow(
@@ -23,9 +23,9 @@ export function findPricingRow(
   return prices?.find((p) => p.id === id)
 }
 
-export function formatPriceCents(cents: number, currency = 'AUD'): string {
+export function formatPriceCents(cents: number, currency = 'USD'): string {
   try {
-    return new Intl.NumberFormat('en-AU', { style: 'currency', currency }).format(cents / 100)
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100)
   } catch {
     return `$${(cents / 100).toFixed(2)}`
   }
@@ -47,9 +47,9 @@ export function indicativeSubscriptionRates(rows: PricingConfigRow[] | null | un
   const mc = m?.current_price ?? DEFAULT_MONTHLY_CENTS
   const ac = a?.current_price ?? DEFAULT_ANNUAL_CENTS
   const lc = l?.current_price ?? DEFAULT_LIFETIME_CENTS
-  const mCur = m?.currency ?? 'AUD'
-  const aCur = a?.currency ?? 'AUD'
-  const lCur = l?.currency ?? 'AUD'
+  const mCur = m?.currency ?? 'USD'
+  const aCur = a?.currency ?? 'USD'
+  const lCur = l?.currency ?? 'USD'
   return {
     monthlyPerSeatDollars: mc / 100,
     annualPerSeatDollars: ac / 100,

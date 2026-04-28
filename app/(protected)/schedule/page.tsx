@@ -11,6 +11,8 @@ import { ErrorBanner } from '@/components/ErrorBanner'
 import { Card } from '@/components/ui/card'
 import { useMonkData } from '@/hooks/use-monk-data'
 import { useToast } from '@/context/ToastContext'
+import { useUpgradeOffer } from '@/context/UpgradeOfferContext'
+import { usePlan } from '@/hooks/usePlan'
 import {
   applyTimeBlockToPlannerWeek,
   newTimeSlotClientId,
@@ -26,6 +28,8 @@ import { supabase } from '@/lib/supabase'
 
 export default function SchedulePage() {
   const { showToast } = useToast()
+  const { openUpgrade } = useUpgradeOffer()
+  const { isPro, isLoading: planLoading, trialExpired } = usePlan()
   const weekStartMonday = useMemo(
     () => startOfWeek(new Date(), { weekStartsOn: 1 }),
     [],
@@ -38,6 +42,8 @@ export default function SchedulePage() {
     loadError,
     reload,
   } = useMonkData()
+  const freeAfterTrial = !planLoading && !isPro && trialExpired
+  const atTimeboxLimit = freeAfterTrial && data.timeSlots.length >= 1
 
   async function persistSlots(timeSlots: typeof data.timeSlots) {
     const results = await Promise.all(
@@ -50,6 +56,13 @@ export default function SchedulePage() {
   }
 
   function addFirstSlot() {
+    if (atTimeboxLimit) {
+      openUpgrade({
+        featureContext:
+          'Free plan (after trial) includes 1 time block across the week. Upgrade for unlimited timeboxing.',
+      })
+      return
+    }
     const c = TIME_SLOT_CATEGORY_OPTIONS[0]
     const slot = {
       id: newTimeSlotClientId(dataContext),
@@ -91,6 +104,13 @@ export default function SchedulePage() {
   }
 
   function applyMorningTemplate() {
+    if (atTimeboxLimit) {
+      openUpgrade({
+        featureContext:
+          'Free plan (after trial) includes 1 time block across the week. Upgrade for unlimited timeboxing.',
+      })
+      return
+    }
     const slots = morningRoutineTemplateSlots(() =>
       newTimeSlotClientId(dataContext),
     )
@@ -204,6 +224,13 @@ export default function SchedulePage() {
           getNewSlotId={() => newTimeSlotClientId(dataContext)}
           onApplyTimeBlockToWeek={handleApplyToWeek}
           showPlannerLink={false}
+          addDisabled={atTimeboxLimit}
+          onAddDisabledClick={() =>
+            openUpgrade({
+              featureContext:
+                'Free plan (after trial) includes 1 time block across the week. Upgrade for unlimited timeboxing.',
+            })
+          }
         />
       </div>
       ) : null}
