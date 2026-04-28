@@ -17,7 +17,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
-import { AppPageChrome } from '@/components/navigation'
+import MarketingNav from '@/components/marketing/marketing-nav'
 import { cn } from '@/lib/utils'
 
 const PROGRAM_META: Record<
@@ -114,9 +114,9 @@ export default function JoinPage() {
   )
 
   return (
-    <AppPageChrome forceMarketingNav>
-      <div className="min-h-screen bg-background">
-        <div className="mx-auto max-w-6xl px-4 py-10 pb-16">
+    <main className="min-h-screen bg-background">
+      <MarketingNav />
+      <div className="mx-auto max-w-6xl px-4 py-10 pb-16">
           <header className="text-center">
             <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
               Guided productivity programs
@@ -397,8 +397,7 @@ export default function JoinPage() {
               </Link>
             </p>
           </div>
-        </div>
       </div>
-    </AppPageChrome>
+    </main>
   )
 }

@@ -60,7 +60,11 @@ export async function POST(request: Request) {
   // Generate missing slugs (retry few times for unique constraint collisions).
   for (let i = 0; i < 5 && (!witnessSlug || !referralSlug); i++) {
     const patch: Partial<Row> = {}
-    if (!witnessSlug) patch.witness_slug = randomSlug('wit')
+    if (!witnessSlug) {
+      patch.witness_slug = randomSlug('wit')
+      // Default ON so /witness/[slug] works as soon as the link is copied (DB default is false).
+      patch.witness_enabled = true
+    }
     if (!referralSlug) patch.referral_slug = randomSlug('ref')
     if (Object.keys(patch).length === 0) break
 
@@ -90,17 +94,43 @@ export async function POST(request: Request) {
 
   if (refErr) return NextResponse.json({ error: refErr.message }, { status: 500 })
 
+  let refreshedRow = refreshed as Row
+  // Legacy rows: slug was minted while witness_enabled defaulted false and never flipped on.
+  // If nobody has loaded the public witness page yet (views === 0), turning sharing on when the
+  // owner opens Buddy fixes broken links without affecting users who disabled after visits (views > 0).
+  if (
+    refreshedRow.witness_slug &&
+    !refreshedRow.witness_enabled &&
+    (refreshedRow.witness_views ?? 0) === 0
+  ) {
+    const { error: enableErr } = await admin
+      .from('user_programs')
+      .update({ witness_enabled: true })
+      .eq('id', data.id)
+      .eq('user_id', user.id)
+    if (!enableErr) {
+      const { data: again } = await admin
+        .from('user_programs')
+        .select(
+          'witness_slug,referral_slug,witness_enabled,witness_views,program_type,program_day',
+        )
+        .eq('id', data.id)
+        .single()
+      if (again) refreshedRow = again as Row
+    }
+  }
+
   return NextResponse.json({
     ok: true as const,
-    programType: (refreshed as Row).program_type,
-    programDay: (refreshed as Row).program_day ?? 1,
+    programType: refreshedRow.program_type,
+    programDay: refreshedRow.program_day ?? 1,
     witness: {
-      slug: (refreshed as Row).witness_slug,
-      enabled: Boolean((refreshed as Row).witness_enabled),
-      views: (refreshed as Row).witness_views ?? 0,
+      slug: refreshedRow.witness_slug,
+      enabled: Boolean(refreshedRow.witness_enabled),
+      views: refreshedRow.witness_views ?? 0,
     },
     referral: {
-      slug: (refreshed as Row).referral_slug,
+      slug: refreshedRow.referral_slug,
     },
   })
 }

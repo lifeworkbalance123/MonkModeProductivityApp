@@ -1,17 +1,6 @@
-import { headers } from 'next/headers'
+import { getWitnessPublicPayload, type WitnessPublicPayload } from '@/lib/witness-public'
 
 export const dynamic = 'force-dynamic'
-
-type WitnessApiOk = {
-  ok: true
-  userName: string
-  programName: string
-  totalDays: number
-  currentDay: number
-  streakDays: number
-  lastActive: string | null
-  progress: number
-}
 
 export default async function WitnessPage({
   params,
@@ -19,36 +8,7 @@ export default async function WitnessPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const s = String(slug ?? '').trim()
-  if (!s) {
-    return (
-      <div className="witness-container">
-        <div className="witness-card error">
-          <span className="error-icon">🔒</span>
-          <h2>Link not found</h2>
-          <p>This witness link is invalid or has been disabled.</p>
-        </div>
-      </div>
-    )
-  }
-
-  const h = await headers()
-  const host = h.get('x-forwarded-host') ?? h.get('host')
-  const proto = h.get('x-forwarded-proto') ?? 'http'
-
-  let data: WitnessApiOk | null = null
-  try {
-    if (!host) throw new Error('Missing host header')
-    const res = await fetch(`${proto}://${host}/api/witness/${encodeURIComponent(s)}`, {
-      cache: 'no-store',
-    })
-    if (!res.ok) throw new Error('Not ok')
-    const json = (await res.json()) as WitnessApiOk
-    if (!json?.ok) throw new Error('Not ok')
-    data = json
-  } catch {
-    data = null
-  }
+  const data: WitnessPublicPayload | null = await getWitnessPublicPayload(slug ?? '')
 
   if (!data) {
     return (
@@ -97,4 +57,3 @@ export default async function WitnessPage({
     </div>
   )
 }
-
