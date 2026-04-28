@@ -85,6 +85,8 @@ export default function UserTable() {
   const [refundCents, setRefundCents] = useState('')
   const [refundReason, setRefundReason] = useState('')
   const [emailDisabledReason, setEmailDisabledReason] = useState<string | null>(null)
+  /** False until `/api/admin/email-status` finishes when the email dialog is open. */
+  const [emailEnvChecked, setEmailEnvChecked] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -156,7 +158,7 @@ export default function UserTable() {
       setMessage(msg)
       if (path.includes('/send-email') && isMissingResendEnv(msg)) {
         setEmailDisabledReason(
-          'Email disabled: missing RESEND_API_KEY/EMAIL_FROM in environment.',
+          'Email disabled: add RESEND_API_KEY and EMAIL_FROM to .env.local (see .env.example), then restart the dev server.',
         )
       }
       return
@@ -166,6 +168,58 @@ export default function UserTable() {
   }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
+
+  useEffect(() => {
+    if (!emailOpen) {
+      setEmailEnvChecked(false)
+      return
+    }
+    let cancelled = false
+    setEmailEnvChecked(false)
+    ;(async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) {
+        if (!cancelled) {
+          setEmailEnvChecked(true)
+          setEmailDisabledReason('Not signed in')
+        }
+        return
+      }
+      const res = await fetch('/api/admin/email-status', {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      })
+      const json = (await res.json().catch(() => ({}))) as {
+        configured?: boolean
+        missing?: string[]
+      }
+      if (cancelled) return
+      setEmailEnvChecked(true)
+      if (!res.ok) {
+        setEmailDisabledReason(
+          `Could not verify email configuration (HTTP ${res.status}).`,
+        )
+        return
+      }
+      if (!json.configured) {
+        const miss =
+          json.missing && json.missing.length > 0
+            ? json.missing.join(', ')
+            : 'RESEND_API_KEY and EMAIL_FROM'
+        setEmailDisabledReason(
+          `Email disabled: add ${miss} to .env.local (see .env.example), then restart the dev server.`,
+        )
+      } else {
+        setEmailDisabledReason(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [emailOpen])
 
   return (
     <div className="space-y-4">
@@ -557,6 +611,9 @@ export default function UserTable() {
           <DialogHeader>
             <DialogTitle>Send test lifecycle email</DialogTitle>
           </DialogHeader>
+          {emailOpen && !emailEnvChecked ? (
+            <p className="text-xs text-muted-foreground">Checking email configuration…</p>
+          ) : null}
           {emailDisabledReason ? (
             <p className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
               {emailDisabledReason}
@@ -575,7 +632,9 @@ export default function UserTable() {
             </SelectContent>
           </Select>
           <Button
-            disabled={working || !activeUser || !!emailDisabledReason}
+            disabled={
+              working || !activeUser || !emailEnvChecked || !!emailDisabledReason
+            }
             onClick={() =>
               void postAction(
                 `/api/admin/users/${activeUser!.id}/send-email`,
@@ -584,7 +643,11 @@ export default function UserTable() {
               )
             }
           >
-            {emailDisabledReason ? 'Email disabled' : 'Send'}
+            {!emailEnvChecked
+              ? 'Checking…'
+              : emailDisabledReason
+                ? 'Email disabled'
+                : 'Send'}
           </Button>
         </DialogContent>
       </Dialog>
