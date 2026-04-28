@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { BonusBadge } from "@/components/bonus-badge"
 import { ProBadge } from "@/components/pro-badge"
 import { useUpgradeOffer } from "@/context/UpgradeOfferContext"
 import { useAuth } from "@/context/AuthContext"
@@ -75,6 +76,7 @@ function MarketingNavigation({
               const Icon = item.icon
               const locked = showProGate(item)
               if (locked) {
+                const Badge = item.paywallBadge === "bonus" ? BonusBadge : ProBadge
                 return (
                   <button
                     key={item.label}
@@ -91,7 +93,7 @@ function MarketingNavigation({
                       <Icon className="w-4 h-4 shrink-0 opacity-80" />
                       {item.label}
                     </span>
-                    <ProBadge className="absolute -top-0.5 right-1" />
+                    <Badge className="absolute -top-0.5 right-1" />
                   </button>
                 )
               }
@@ -177,6 +179,7 @@ function MarketingNavigation({
               const Icon = item.icon
               const locked = showProGate(item)
               if (locked) {
+                const Badge = item.paywallBadge === "bonus" ? BonusBadge : ProBadge
                 return (
                   <button
                     key={item.label}
@@ -192,7 +195,7 @@ function MarketingNavigation({
                   >
                     <Icon className="w-4 h-4 shrink-0" />
                     <span className="flex-1">{item.label}</span>
-                    <ProBadge />
+                    <Badge />
                   </button>
                 )
               }

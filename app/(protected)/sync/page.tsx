@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
+import { BonusBadge } from '@/components/bonus-badge'
 import { ProBadge } from '@/components/pro-badge'
 import { useUpgradeOffer } from '@/context/UpgradeOfferContext'
 import { usePlan } from '@/hooks/usePlan'
@@ -46,9 +47,9 @@ export default function CloudSyncPage() {
                 })
               }
             >
-              <ProBadge className="scale-110" />
+              <BonusBadge className="scale-110" />
               <p className="text-sm text-muted-foreground max-w-xs text-center">
-                Cloud sync is Pro — keep habits and goals backed up everywhere.
+                Cloud sync is a Bonus feature (included with Pro) — provided as-is, best effort.
               </p>
               <span className="text-xs font-medium text-accent">Tap to upgrade</span>
             </button>

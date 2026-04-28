@@ -495,7 +495,7 @@ export default function TrainingPage() {
         <section className="space-y-8">
           <Tooltip
             id="tooltip_training"
-            text="Your daily 2\u2011minute lesson. Read or listen. Each day builds a new discipline skill."
+            text="Your daily lesson. Read or listen. Each day builds a new discipline skill."
             className="mx-auto w-full max-w-2xl"
           >
             <div className="text-center space-y-1 max-w-2xl mx-auto">

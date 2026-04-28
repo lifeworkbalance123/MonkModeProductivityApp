@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useProgram } from '@/hooks/useProgram'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import {
   getMaxDays,
   getProgramType,
@@ -91,193 +94,108 @@ export default function ProgramControls() {
   const maxDays = getMaxDays(programType)
 
   return (
-    <div
-      style={{
-        background: '#1E293B',
-        borderRadius: '12px',
-        padding: '20px 24px',
-        border: '1px solid #334155',
-        marginBottom: '24px',
-      }}
-    >
-      <h3
-        style={{
-          color: 'white',
-          fontSize: '16px',
-          fontWeight: '500',
-          margin: '0 0 4px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-        }}
-      >
-        🧘 Program Controls
-      </h3>
-      <p
-        style={{
-          color: '#64748B',
-          fontSize: '13px',
-          margin: '0 0 16px',
-        }}
-      >
-        Day {enrollment.currentDay} of {maxDays} ({PROGRAM_LABELS[programType]}) ·
-        <span
-          style={{
-            color: isPaused ? '#F59E0B' : isCompleted ? '#8B5CF6' : '#10B981',
-            marginLeft: '6px',
-            fontWeight: '500',
-            textTransform: 'capitalize',
-          }}
-        >
-          {enrollment.status || 'active'}
-        </span>
-      </p>
+    <Card className="mb-6 border-border bg-card/80 p-5 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-base font-semibold text-foreground">🧘 Program Controls</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Day {enrollment.currentDay} of {maxDays} ({PROGRAM_LABELS[programType]}) ·{' '}
+            <span
+              className={cn(
+                'font-semibold capitalize',
+                isPaused
+                  ? 'text-amber-400'
+                  : isCompleted
+                    ? 'text-purple-400'
+                    : 'text-emerald-400',
+              )}
+            >
+              {enrollment.status || 'active'}
+            </span>
+          </p>
+        </div>
+      </div>
 
-      <div
-        style={{
-          display: 'flex',
-          gap: '10px',
-          flexWrap: 'wrap',
-          marginBottom: message ? '12px' : 0,
-        }}
-      >
+      <div className={cn('mt-4 flex flex-wrap gap-2', message && 'mb-3')}>
         {!isPaused && !isCompleted ? (
-          <button
+          <Button
+            type="button"
+            variant="outline"
             onClick={() => void handlePause()}
             disabled={acting}
-            style={{
-              background: '#1E293B',
-              border: '1px solid #F59E0B44',
-              color: '#F59E0B',
-              padding: '8px 16px',
-              borderRadius: '8px',
-              cursor: acting ? 'wait' : 'pointer',
-              fontSize: '13px',
-            }}
+            className="min-h-10"
           >
-            {acting ? '...' : '⏸ Pause program'}
-          </button>
+            {acting ? '…' : '⏸ Pause program'}
+          </Button>
         ) : null}
 
         {isPaused ? (
-          <button
+          <Button
+            type="button"
             onClick={() => void handleResume()}
             disabled={acting}
-            style={{
-              background: '#F59E0B',
-              border: 'none',
-              color: '#000',
-              padding: '8px 16px',
-              borderRadius: '8px',
-              cursor: acting ? 'wait' : 'pointer',
-              fontSize: '13px',
-              fontWeight: '600',
-            }}
+            className="min-h-10 bg-accent text-accent-foreground hover:bg-accent/90"
           >
-            {acting ? '...' : '▶ Resume program'}
-          </button>
+            {acting ? '…' : '▶ Resume program'}
+          </Button>
         ) : null}
 
         {!showRestartConfirm ? (
-          <button
+          <Button
+            type="button"
+            variant="outline"
             onClick={() => setShowRestartConfirm(true)}
-            style={{
-              background: 'transparent',
-              border: '1px solid #EF444444',
-              color: '#EF4444',
-              padding: '8px 16px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '13px',
-            }}
+            className="min-h-10 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
           >
             ↺ Restart from Day 1
-          </button>
-        ) : (
-          <div
-            style={{
-              background: '#1E293B',
-              border: '1px solid #EF4444',
-              borderRadius: '8px',
-              padding: '12px 16px',
-              width: '100%',
-            }}
-          >
-            <p
-              style={{
-                color: '#FCA5A5',
-                fontSize: '13px',
-                margin: '0 0 10px',
-                lineHeight: '1.5',
-              }}
-            >
-              ⚠️ This will reset your program to Day 1 and clear your completed days. This cannot be undone.
-            </p>
-            <div
-              style={{
-                display: 'flex',
-                gap: '8px',
-              }}
-            >
-              <button
-                onClick={() => void handleRestart()}
-                disabled={acting}
-                style={{
-                  background: '#EF4444',
-                  border: 'none',
-                  color: 'white',
-                  padding: '8px 16px',
-                  borderRadius: '6px',
-                  cursor: acting ? 'wait' : 'pointer',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                }}
-              >
-                {acting ? 'Resetting...' : 'Yes, restart'}
-              </button>
-              <button
-                onClick={() => setShowRestartConfirm(false)}
-                style={{
-                  background: '#334155',
-                  border: 'none',
-                  color: '#94A3B8',
-                  padding: '8px 16px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
+          </Button>
+        ) : null}
       </div>
+
+      {showRestartConfirm ? (
+        <div className="mt-2 rounded-lg border border-destructive/50 bg-destructive/10 p-4">
+          <p className="text-sm text-destructive/90">
+            <strong>⚠️ Heads up:</strong> This resets your program to Day 1 and clears completed days.
+            This cannot be undone.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => void handleRestart()}
+              disabled={acting}
+              className="min-h-10"
+            >
+              {acting ? 'Resetting…' : 'Yes, restart'}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowRestartConfirm(false)}
+              className="min-h-10"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       {message ? (
         <p
-          style={{
-            color: message.startsWith('✓') ? '#10B981' : '#EF4444',
-            fontSize: '13px',
-            margin: 0,
-          }}
+          className={cn(
+            'text-sm',
+            message.startsWith('✓') ? 'text-emerald-400' : 'text-destructive',
+          )}
         >
           {message}
         </p>
       ) : null}
 
       {isPaused ? (
-        <p
-          style={{
-            color: '#64748B',
-            fontSize: '12px',
-            margin: '8px 0 0',
-            fontStyle: 'italic',
-          }}
-        >
-          Program paused - your streak is frozen and no new days will advance until you resume.
+        <p className="mt-2 text-xs italic text-muted-foreground">
+          Program paused — your streak is frozen and no new days will advance until you resume.
         </p>
       ) : null}
-    </div>
+    </Card>
   )
 }

@@ -1,3 +1,4 @@
+import { Flame, Lock, Users } from 'lucide-react'
 import { getWitnessPublicPayload, type WitnessPublicPayload } from '@/lib/witness-public'
 
 export const dynamic = 'force-dynamic'
@@ -14,7 +15,9 @@ export default async function WitnessPage({
     return (
       <div className="witness-container">
         <div className="witness-card error">
-          <span className="error-icon">🔒</span>
+          <span className="error-icon" aria-hidden>
+            <Lock className="mx-auto h-12 w-12" strokeWidth={1.5} />
+          </span>
           <h2>Link not found</h2>
           <p>This witness link is invalid or has been disabled.</p>
         </div>
@@ -25,7 +28,9 @@ export default async function WitnessPage({
   return (
     <div className="witness-container">
       <div className="witness-card">
-        <div className="witness-icon">👥</div>
+        <div className="witness-icon" aria-hidden>
+          <Users className="h-12 w-12" strokeWidth={1.5} />
+        </div>
         <h2>
           You&apos;re witnessing <strong>{data.userName}</strong>&apos;s journey
         </h2>
@@ -33,7 +38,9 @@ export default async function WitnessPage({
         <div className="program-badge">{data.programName}</div>
 
         <div className="streak-display">
-          <span className="streak-fire">🔥</span>
+          <span className="streak-fire" aria-hidden>
+            <Flame className="h-8 w-8" strokeWidth={1.75} />
+          </span>
           <span className="streak-number">{data.streakDays}</span>
           <span className="streak-label">day streak</span>
         </div>

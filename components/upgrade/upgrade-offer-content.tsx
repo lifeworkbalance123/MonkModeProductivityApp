@@ -49,13 +49,13 @@ const FREE_LIMITS = [
 const PRO_FEATURES = [
   'Unlimited habits & goals',
   'Full 7-day weekly planner',
-  'Cloud sync across all devices',
   'Progress analytics & heatmaps',
   'Kanban board',
   'Deep Work mode (90-min timer)',
   'Morning + evening journal',
-  'Full training library',
-  'Data export (PDF / CSV)',
+  '⚡ Bonus: Cloud sync across all devices',
+  '⚡ Bonus: Full training library',
+  '⚡ Bonus: Data export (PDF / CSV)',
   'Priority support',
 ]
 

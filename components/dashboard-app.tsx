@@ -94,7 +94,8 @@ export function DashboardApp({
       6,
       Math.max(
         0,
-        Math.round((today.getTime() - monday.getTime()) / 86400000),
+        // Use floor so the highlighted day doesn't jump ahead after midday.
+        Math.floor((today.getTime() - monday.getTime()) / 86400000),
       ),
     )
   })
