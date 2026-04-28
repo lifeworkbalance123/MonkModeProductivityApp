@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { AuthProvider } from '@/context/AuthContext'
+import { PlanProvider } from '@/hooks/usePlan'
 import { ColorThemeProvider } from '@/context/ColorThemeContext'
 import { ToastProvider } from '@/context/ToastContext'
 import { UpgradeOfferProvider } from '@/context/UpgradeOfferContext'
@@ -16,18 +17,20 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <SentryErrorBoundary>
       <AuthProvider>
-        <ColorThemeProvider>
-          <PostHogBootstrap />
-          <AuthHashRedirect />
-          <ToastProvider>
-            <UpgradeOfferProvider>
-              {children}
-              <Toaster richColors position="top-center" />
-              <SupportFloatingButton />
-              <CookieBanner />
-            </UpgradeOfferProvider>
-          </ToastProvider>
-        </ColorThemeProvider>
+        <PlanProvider>
+          <ColorThemeProvider>
+            <PostHogBootstrap />
+            <AuthHashRedirect />
+            <ToastProvider>
+              <UpgradeOfferProvider>
+                {children}
+                <Toaster richColors position="top-center" />
+                <SupportFloatingButton />
+                <CookieBanner />
+              </UpgradeOfferProvider>
+            </ToastProvider>
+          </ColorThemeProvider>
+        </PlanProvider>
       </AuthProvider>
     </SentryErrorBoundary>
   )

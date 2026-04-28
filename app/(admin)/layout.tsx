@@ -14,6 +14,7 @@ const navLinks = [
   { label: 'Hero', href: '/admin/hero' },
   { label: 'Deep Work', href: '/admin/deep-work' },
   { label: 'Blog', href: '/admin/blog' },
+  { label: 'Comments', href: '/admin/comments' },
   { label: 'Revenue', href: '/admin/revenue' },
   { label: 'Waitlist', href: '/admin/waitlist' },
   { label: 'Store Kit', href: '/admin/store-kit' },

@@ -60,6 +60,7 @@ function ItemLink({
   return (
     <Link
       href={item.href}
+      prefetch={false}
       className={cn(
         'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors',
         active
@@ -80,7 +81,7 @@ export function DesktopSidebar({ showProGate, onProLocked, programButtonText }: 
 
   return (
     <aside
-      className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-border bg-background/95 backdrop-blur-xl md:flex"
+      className="fixed left-0 top-0 z-[55] hidden h-screen w-64 flex-col border-r border-border bg-background/95 backdrop-blur-xl md:flex"
       aria-label="Main navigation"
     >
       <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border px-4">

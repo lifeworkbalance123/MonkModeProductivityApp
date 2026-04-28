@@ -6,7 +6,11 @@ import {
   timeFieldsForUserPrograms,
   validateIntake,
 } from '@/lib/onboardingIntakeValidation'
-import { upsertProgramEnrollmentForTrack } from '@/lib/programUtils'
+import {
+  computeProgramProAccessUntilIso,
+  upsertProgramEnrollmentForTrack,
+  type ProgramType,
+} from '@/lib/programUtils'
 
 /**
  * Upserts `user_programs` (active day 1), today's `daily_logs`, and matching `program_enrollments`
@@ -76,6 +80,21 @@ export async function persistActiveProgramFromIntake(
   )
   if (!en.ok) {
     return { ok: false, error: en.error }
+  }
+
+  const pt = intake.selected_program as ProgramType
+  if (pt === 'sprint_standard' || pt === 'sprint_monk' || pt === 'transform') {
+    const programProAccessUntil = computeProgramProAccessUntilIso(logDate, pt)
+    const { error: proUntilErr } = await supabase
+      .from('users')
+      .update({
+        program_pro_access_until: programProAccessUntil,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId)
+    if (proUntilErr) {
+      console.warn('persistActiveProgramFromIntake program_pro_access_until:', proUntilErr.message)
+    }
   }
 
   return { ok: true }

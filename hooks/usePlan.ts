@@ -1,6 +1,16 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 
@@ -154,11 +164,30 @@ async function fetchEntitlementShared(
   }
 }
 
+export type PlanContextValue = {
+  isPro: boolean
+  plan: EntitlementPlan
+  subscriptionEndDate: string | null
+  isLoading: boolean
+  trialEndDate: string | null
+  isTrial: boolean
+  cancellationDate: string | null
+  daysRemaining: number
+  trialExpired: boolean
+}
+
+const PlanContext = createContext<PlanContextValue | null>(null)
+
 /**
- * Server-verified plan from GET /api/user/entitlement (database source of truth).
- * `isPro` is true for paid Pro and for users inside the active 14-day trial window.
+ * Single entitlement subscription for the whole app. Mount once under `AuthProvider`.
+ * (Multiple `usePlan` instances used to each run effects + fetch — thrashing the main thread on navigation.)
  */
-export function usePlan() {
+export function PlanProvider({ children }: { children: ReactNode }) {
+  const value = usePlanEntitlementSync()
+  return createElement(PlanContext.Provider, { value }, children)
+}
+
+function usePlanEntitlementSync(): PlanContextValue {
   const { user, isLoading: authLoading } = useAuth()
   const [isPro, setIsPro] = useState(false)
   const [plan, setPlan] = useState<EntitlementPlan>('free')
@@ -271,17 +300,42 @@ export function usePlan() {
   const daysRemaining = trialDaysRemaining(trialEndDate)
   const trialExpired = computeTrialExpired(isPro, trialEndDate, plan)
 
-  return {
-    isPro,
-    plan,
-    subscriptionEndDate,
-    isLoading,
-    trialEndDate,
-    isTrial,
-    cancellationDate,
-    daysRemaining,
-    trialExpired,
+  return useMemo(
+    () => ({
+      isPro,
+      plan,
+      subscriptionEndDate,
+      isLoading,
+      trialEndDate,
+      isTrial,
+      cancellationDate,
+      daysRemaining,
+      trialExpired,
+    }),
+    [
+      isPro,
+      plan,
+      subscriptionEndDate,
+      isLoading,
+      trialEndDate,
+      isTrial,
+      cancellationDate,
+      daysRemaining,
+      trialExpired,
+    ],
+  )
+}
+
+/**
+ * Server-verified plan from GET /api/user/entitlement (database source of truth).
+ * Must be used within `<PlanProvider>` (see `app/providers.tsx`).
+ */
+export function usePlan(): PlanContextValue {
+  const ctx = useContext(PlanContext)
+  if (!ctx) {
+    throw new Error('usePlan must be used within PlanProvider')
   }
+  return ctx
 }
 
 export function notifyEntitlementRefresh() {

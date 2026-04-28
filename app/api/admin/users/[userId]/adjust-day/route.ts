@@ -1,19 +1,12 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin, insertAdminAudit } from '@/lib/admin-api'
-import { PROGRAM_DURATIONS, type ProgramType } from '@/lib/programUtils'
+import { effectiveMaxProgramDay } from '@/lib/programUtils'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-
-function maxDayForEnrollment(programType: string | null): number {
-  const t = (programType ?? '60day') as ProgramType
-  if (t in PROGRAM_DURATIONS) return PROGRAM_DURATIONS[t]
-  if (programType === 'legacy' || programType === 'sprint') return 60
-  return 90
-}
 
 export async function POST(
   request: Request,
@@ -42,7 +35,7 @@ export async function POST(
 
   const { data: en, error: enErr } = await admin
     .from('program_enrollments')
-    .select('user_id, program_type, completed_days')
+    .select('user_id, program_type, completed_days, max_program_day')
     .eq('user_id', userId)
     .maybeSingle()
 
@@ -50,7 +43,11 @@ export async function POST(
     return NextResponse.json({ error: 'No program enrollment for user' }, { status: 404 })
   }
 
-  const maxD = maxDayForEnrollment((en as { program_type?: string | null }).program_type ?? null)
+  const enRow = en as {
+    program_type?: string | null
+    max_program_day?: number | null
+  }
+  const maxD = effectiveMaxProgramDay(enRow.program_type ?? null, enRow.max_program_day ?? null)
   if (day > maxD) {
     return NextResponse.json(
       { error: `day exceeds max for program (${maxD})` },

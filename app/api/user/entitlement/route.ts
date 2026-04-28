@@ -21,6 +21,7 @@ type UsersEntitlementRow = {
   is_trial_active: boolean | null
   subscription_end_date: string | null
   cancellation_date?: string | null
+  program_pro_access_until?: string | null
 }
 
 function json(
@@ -98,7 +99,8 @@ export async function GET(request: NextRequest) {
           trial_end_date,
           is_trial_active,
           subscription_end_date,
-          cancellation_date
+          cancellation_date,
+          program_pro_access_until
         `,
       )
       .eq('id', user.id)
@@ -159,7 +161,13 @@ export async function GET(request: NextRequest) {
       plan === 'annual' ||
       plan === 'lifetime'
 
-    const isPro = isTrialActive || isPaidPro
+    const programUntil = row.program_pro_access_until
+      ? new Date(row.program_pro_access_until)
+      : null
+    const isProgramBundlePro =
+      programUntil !== null && !Number.isNaN(programUntil.getTime()) && now < programUntil
+
+    const isPro = isTrialActive || isPaidPro || isProgramBundlePro
 
     const trialExpired =
       plan === 'trial' && trialEnd !== null && now >= trialEnd
@@ -174,6 +182,7 @@ export async function GET(request: NextRequest) {
         subscriptionEndDate: row.subscription_end_date,
         trialEndDate: row.trial_end_date,
         cancellationDate: row.cancellation_date ?? null,
+        programProAccessUntil: row.program_pro_access_until ?? null,
         source: 'database',
       },
       200,

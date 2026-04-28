@@ -290,6 +290,54 @@ export const PROGRAM_LABELS: Record<ProgramType, string> = {
   mastery: '90-Day Mastery',
 }
 
+/** Continuation Pro days after the program’s calendar length (business rule). */
+export const PROGRAM_BUNDLE_PRO_EXTRA_DAYS = 30
+
+/**
+ * ISO timestamp: end of the last calendar day of bundled Pro access.
+ * Rule: **program length (calendar days) + continuation days** from enrollment start
+ * (enrollment date = program day 1). Equivalent to: last program calendar day, then
+ * {@link PROGRAM_BUNDLE_PRO_EXTRA_DAYS} more calendar days of Pro.
+ */
+export function computeProgramProAccessUntilIso(
+  enrollmentStartDateKey: string,
+  programType: ProgramType,
+): string {
+  const programLengthDays = PROGRAM_DURATIONS[programType] ?? 30
+  const continuationDays = PROGRAM_BUNDLE_PRO_EXTRA_DAYS
+
+  const start = parseLocalDateKey(enrollmentStartDateKey)
+  const lastProgramCalendarDay = addDays(start, programLengthDays - 1)
+  const lastProCalendarDay = addDays(lastProgramCalendarDay, continuationDays)
+
+  const end = new Date(lastProCalendarDay)
+  end.setHours(23, 59, 59, 999)
+  return end.toISOString()
+}
+
+/** Effective max program day index (1-based): optional admin override vs track default. */
+export function effectiveMaxProgramDay(
+  programType: string | null | undefined,
+  maxProgramDayOverride: number | null | undefined,
+): number {
+  const pt = programType ?? '60day'
+  const t = pt as ProgramType
+  const base =
+    t in PROGRAM_DURATIONS
+      ? PROGRAM_DURATIONS[t]
+      : pt === 'legacy' || pt === 'sprint'
+        ? 60
+        : 90
+  if (
+    maxProgramDayOverride != null &&
+    Number.isFinite(maxProgramDayOverride) &&
+    maxProgramDayOverride >= 1
+  ) {
+    return Math.min(365, Math.max(base, Math.floor(maxProgramDayOverride)))
+  }
+  return base
+}
+
 export async function pauseProgram(userId: string): Promise<boolean> {
   const { error } = await supabase
     .from('program_enrollments')

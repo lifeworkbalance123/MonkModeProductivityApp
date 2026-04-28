@@ -38,9 +38,20 @@ export function MainShell({
         className,
       )}
     >
-      <main className="flex min-h-0 flex-1 flex-col overflow-auto">
+      {/* md+: main must not capture clicks over the fixed sidebar. Margin alone is not enough in some browsers — pass events through the main scroll layer and only re-enable hits on the content column. */}
+      <main
+        className={cn(
+          'flex min-h-0 flex-1 flex-col overflow-auto',
+          user && 'md:pointer-events-none',
+        )}
+      >
         {user ? (
-          <div className="flex min-h-0 flex-1 flex-col md:ml-64 md:min-h-screen">
+          <div
+            className={cn(
+              'flex min-h-0 flex-1 flex-col md:min-h-screen',
+              'pointer-events-auto md:ml-64',
+            )}
+          >
             <div className="p-3">{children}</div>
           </div>
         ) : (

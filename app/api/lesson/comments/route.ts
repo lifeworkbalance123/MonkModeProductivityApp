@@ -40,6 +40,7 @@ export async function GET(request: Request) {
     .from('lesson_comments')
     .select('id, user_id, lesson_id, parent_comment_id, content, likes_count, created_at, updated_at')
     .eq('lesson_id', lessonId)
+    .eq('moderation_status', 'reviewed')
     .order('created_at', { ascending: true })
 
   if (error) {
@@ -152,6 +153,7 @@ export async function POST(request: Request) {
       lesson_id: lessonId,
       parent_comment_id: parentCommentId || null,
       content: contentRaw,
+      moderation_status: 'pending',
     })
     .select()
     .single()

@@ -222,13 +222,17 @@ export function DashboardApp({
       setWeekTimeSlotCount(0)
       return
     }
+    // Compute Monday inside the callback — `weekStart` from render is a new Date each time and
+    // would break useCallback identity every render → effect ➜ loadDayData ➜ setState loop.
+    const calendarMonday = startOfWeek(new Date(), { weekStartsOn: 1 })
+    const ws = addWeeks(calendarMonday, weekOffset)
     const days = Array.from({ length: 7 }, (_, i) =>
-      format(addDays(weekStart, i), 'yyyy-MM-dd'),
+      format(addDays(ws, i), 'yyyy-MM-dd'),
     )
     const results = await Promise.all(days.map((d) => loadPlannerSlotsForDate(dataContext, d)))
     const count = results.reduce((sum, slots) => sum + (slots?.length ?? 0), 0)
     setWeekTimeSlotCount(count)
-  }, [dataContext, freeAfterTrial, weekStart])
+  }, [dataContext, freeAfterTrial, weekOffset])
 
   useEffect(() => {
     if (dateKey === todayKey) {
