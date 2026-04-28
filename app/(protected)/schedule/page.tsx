@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useMemo } from 'react'
+import { flushSync } from 'react-dom'
 import { startOfWeek } from 'date-fns'
 import { Loader2 } from 'lucide-react'
 import { TimeScheduleCard } from '@/components/time-schedule-card'
@@ -153,13 +154,18 @@ export default function SchedulePage() {
               <ClearAllDataButton
                 hasData={data.timeSlots.length > 0}
                 onClear={async () => {
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new Event('monk:schedule:cleared'))
+                  }
                   await clearScheduleData()
                   try {
                     localStorage.removeItem('monk-dashboard-day-v1')
                   } catch {
                     /* ignore */
                   }
-                  setData((d) => ({ ...d, timeSlots: [] }))
+                  flushSync(() => {
+                    setData((d) => ({ ...d, timeSlots: [] }))
+                  })
                   showToast('Cleared schedule data.', 'success')
                 }}
               />

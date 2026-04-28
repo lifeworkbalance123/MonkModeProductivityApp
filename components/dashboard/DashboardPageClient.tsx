@@ -1,6 +1,7 @@
 'use client'
 
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { DashboardApp } from '@/components/dashboard-app'
 import { ProgramCards } from '@/components/dashboard/ProgramCards'
 import { TodayChecklist } from '@/components/dashboard/TodayChecklist'
@@ -147,13 +148,18 @@ export function DashboardPageClient({
               <ClearAllDataButton
                 hasData={data.timeSlots.length > 0}
                 onClear={async () => {
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new Event('monk:schedule:cleared'))
+                  }
                   await clearScheduleData()
                   try {
                     localStorage.removeItem('monk-dashboard-day-v1')
                   } catch {
                     /* ignore */
                   }
-                  setData((d) => ({ ...d, timeSlots: [] }))
+                  flushSync(() => {
+                    setData((d) => ({ ...d, timeSlots: [] }))
+                  })
                   const persist = await flush()
                   if (!persist.ok && persist.error) {
                     throw new Error(persist.error)

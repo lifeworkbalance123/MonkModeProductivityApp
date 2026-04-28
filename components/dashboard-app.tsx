@@ -193,6 +193,21 @@ export function DashboardApp({
     [dataContext, userId],
   )
 
+  // If the user clears schedule data, immediately cancel any pending autosave that could re-write it.
+  useEffect(() => {
+    function onCleared() {
+      if (slotsDebounceRef.current) {
+        clearTimeout(slotsDebounceRef.current)
+        slotsDebounceRef.current = null
+      }
+      slotsRef.current = []
+      setDayTimeSlots([])
+    }
+    if (typeof window === 'undefined') return
+    window.addEventListener('monk:schedule:cleared', onCleared)
+    return () => window.removeEventListener('monk:schedule:cleared', onCleared)
+  }, [])
+
   useEffect(() => {
     if (dateKey === todayKey) {
       setTodayGratitudeSnapshot([...dayGratitude])
