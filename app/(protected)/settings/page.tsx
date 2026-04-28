@@ -392,8 +392,14 @@ export default function SettingsPage() {
             <p className="text-sm text-muted-foreground mb-3">
               Optional add-on: 15-minute calls. Subscribe or pay once, then book on Calendly.
             </p>
-            <Button type="button" size="sm" variant="outline" asChild>
-              <Link href="/coach">Open coaching</Link>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled
+              className="pointer-events-none opacity-50"
+            >
+              Open coaching
             </Button>
           </div>
         </Card>
