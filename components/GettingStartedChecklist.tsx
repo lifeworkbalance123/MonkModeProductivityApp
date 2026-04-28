@@ -82,6 +82,22 @@ export function GettingStartedChecklist({
 
   if (!visible) return null
 
+  function CheckIcon({ done }: { done: boolean }) {
+    return (
+      <span
+        aria-hidden
+        className={[
+          'mt-[1px] inline-flex size-5 shrink-0 items-center justify-center rounded-[6px] border',
+          done
+            ? 'border-accent bg-accent text-accent-foreground'
+            : 'border-border bg-background/40 text-muted-foreground',
+        ].join(' ')}
+      >
+        {done ? '✓' : ''}
+      </span>
+    )
+  }
+
   return (
     <Card className="mb-4 border-primary/35 bg-primary/[0.08] p-4 sm:p-5">
       <h2 className="text-lg font-semibold text-foreground">
@@ -91,46 +107,38 @@ export function GettingStartedChecklist({
         Complete these steps to get started:
       </p>
       <ul className="mt-4 space-y-2 text-sm">
-        <li className="flex items-start gap-2">
-          <span className="text-muted-foreground" aria-hidden>
-            {hasHabit ? '☑' : '☐'}
-          </span>
+        <li className="flex items-center gap-3">
+          <CheckIcon done={hasHabit} />
           <Link
             href="/habits"
-            className="text-accent hover:underline font-medium"
+            className="min-h-11 flex items-center font-medium text-accent hover:underline md:min-h-0"
           >
             Add your first habit
           </Link>
         </li>
-        <li className="flex items-start gap-2">
-          <span className="text-muted-foreground" aria-hidden>
-            {hasGoal ? '☑' : '☐'}
-          </span>
+        <li className="flex items-center gap-3">
+          <CheckIcon done={hasGoal} />
           <Link
             href="/goals"
-            className="text-accent hover:underline font-medium"
+            className="min-h-11 flex items-center font-medium text-accent hover:underline md:min-h-0"
           >
             Set today&apos;s goals
           </Link>
         </li>
-        <li className="flex items-start gap-2">
-          <span className="text-muted-foreground" aria-hidden>
-            {hasSlot ? '☑' : '☐'}
-          </span>
+        <li className="flex items-center gap-3">
+          <CheckIcon done={hasSlot} />
           <Link
             href="/planner"
-            className="text-accent hover:underline font-medium"
+            className="min-h-11 flex items-center font-medium text-accent hover:underline md:min-h-0"
           >
             Schedule your first time block
           </Link>
         </li>
-        <li className="flex items-start gap-2">
-          <span className="text-muted-foreground" aria-hidden>
-            {hasGratitude ? '☑' : '☐'}
-          </span>
+        <li className="flex items-center gap-3">
+          <CheckIcon done={hasGratitude} />
           <button
             type="button"
-            className="min-h-11 w-full rounded-md py-2 text-left font-medium text-accent hover:underline md:min-h-0 md:w-auto md:py-0"
+            className="min-h-11 flex flex-1 items-center rounded-md py-2 text-left font-medium text-accent hover:underline md:min-h-0 md:flex-none md:py-0"
             onClick={() => {
               document
                 .getElementById('dashboard-morning-gratitude')
