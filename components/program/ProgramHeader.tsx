@@ -11,6 +11,9 @@ export default function ProgramHeader() {
 
   if (loading || !activeProgram) return null
 
+  const accountability = activeProgram.accountabilityPreference ?? null
+  const isBuddy = accountability === 'buddy'
+
   const completedCount = Math.max(0, (activeProgram.currentDay ?? 1) - 1)
   const totalDays = activeProgram.totalDays
   const progressPercent = Math.min(Math.round((completedCount / totalDays) * 100), 100)
@@ -61,22 +64,39 @@ export default function ProgramHeader() {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button
-            type="button"
-            onClick={() => setBuddyOpen(true)}
-            style={{
-              background: `color-mix(in srgb, ${programColor} 14%, transparent)`,
-              color: programColor,
-              padding: '4px 10px',
-              borderRadius: '999px',
-              fontSize: '12px',
-              fontWeight: '700',
-              border: `1px solid color-mix(in srgb, ${programColor} 45%, ${PU.border})`,
-              cursor: 'pointer',
-            }}
-          >
-            Buddy
-          </button>
+          {isBuddy ? (
+            <button
+              type="button"
+              onClick={() => setBuddyOpen(true)}
+              style={{
+                background: `color-mix(in srgb, ${programColor} 14%, transparent)`,
+                color: programColor,
+                padding: '4px 10px',
+                borderRadius: '999px',
+                fontSize: '12px',
+                fontWeight: '700',
+                border: `1px solid color-mix(in srgb, ${programColor} 45%, ${PU.border})`,
+                cursor: 'pointer',
+              }}
+            >
+              Buddy
+            </button>
+          ) : (
+            <span
+              style={{
+                background: PU.muted,
+                color: PU.mutedFg,
+                padding: '4px 10px',
+                borderRadius: '999px',
+                fontSize: '12px',
+                fontWeight: '700',
+                border: `1px solid ${PU.border}`,
+              }}
+              title="Individual mode selected during onboarding"
+            >
+              Individual
+            </span>
+          )}
           <div
             style={{
               background: `color-mix(in srgb, ${programColor} 20%, transparent)`,
@@ -116,7 +136,7 @@ export default function ProgramHeader() {
         <span style={{ color: PU.mutedFg, fontSize: '11px' }}>{progressPercent}%</span>
       </div>
     </div>
-    <BuddyShareModal open={buddyOpen} onOpenChange={setBuddyOpen} />
+    {isBuddy ? <BuddyShareModal open={buddyOpen} onOpenChange={setBuddyOpen} /> : null}
     </>
   )
 }

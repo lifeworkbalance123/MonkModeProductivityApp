@@ -25,6 +25,7 @@ export interface ProgramStatusActiveProgram {
   label: string
   currentDay: number
   totalDays: number
+  accountabilityPreference?: 'solo' | 'buddy' | 'coach' | null
 }
 
 export interface UseProgramStatusResult {
