@@ -47,6 +47,10 @@ export default function AdminDeepWorkPage() {
   >('idle')
   const [uploadNote, setUploadNote] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [slotMessage, setSlotMessage] = useState<null | {
+    slotIndex: number
+    text: string
+  }>(null)
   const [pendingCommit, setPendingCommit] = useState<null | {
     slotIndex: number
     label: string
@@ -160,17 +164,19 @@ export default function AdminDeepWorkPage() {
   async function uploadMp3(slotIndex: number, file: File) {
     if (!isLikelyMp3(file)) {
       setMessage('Please choose an MP3 file.')
+      setSlotMessage({ slotIndex, text: 'Please choose an MP3 file.' })
       return
     }
     if (file.size > DEEP_WORK_MAX_MP3_BYTES) {
-      setMessage(
-        `That MP3 is too large (max ${Math.round(DEEP_WORK_MAX_MP3_BYTES / (1024 * 1024))}MB).`,
-      )
+      const t = `That MP3 is too large (max ${Math.round(DEEP_WORK_MAX_MP3_BYTES / (1024 * 1024))}MB).`
+      setMessage(t)
+      setSlotMessage({ slotIndex, text: t })
       return
     }
     const key = DEEP_WORK_MP3_KEYS[slotIndex]
     setUploadingSlot(slotIndex)
     setMessage(null)
+    setSlotMessage(null)
     setUploadStage('uploading_to_storage')
     setUploadNote(
       `Uploading “${file.name}” (${Math.round(file.size / (1024 * 1024))}MB) to Storage…`,
@@ -178,7 +184,9 @@ export default function AdminDeepWorkPage() {
     try {
       const token = await getAccessToken()
       if (!token) {
-        setMessage('Sign in again to upload (no session).')
+        const t = 'Sign in again to upload (no session).'
+        setMessage(t)
+        setSlotMessage({ slotIndex, text: t })
         return
       }
 
@@ -225,18 +233,18 @@ export default function AdminDeepWorkPage() {
             storagePath: uploadPath,
             isActive,
           })
-          setMessage(
-            `Upload finished, but saving the track failed. ${commit.error} Click “Retry save” to finalize without re-uploading.`,
-          )
+          const t = `Upload finished, but saving the track failed. ${commit.error} Click “Retry save” to finalize without re-uploading.`
+          setMessage(t)
+          setSlotMessage({ slotIndex, text: t })
           return
         }
         setPendingCommit(null)
       } else {
         const status = (upErr as unknown as { statusCode?: number }).statusCode
         if (file.size > SERVER_UPLOAD_FALLBACK_MAX_BYTES) {
-          setMessage(
-            `Direct upload failed${status ? ` (HTTP ${status})` : ''}: ${upErr.message}. This is usually a bucket limit or Storage policy issue. Files over ~4MB cannot use the server fallback on this host—fix authenticated upload permissions + the lesson-media bucket size limit, then try again.`,
-          )
+          const t = `Direct upload failed${status ? ` (HTTP ${status})` : ''}: ${upErr.message}. This is usually a bucket limit or Storage policy issue. Files over ~4MB cannot use the server fallback on this host—fix authenticated upload permissions + the lesson-media bucket size limit, then try again.`
+          setMessage(t)
+          setSlotMessage({ slotIndex, text: t })
           return
         }
         // Fallback: server-side upload (service role) when client policies fail (small files only).
@@ -256,13 +264,17 @@ export default function AdminDeepWorkPage() {
           storagePath?: string
         }
         if (!res.ok) {
-          setMessage(payload.error ?? `Upload failed (${res.status})`)
+          const t = payload.error ?? `Upload failed (${res.status})`
+          setMessage(t)
+          setSlotMessage({ slotIndex, text: t })
           return
         }
         publicUrl = payload.publicUrl ?? null
         const serverPath = payload.storagePath ?? null
         if (!publicUrl || !serverPath) {
-          setMessage('Upload succeeded but response was incomplete. Refresh the page.')
+          const t = 'Upload succeeded but response was incomplete. Refresh the page.'
+          setMessage(t)
+          setSlotMessage({ slotIndex, text: t })
           return
         }
         // For consistency with the state update below.
@@ -270,7 +282,9 @@ export default function AdminDeepWorkPage() {
       }
 
       if (!publicUrl) {
-        setMessage('Upload succeeded but no public URL was returned. Refresh the page.')
+        const t = 'Upload succeeded but no public URL was returned. Refresh the page.'
+        setMessage(t)
+        setSlotMessage({ slotIndex, text: t })
         return
       }
 
@@ -284,10 +298,14 @@ export default function AdminDeepWorkPage() {
         }
         return next
       })
-      setMessage(`Uploaded ${key}.`)
+      const t = `Uploaded ${key}.`
+      setMessage(t)
+      setSlotMessage({ slotIndex, text: t })
       void load()
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'Upload failed')
+      const t = e instanceof Error ? e.message : 'Upload failed'
+      setMessage(t)
+      setSlotMessage({ slotIndex, text: t })
     } finally {
       setUploadingSlot(null)
       setUploadStage('idle')
@@ -572,6 +590,9 @@ export default function AdminDeepWorkPage() {
               >
                 {uploadingSlot === i ? 'Uploading…' : tracks[i]?.url ? 'Replace MP3' : 'Upload MP3'}
               </button>
+              {slotMessage?.slotIndex === i ? (
+                <p className="w-full text-xs text-muted-foreground">{slotMessage.text}</p>
+              ) : null}
               {tracks[i]?.url ? (
                 <>
                   <audio controls src={tracks[i].url} className="h-8 max-w-[200px] md:max-w-xs" />
