@@ -42,6 +42,10 @@ export default function AdminDeepWorkPage() {
   const [intro, setIntro] = useState('')
   const [tracks, setTracks] = useState<DeepWorkCmsState['tracks']>([])
   const [uploadingSlot, setUploadingSlot] = useState<number | null>(null)
+  const [uploadStage, setUploadStage] = useState<
+    'idle' | 'uploading_to_storage' | 'saving_metadata'
+  >('idle')
+  const [uploadNote, setUploadNote] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [pendingCommit, setPendingCommit] = useState<null | {
     slotIndex: number
@@ -167,6 +171,10 @@ export default function AdminDeepWorkPage() {
     const key = DEEP_WORK_MP3_KEYS[slotIndex]
     setUploadingSlot(slotIndex)
     setMessage(null)
+    setUploadStage('uploading_to_storage')
+    setUploadNote(
+      `Uploading “${file.name}” (${Math.round(file.size / (1024 * 1024))}MB) to Storage…`,
+    )
     try {
       const token = await getAccessToken()
       if (!token) {
@@ -194,6 +202,8 @@ export default function AdminDeepWorkPage() {
 
       let publicUrl: string | null = null
       if (!upErr) {
+        setUploadStage('saving_metadata')
+        setUploadNote('Upload complete. Saving track metadata…')
         const { data: pub } = supabase.storage.from(bucket).getPublicUrl(uploadPath)
         publicUrl = pub.publicUrl ?? null
 
@@ -222,9 +232,10 @@ export default function AdminDeepWorkPage() {
         }
         setPendingCommit(null)
       } else {
+        const status = (upErr as unknown as { statusCode?: number }).statusCode
         if (file.size > SERVER_UPLOAD_FALLBACK_MAX_BYTES) {
           setMessage(
-            `Direct upload failed: ${upErr.message}. Files over ~4MB cannot use the server fallback on this host—fix Storage permissions for authenticated uploads to the lesson-media bucket, then try again.`,
+            `Direct upload failed${status ? ` (HTTP ${status})` : ''}: ${upErr.message}. This is usually a bucket limit or Storage policy issue. Files over ~4MB cannot use the server fallback on this host—fix authenticated upload permissions + the lesson-media bucket size limit, then try again.`,
           )
           return
         }
@@ -279,6 +290,8 @@ export default function AdminDeepWorkPage() {
       setMessage(e instanceof Error ? e.message : 'Upload failed')
     } finally {
       setUploadingSlot(null)
+      setUploadStage('idle')
+      setUploadNote(null)
     }
   }
 
@@ -415,6 +428,13 @@ export default function AdminDeepWorkPage() {
         <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-foreground">
           Upload in progress (slot {uploadingSlot + 1}). Stay on this page until it finishes—switching away can stop the
           upload and you may lose unsaved intro text in this session.
+        </p>
+      ) : null}
+      {uploadingSlot !== null && uploadNote ? (
+        <p className="rounded-md border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+          {uploadStage === 'uploading_to_storage' ? 'Step 1/2:' : uploadStage === 'saving_metadata' ? 'Step 2/2:' : ''}
+          {' '}
+          {uploadNote}
         </p>
       ) : null}
 
