@@ -9,6 +9,7 @@ import {
   parseDeepWorkRows,
   type DeepWorkCmsState,
 } from '@/lib/deep-work-site-settings'
+import { uploadDeepWorkMp3WithAdminSession } from '@/lib/upload-lesson-media-client'
 
 async function getAccessToken(): Promise<string | null> {
   const {
@@ -191,102 +192,42 @@ export default function AdminDeepWorkPage() {
       }
 
       const label = tracks[slotIndex]?.label?.trim() || `Track ${slotIndex + 1}`
-      const bucket = 'lesson-media'
       const safe = file.name.replace(/[^\w.\-]+/g, '_')
-      let uploadPath = `deep-work/${key}-${Date.now()}-${safe}`
-
-      // Prefer direct-to-storage upload (avoids host request size limits).
-      // If policies/env are misconfigured, fall back to the server route.
       const prevPath = tracks[slotIndex]?.storagePath ?? null
-      if (prevPath) {
-        await supabase.storage.from(bucket).remove([prevPath])
-      }
-
-      const { error: upErr } = await supabase.storage.from(bucket).upload(uploadPath, file, {
-        cacheControl: '3600',
-        contentType: 'audio/mpeg',
-        upsert: false,
+      // Use Supabase-recommended resumable upload for large files to avoid fetch stalls.
+      const uploaded = await uploadDeepWorkMp3WithAdminSession({
+        file,
+        slotIndex,
+        removePath: prevPath,
       })
+      const uploadPath = uploaded.path
+      const publicUrl = uploaded.publicUrl
 
-      let publicUrl: string | null = null
-      if (!upErr) {
-        setUploadStage('saving_metadata')
-        setUploadNote('Upload complete. Saving track metadata…')
-        const { data: pub } = supabase.storage.from(bucket).getPublicUrl(uploadPath)
-        publicUrl = pub.publicUrl ?? null
+      setUploadStage('saving_metadata')
+      setUploadNote('Upload complete. Saving track metadata…')
 
-        const isActive = tracks[slotIndex]?.isActive !== false
-        // Persist metadata with service role — keeps DB writes reliable (RLS + INSERT quirks).
-        const commit = await commitTrack({
+      const isActive = tracks[slotIndex]?.isActive !== false
+      const commit = await commitTrack({
+        slotIndex,
+        label,
+        publicUrl,
+        storagePath: uploadPath,
+        isActive,
+      })
+      if (!commit.ok) {
+        setPendingCommit({
           slotIndex,
           label,
-          publicUrl: publicUrl ?? '',
+          publicUrl,
           storagePath: uploadPath,
           isActive,
         })
-        if (!commit.ok) {
-          // Keep the uploaded object so we can retry metadata save without re-uploading ~128MB.
-          setPendingCommit({
-            slotIndex,
-            label,
-            publicUrl: publicUrl ?? '',
-            storagePath: uploadPath,
-            isActive,
-          })
-          const t = `Upload finished, but saving the track failed. ${commit.error} Click “Retry save” to finalize without re-uploading.`
-          setMessage(t)
-          setSlotMessage({ slotIndex, text: t })
-          return
-        }
-        setPendingCommit(null)
-      } else {
-        const status = (upErr as unknown as { statusCode?: number }).statusCode
-        if (file.size > SERVER_UPLOAD_FALLBACK_MAX_BYTES) {
-          const t = `Direct upload failed${status ? ` (HTTP ${status})` : ''}: ${upErr.message}. This is usually a bucket limit or Storage policy issue. Files over ~4MB cannot use the server fallback on this host—fix authenticated upload permissions + the lesson-media bucket size limit, then try again.`
-          setMessage(t)
-          setSlotMessage({ slotIndex, text: t })
-          return
-        }
-        // Fallback: server-side upload (service role) when client policies fail (small files only).
-        const fd = new FormData()
-        fd.set('slot', String(slotIndex))
-        fd.set('file', file)
-        fd.set('label', label)
-
-        const res = await fetch('/api/admin/deep-work/upload-audio', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-          body: fd,
-        })
-        const payload = (await res.json().catch(() => ({}))) as {
-          error?: string
-          publicUrl?: string
-          storagePath?: string
-        }
-        if (!res.ok) {
-          const t = payload.error ?? `Upload failed (${res.status})`
-          setMessage(t)
-          setSlotMessage({ slotIndex, text: t })
-          return
-        }
-        publicUrl = payload.publicUrl ?? null
-        const serverPath = payload.storagePath ?? null
-        if (!publicUrl || !serverPath) {
-          const t = 'Upload succeeded but response was incomplete. Refresh the page.'
-          setMessage(t)
-          setSlotMessage({ slotIndex, text: t })
-          return
-        }
-        // For consistency with the state update below.
-        uploadPath = serverPath
-      }
-
-      if (!publicUrl) {
-        const t = 'Upload succeeded but no public URL was returned. Refresh the page.'
+        const t = `Upload finished, but saving the track failed. ${commit.error} Click “Retry save” to finalize without re-uploading.`
         setMessage(t)
         setSlotMessage({ slotIndex, text: t })
         return
       }
+      setPendingCommit(null)
 
       setTracks((prev) => {
         const next = [...prev]
