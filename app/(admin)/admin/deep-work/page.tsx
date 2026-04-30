@@ -19,6 +19,12 @@ async function getAccessToken(): Promise<string | null> {
   return data.session?.access_token ?? null
 }
 
+/** Aligned with `lesson-media` bucket `file_size_limit` (see migrations). */
+const DEEP_WORK_MAX_MP3_BYTES = 512 * 1024 * 1024
+
+/** Vercel serverless request bodies are capped (~4.5 MiB); larger files must use direct Storage upload only. */
+const SERVER_UPLOAD_FALLBACK_MAX_BYTES = 4 * 1024 * 1024
+
 function isLikelyMp3(file: File): boolean {
   if (file.name.toLowerCase().endsWith('.mp3')) return true
   const t = (file.type || '').toLowerCase()
@@ -86,10 +92,10 @@ export default function AdminDeepWorkPage() {
       setMessage('Please choose an MP3 file.')
       return
     }
-    // Keep this aligned with bucket config (50 MiB) and avoid silent failures.
-    const MAX_BYTES = 50 * 1024 * 1024
-    if (file.size > MAX_BYTES) {
-      setMessage('That MP3 is too large (max 50MB).')
+    if (file.size > DEEP_WORK_MAX_MP3_BYTES) {
+      setMessage(
+        `That MP3 is too large (max ${Math.round(DEEP_WORK_MAX_MP3_BYTES / (1024 * 1024))}MB).`,
+      )
       return
     }
     const key = DEEP_WORK_MP3_KEYS[slotIndex]
@@ -148,7 +154,13 @@ export default function AdminDeepWorkPage() {
           return
         }
       } else {
-        // Fallback: server-side upload (service role) when client policies fail.
+        if (file.size > SERVER_UPLOAD_FALLBACK_MAX_BYTES) {
+          setMessage(
+            `Direct upload failed: ${upErr.message}. Files over ~4MB cannot use the server fallback on this host—fix Storage permissions for authenticated uploads to the lesson-media bucket, then try again.`,
+          )
+          return
+        }
+        // Fallback: server-side upload (service role) when client policies fail (small files only).
         const fd = new FormData()
         fd.set('slot', String(slotIndex))
         fd.set('file', file)
@@ -325,8 +337,8 @@ export default function AdminDeepWorkPage() {
         <h1 className="mt-4 text-2xl font-semibold tracking-tight">Deep Work (Focus page)</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Intro copy and up to eight MP3 ambient tracks for the Deep Work fullscreen player. MP3s are stored in the{' '}
-          <code className="rounded bg-muted px-1 text-xs">lesson-media</code> bucket via a server-side upload (same
-          admin rules as the rest of the admin panel).
+          <code className="rounded bg-muted px-1 text-xs">lesson-media</code> bucket (browser uploads directly to
+          Storage; max about {Math.round(DEEP_WORK_MAX_MP3_BYTES / (1024 * 1024))}MB per file).
         </p>
       </div>
 
@@ -359,8 +371,8 @@ export default function AdminDeepWorkPage() {
       <section className="space-y-6 rounded-xl border border-border bg-card p-5">
         <h2 className="text-lg font-medium">Ambient MP3 tracks (8 slots)</h2>
         <p className="text-xs text-muted-foreground">
-          MP3 only. Users only see tracks that have an uploaded file and &quot;Live on Focus page&quot; enabled. Slots
-          without audio never appear in the app.
+          MP3 only (up to ~{Math.round(DEEP_WORK_MAX_MP3_BYTES / (1024 * 1024))}MB). Large uploads need a stable
+          connection. Users only see tracks that have an uploaded file and &quot;Live on Focus page&quot; enabled.
         </p>
 
         {DEEP_WORK_MP3_KEYS.map((slotKey, i) => (

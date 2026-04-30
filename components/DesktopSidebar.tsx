@@ -10,6 +10,7 @@ import { PwaInstallButton } from '@/components/marketing/PwaInstallButton'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useColorTheme } from '@/context/ColorThemeContext'
 import { useSidebarNavCollapse } from '@/hooks/useSidebarNavCollapse'
+import { SidebarLogoutButton } from '@/components/SidebarLogoutButton'
 import { sidebarNavSections, type NavItem } from '@/lib/nav-config'
 import { cn } from '@/lib/utils'
 
@@ -143,6 +144,7 @@ export function DesktopSidebar({ showProGate, onProLocked, programButtonText }: 
                       programButtonText={programButtonText}
                     />
                   ))}
+                  {group.id === 'system' ? <SidebarLogoutButton /> : null}
                 </div>
               </CollapsibleContent>
             </Collapsible>

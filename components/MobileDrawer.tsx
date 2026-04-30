@@ -14,6 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { BonusBadge } from '@/components/bonus-badge'
 import { ProBadge } from '@/components/pro-badge'
 import { useSidebarNavCollapse } from '@/hooks/useSidebarNavCollapse'
+import { SidebarLogoutButton } from '@/components/SidebarLogoutButton'
 import { sidebarNavSections, type NavItem } from '@/lib/nav-config'
 import { cn } from '@/lib/utils'
 
@@ -122,6 +123,14 @@ export function MobileDrawer({
                         </li>
                       )
                     })}
+                    {group.id === 'system' ? (
+                      <li>
+                        <SidebarLogoutButton
+                          className="min-h-11 gap-3"
+                          onAfterClick={() => onOpenChange(false)}
+                        />
+                      </li>
+                    ) : null}
                   </ul>
                 </CollapsibleContent>
               </Collapsible>
