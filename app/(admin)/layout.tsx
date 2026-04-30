@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -39,10 +39,15 @@ export default function AdminShellLayout({
   const [debugReason, setDebugReason] = useState<string | null>(null)
   const [debugUser, setDebugUser] = useState<{ id?: string; email?: string }>({})
 
+  /** After the first successful gate, re-verifications run without the full-screen spinner so navigation does not wipe in-progress admin work. */
+  const adminGatePassedRef = useRef(false)
+
   const verifyAdmin = useCallback(async () => {
     try {
       console.log('=== ADMIN AUTH CHECK ===')
-      setChecking(true)
+      if (!adminGatePassedRef.current) {
+        setChecking(true)
+      }
 
       const {
         data: { user },
@@ -55,6 +60,7 @@ export default function AdminShellLayout({
 
       if (!user) {
         console.log('No user — redirecting to /auth')
+        adminGatePassedRef.current = false
         setAllowed(false)
         setBlockReason('signed_out')
         setDebugReason('no_user')
@@ -69,6 +75,7 @@ export default function AdminShellLayout({
       console.log('RPC error:', rpcError?.message)
       if (rpcData === true) {
         console.log('✅ Admin verified from RPC')
+        adminGatePassedRef.current = true
         setAllowed(true)
         setBlockReason(null)
         setDebugReason(null)
@@ -88,6 +95,7 @@ export default function AdminShellLayout({
 
       if ((selfRow as { is_admin?: boolean } | null)?.is_admin === true) {
         console.log('✅ Admin verified from client users row')
+        adminGatePassedRef.current = true
         setAllowed(true)
         setBlockReason(null)
         setDebugReason(null)
@@ -129,6 +137,7 @@ export default function AdminShellLayout({
 
       if (!adminData.isAdmin) {
         console.log('isAdmin is false. reason:', adminData.reason)
+        adminGatePassedRef.current = false
         setAllowed(false)
         setBlockReason('not_admin')
         setDebugReason(
@@ -140,11 +149,13 @@ export default function AdminShellLayout({
       }
 
       console.log('✅ Admin verified — showing panel')
+      adminGatePassedRef.current = true
       setAllowed(true)
       setBlockReason(null)
       setDebugReason(null)
     } catch (err) {
       console.error('Admin check threw error:', err)
+      adminGatePassedRef.current = false
       setAllowed(false)
       setBlockReason('not_admin')
       setDebugReason(err instanceof Error ? err.message : String(err))
@@ -164,10 +175,19 @@ export default function AdminShellLayout({
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        adminGatePassedRef.current = false
+        setAllowed(false)
+        setChecking(false)
+        setBlockReason('signed_out')
+        setDebugReason('signed_out')
+        return
+      }
       if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
         if (session?.user) {
           void verifyAdmin()
         } else {
+          adminGatePassedRef.current = false
           setAllowed(false)
           setBlockReason('signed_out')
           setDebugReason('auth_state_no_session')
@@ -297,6 +317,7 @@ export default function AdminShellLayout({
             type="button"
             className="rounded-md border border-border px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted sm:px-3"
             onClick={async () => {
+              adminGatePassedRef.current = false
               await supabase.auth.signOut()
               window.location.href = '/auth'
             }}

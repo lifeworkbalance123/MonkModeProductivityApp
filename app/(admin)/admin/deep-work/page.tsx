@@ -67,18 +67,38 @@ export default function AdminDeepWorkPage() {
     void load()
   }, [load])
 
+  useEffect(() => {
+    if (uploadingSlot === null) return
+    const warnLeave = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warnLeave)
+    return () => window.removeEventListener('beforeunload', warnLeave)
+  }, [uploadingSlot])
+
   async function saveIntro() {
     setSaving(true)
     setMessage(null)
     try {
-      const { error } = await supabase
-        .from('site_settings')
-        .update({
-          value: intro,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('key', DEEP_WORK_INTRO_KEY)
-      if (error) throw error
+      const token = await getAccessToken()
+      if (!token) {
+        setMessage('Sign in again to save (no session).')
+        return
+      }
+      const res = await fetch('/api/admin/deep-work/save-intro', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: intro }),
+      })
+      const payload = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        setMessage(payload.error ?? `Save failed (${res.status})`)
+        return
+      }
       setMessage('Saved intro text.')
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Save failed')
@@ -341,6 +361,13 @@ export default function AdminDeepWorkPage() {
           Storage; max about {Math.round(DEEP_WORK_MAX_MP3_BYTES / (1024 * 1024))}MB per file).
         </p>
       </div>
+
+      {uploadingSlot !== null ? (
+        <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-foreground">
+          Upload in progress (slot {uploadingSlot + 1}). Stay on this page until it finishes—switching away can stop the
+          upload and you may lose unsaved intro text in this session.
+        </p>
+      ) : null}
 
       {message ? (
         <p className="rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground">{message}</p>
