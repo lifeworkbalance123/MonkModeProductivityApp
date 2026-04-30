@@ -1,10 +1,15 @@
 'use client'
 
 import type { RefObject } from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Timer } from 'lucide-react'
+import {
+  clearPomodoro,
+  loadPomodoro,
+  savePomodoro,
+} from '@/lib/focus-timer-storage'
 import {
   playTimerAlarm,
   pulseTimerVibration,
@@ -46,6 +51,8 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
     if (s === 0) {
       wallEnd.current = null
       const ended = modeRef.current
+      const nextMode = ended === 'work' ? 'break' : 'work'
+      modeRef.current = nextMode
       if (alarmSoundRef.current) {
         playTimerAlarm(ended === 'work' ? 'pomodoro-work' : 'pomodoro-break')
       }
@@ -57,8 +64,15 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
         }
       }
       pulseTimerVibration()
-      setMode((m) => (m === 'work' ? 'break' : 'work'))
+      setMode(nextMode)
       setStatus('idle')
+      savePomodoro({
+        v: 1,
+        mode: nextMode,
+        status: 'idle',
+        wallEndMs: null,
+        pausedSec: 0,
+      })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- alarm refs are stable RefObjects
   }, [])
@@ -77,11 +91,97 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
     }
   }, [status, sync])
 
+  const flushPomodoro = useCallback(() => {
+    savePomodoro({
+      v: 1,
+      mode: modeRef.current,
+      status: statusRef.current,
+      wallEndMs: wallEnd.current,
+      pausedSec: pausedRemainder.current,
+    })
+  }, [])
+
+  useLayoutEffect(() => {
+    const s = loadPomodoro()
+    if (!s) return
+    const now = Date.now()
+
+    if (s.status === 'paused') {
+      modeRef.current = s.mode
+      setMode(s.mode)
+      wallEnd.current = null
+      pausedRemainder.current = s.pausedSec
+      setSecLeft(s.pausedSec)
+      setStatus('paused')
+      return
+    }
+
+    if (s.status === 'idle') {
+      modeRef.current = s.mode
+      setMode(s.mode)
+      setSecLeft(s.mode === 'work' ? WORK_SEC : BREAK_SEC)
+      setStatus('idle')
+      return
+    }
+
+    if (s.status === 'running' && s.wallEndMs != null) {
+      if (s.wallEndMs > now) {
+        modeRef.current = s.mode
+        setMode(s.mode)
+        wallEnd.current = s.wallEndMs
+        setSecLeft(Math.ceil((s.wallEndMs - now) / 1000))
+        setStatus('running')
+        return
+      }
+      wallEnd.current = null
+      const ended = s.mode
+      const nextMode = ended === 'work' ? 'break' : 'work'
+      modeRef.current = nextMode
+      if (alarmSoundRef.current) {
+        playTimerAlarm(ended === 'work' ? 'pomodoro-work' : 'pomodoro-break')
+      }
+      if (alarmNotifyRef.current) {
+        if (ended === 'work') {
+          showTimerNotification('Pomodoro — focus complete', 'Time for a 5-minute break.')
+        } else {
+          showTimerNotification('Pomodoro — break over', 'Start your next focus round when you are ready.')
+        }
+      }
+      pulseTimerVibration()
+      setMode(nextMode)
+      setStatus('idle')
+      savePomodoro({
+        v: 1,
+        mode: nextMode,
+        status: 'idle',
+        wallEndMs: null,
+        pausedSec: 0,
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- restore once; alarm refs stable
+  }, [])
+
   useEffect(() => {
     if (status === 'idle') {
       setSecLeft(total)
     }
   }, [mode, total, status])
+
+  useEffect(() => {
+    if (status === 'running') {
+      flushPomodoro()
+      const id = window.setInterval(flushPomodoro, 2000)
+      const onHide = () => flushPomodoro()
+      window.addEventListener('pagehide', onHide)
+      return () => {
+        window.clearInterval(id)
+        window.removeEventListener('pagehide', onHide)
+      }
+    }
+    if (status === 'paused') {
+      flushPomodoro()
+    }
+  }, [status, flushPomodoro])
 
   function start() {
     wallEnd.current = Date.now() + secLeft * 1000
@@ -111,6 +211,7 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
     wallEnd.current = null
     setStatus('idle')
     setSecLeft(total)
+    clearPomodoro()
   }
 
   const mm = String(Math.floor(secLeft / 60)).padStart(2, '0')

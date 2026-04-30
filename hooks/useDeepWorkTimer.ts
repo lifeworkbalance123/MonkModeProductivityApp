@@ -1,6 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  clearDeepWork,
+  loadDeepWork,
+  saveDeepWork,
+} from '@/lib/focus-timer-storage'
 
 export const DEEP_WORK_SPRINT_SECONDS = 90 * 60
 export const DEEP_WORK_BREAK_SECONDS = 20 * 60
@@ -47,6 +52,24 @@ export function useDeepWorkTimer(options: Options = {}) {
     statusRef.current = status
   }, [status])
 
+  const persistSnapshot = useCallback(() => {
+    const st = statusRef.current
+    if (st === 'idle' || st === 'completed') {
+      clearDeepWork()
+      return
+    }
+    saveDeepWork({
+      v: 1,
+      status: st,
+      phase: phaseRef.current,
+      wallEndMs: wallEndMs.current,
+      pausedSec: pausedRemainderSec.current,
+      sprintStartedAtMs: sprintStartedAtMs.current,
+      sprintTotal,
+      breakTotal,
+    })
+  }, [sprintTotal, breakTotal])
+
   const syncDisplay = useCallback(() => {
     if (wallEndMs.current == null) return
     const sec = Math.max(
@@ -58,12 +81,14 @@ export function useDeepWorkTimer(options: Options = {}) {
       wallEndMs.current = null
       if (phaseRef.current === 'sprint') {
         setStatus('completed')
+        clearDeepWork()
         onSprintZeroRef.current?.()
       } else {
         setStatus('idle')
         setSecondsRemaining(sprintTotal)
         phaseRef.current = 'sprint'
         setPhase('sprint')
+        clearDeepWork()
         onBreakZeroRef.current?.()
       }
     }
@@ -84,6 +109,69 @@ export function useDeepWorkTimer(options: Options = {}) {
       document.removeEventListener('visibilitychange', onVis)
     }
   }, [status, syncDisplay])
+
+  useLayoutEffect(() => {
+    const saved = loadDeepWork()
+    if (!saved || saved.sprintTotal !== sprintTotal || saved.breakTotal !== breakTotal) {
+      return
+    }
+    const now = Date.now()
+
+    if (saved.status === 'paused') {
+      phaseRef.current = saved.phase
+      setPhase(saved.phase)
+      pausedRemainderSec.current = saved.pausedSec
+      wallEndMs.current = null
+      sprintStartedAtMs.current = saved.sprintStartedAtMs
+      setSecondsRemaining(saved.pausedSec)
+      setStatus('paused')
+      return
+    }
+
+    if (saved.status === 'running' || saved.status === 'break') {
+      if (saved.wallEndMs != null && saved.wallEndMs > now) {
+        phaseRef.current = saved.phase
+        setPhase(saved.phase)
+        wallEndMs.current = saved.wallEndMs
+        sprintStartedAtMs.current = saved.sprintStartedAtMs
+        setSecondsRemaining(Math.ceil((saved.wallEndMs - now) / 1000))
+        setStatus(saved.status)
+        return
+      }
+      wallEndMs.current = null
+      if (saved.phase === 'sprint') {
+        setSecondsRemaining(0)
+        setStatus('completed')
+        clearDeepWork()
+        queueMicrotask(() => onSprintZeroRef.current?.())
+      } else {
+        setSecondsRemaining(sprintTotal)
+        phaseRef.current = 'sprint'
+        setPhase('sprint')
+        setStatus('idle')
+        clearDeepWork()
+        queueMicrotask(() => onBreakZeroRef.current?.())
+      }
+      return
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- restore once on mount for current durations
+  }, [])
+
+  useEffect(() => {
+    const st = statusRef.current
+    if (st === 'idle' || st === 'completed') {
+      clearDeepWork()
+      return
+    }
+    persistSnapshot()
+    const id = window.setInterval(persistSnapshot, 2000)
+    const onHide = () => persistSnapshot()
+    window.addEventListener('pagehide', onHide)
+    return () => {
+      window.clearInterval(id)
+      window.removeEventListener('pagehide', onHide)
+    }
+  }, [status, persistSnapshot])
 
   const startSprint = useCallback(() => {
     phaseRef.current = 'sprint'
@@ -135,6 +223,7 @@ export function useDeepWorkTimer(options: Options = {}) {
     setPhase('sprint')
     setSecondsRemaining(sprintTotal)
     setStatus('idle')
+    clearDeepWork()
   }, [sprintTotal])
 
   const resetToIdle = useCallback(() => {
@@ -145,6 +234,7 @@ export function useDeepWorkTimer(options: Options = {}) {
     pausedRemainderSec.current = 0
     setSecondsRemaining(sprintTotal)
     setStatus('idle')
+    clearDeepWork()
   }, [sprintTotal])
 
   const getSprintElapsedMinutes = useCallback(() => {
@@ -167,6 +257,7 @@ export function useDeepWorkTimer(options: Options = {}) {
     pausedRemainderSec.current = 0
     setSecondsRemaining(sprintTotal)
     setStatus('idle')
+    clearDeepWork()
     return mins
   }, [getSprintElapsedMinutes, sprintTotal])
 

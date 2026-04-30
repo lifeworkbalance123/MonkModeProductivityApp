@@ -1,5 +1,6 @@
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@supabase/supabase-js'
+import { checkIsAdmin } from '@/lib/adminAuth'
 import { createServiceRoleClient } from '@/lib/supabase-service'
 
 const DEFAULT_ADMIN_EMAILS = ['your-email@example.com', 'tester@monkcubed.com', 'admin@monkcubed.com']
@@ -100,9 +101,28 @@ export async function getAdminUser(req: Request): Promise<{
   if (!user) {
     return { user: null, error: 'Unauthorized', status: 401 }
   }
-  if (!isAdmin(user)) {
-    return { user: null, error: 'Unauthorized', status: 403 }
+
+  if (isAdmin(user)) {
+    return { user, error: null, status: 200 }
   }
 
-  return { user, error: null, status: 200 }
+  try {
+    const authClient = supabaseWithUserJwt(token)
+    const { data: rpcOk } = await authClient.rpc('is_current_user_admin')
+    if (rpcOk === true) {
+      return { user, error: null, status: 200 }
+    }
+  } catch {
+    /* RPC missing or misconfigured */
+  }
+
+  try {
+    if (await checkIsAdmin(user.id)) {
+      return { user, error: null, status: 200 }
+    }
+  } catch {
+    /* service role */
+  }
+
+  return { user: null, error: 'Forbidden — admin API access denied', status: 403 }
 }
