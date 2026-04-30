@@ -43,6 +43,13 @@ export default function AdminDeepWorkPage() {
   const [tracks, setTracks] = useState<DeepWorkCmsState['tracks']>([])
   const [uploadingSlot, setUploadingSlot] = useState<number | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [pendingCommit, setPendingCommit] = useState<null | {
+    slotIndex: number
+    label: string
+    publicUrl: string
+    storagePath: string
+    isActive: boolean
+  }>(null)
   const fileRefMap = useRef<Record<number, HTMLInputElement | null>>({})
 
   const load = useCallback(async () => {
@@ -100,12 +107,51 @@ export default function AdminDeepWorkPage() {
         return
       }
       setMessage('Saved intro text.')
+      void load()
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Save failed')
     } finally {
       setSaving(false)
     }
   }
+
+  const commitTrack = useCallback(
+    async (args: {
+      slotIndex: number
+      label: string
+      publicUrl: string
+      storagePath: string
+      isActive: boolean
+    }) => {
+      const token = await getAccessToken()
+      if (!token) {
+        return { ok: false as const, error: 'Sign in again to save (no session).' }
+      }
+      const commitRes = await fetch('/api/admin/deep-work/commit-track', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          slot: args.slotIndex,
+          label: args.label,
+          publicUrl: args.publicUrl,
+          storagePath: args.storagePath,
+          isActive: args.isActive,
+        }),
+      })
+      const commitPayload = (await commitRes.json().catch(() => ({}))) as { error?: string }
+      if (!commitRes.ok) {
+        return {
+          ok: false as const,
+          error: commitPayload.error ?? `Save failed (${commitRes.status})`,
+        }
+      }
+      return { ok: true as const }
+    },
+    [load],
+  )
 
   async function uploadMp3(slotIndex: number, file: File) {
     if (!isLikelyMp3(file)) {
@@ -151,28 +197,30 @@ export default function AdminDeepWorkPage() {
         const { data: pub } = supabase.storage.from(bucket).getPublicUrl(uploadPath)
         publicUrl = pub.publicUrl ?? null
 
-        // Persist metadata with service role — anon client upsert often fails for new slot
-        // keys (INSERT under RLS) even when storage upload succeeds.
-        const commitRes = await fetch('/api/admin/deep-work/commit-track', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            slot: slotIndex,
-            label,
-            publicUrl,
-            storagePath: uploadPath,
-            isActive: tracks[slotIndex]?.isActive !== false,
-          }),
+        const isActive = tracks[slotIndex]?.isActive !== false
+        // Persist metadata with service role — keeps DB writes reliable (RLS + INSERT quirks).
+        const commit = await commitTrack({
+          slotIndex,
+          label,
+          publicUrl: publicUrl ?? '',
+          storagePath: uploadPath,
+          isActive,
         })
-        const commitPayload = (await commitRes.json().catch(() => ({}))) as { error?: string }
-        if (!commitRes.ok) {
-          await supabase.storage.from(bucket).remove([uploadPath])
-          setMessage(commitPayload.error ?? `Save failed (${commitRes.status})`)
+        if (!commit.ok) {
+          // Keep the uploaded object so we can retry metadata save without re-uploading ~128MB.
+          setPendingCommit({
+            slotIndex,
+            label,
+            publicUrl: publicUrl ?? '',
+            storagePath: uploadPath,
+            isActive,
+          })
+          setMessage(
+            `Upload finished, but saving the track failed. ${commit.error} Click “Retry save” to finalize without re-uploading.`,
+          )
           return
         }
+        setPendingCommit(null)
       } else {
         if (file.size > SERVER_UPLOAD_FALLBACK_MAX_BYTES) {
           setMessage(
@@ -226,6 +274,7 @@ export default function AdminDeepWorkPage() {
         return next
       })
       setMessage(`Uploaded ${key}.`)
+      void load()
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Upload failed')
     } finally {
@@ -371,6 +420,48 @@ export default function AdminDeepWorkPage() {
 
       {message ? (
         <p className="rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground">{message}</p>
+      ) : null}
+      {pendingCommit ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card px-3 py-2">
+          <button
+            type="button"
+            className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            disabled={saving || uploadingSlot !== null}
+            onClick={() => {
+              void (async () => {
+                setSaving(true)
+                setMessage(null)
+                try {
+                  const commit = await commitTrack(pendingCommit)
+                  if (!commit.ok) {
+                    setMessage(commit.error)
+                    return
+                  }
+                  setPendingCommit(null)
+                  setMessage('Saved track metadata. Refreshing…')
+                  await load()
+                  setMessage('Saved track.')
+                } catch (e) {
+                  setMessage(e instanceof Error ? e.message : 'Retry failed')
+                } finally {
+                  setSaving(false)
+                }
+              })()
+            }}
+          >
+            Retry save
+          </button>
+          <button
+            type="button"
+            className="rounded-md border border-border bg-secondary px-3 py-2 text-sm hover:bg-secondary/80"
+            onClick={() => setPendingCommit(null)}
+          >
+            Dismiss
+          </button>
+          <p className="text-xs text-muted-foreground">
+            Slot {pendingCommit.slotIndex + 1} is already uploaded; this only retries the DB save step.
+          </p>
+        </div>
       ) : null}
 
       <section className="space-y-3 rounded-xl border border-border bg-card p-5">
