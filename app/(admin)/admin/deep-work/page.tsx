@@ -199,6 +199,12 @@ export default function AdminDeepWorkPage() {
         file,
         slotIndex,
         removePath: prevPath,
+        onProgress: (pct) => {
+          setUploadStage('uploading_to_storage')
+          setUploadNote(
+            `Uploading “${safe}” (${Math.round(file.size / (1024 * 1024))}MB) to Storage… ${pct}%`,
+          )
+        },
       })
       const uploadPath = uploaded.path
       const publicUrl = uploaded.publicUrl

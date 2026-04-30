@@ -14,49 +14,11 @@ function parseSupabaseProjectRef(): string {
   return m[1]
 }
 
-async function uploadViaTus(file: File, objectPath: string, accessToken: string): Promise<void> {
-  const { Upload } = await import('tus-js-client')
-  const projectRef = parseSupabaseProjectRef()
-  const endpoint = `https://${projectRef}.storage.supabase.co/storage/v1/upload/resumable`
-  const anonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '').trim()
-  if (!anonKey) throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is missing.')
-
-  await new Promise<void>((resolve, reject) => {
-    const upload = new Upload(file, {
-      endpoint,
-      retryDelays: [0, 3000, 5000, 10000, 20000],
-      headers: {
-        authorization: `Bearer ${accessToken}`,
-        apikey: anonKey,
-        'x-upsert': 'true',
-      },
-      uploadDataDuringCreation: true,
-      removeFingerprintOnSuccess: true,
-      metadata: {
-        bucketName: LESSON_MEDIA_BUCKET_ID,
-        objectName: objectPath,
-        contentType: file.type || 'audio/mpeg',
-        cacheControl: '3600',
-      },
-      chunkSize: 6 * 1024 * 1024,
-      onError: (err) => {
-        reject(err instanceof Error ? err : new Error(String(err)))
-      },
-      onSuccess: () => resolve(),
-    })
-    void upload.findPreviousUploads().then((previousUploads) => {
-      if (previousUploads.length) {
-        upload.resumeFromPreviousUpload(previousUploads[0])
-      }
-      upload.start()
-    })
-  })
-}
-
 export async function uploadDeepWorkMp3WithAdminSession(args: {
   file: File
   slotIndex: number
   removePath: string | null
+  onProgress?: (pct: number) => void
 }): Promise<{ path: string; publicUrl: string }> {
   const { data: sessionData } = await supabase.auth.getSession()
   const session = sessionData.session
@@ -95,7 +57,78 @@ export async function uploadDeepWorkMp3WithAdminSession(args: {
   }
 
   if (json.resumable) {
-    await uploadViaTus(args.file, json.path, session.access_token)
+    const { Upload } = await import('tus-js-client')
+    const projectRef = parseSupabaseProjectRef()
+    const endpoint = `https://${projectRef}.storage.supabase.co/storage/v1/upload/resumable`
+    const anonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '').trim()
+    if (!anonKey) throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is missing.')
+
+    let token = session.access_token
+    let refreshTimer: number | null = null
+    const startTokenRefreshLoop = () => {
+      if (typeof window === 'undefined') return
+      refreshTimer = window.setInterval(() => {
+        void (async () => {
+          const { data } = await supabase.auth.getSession()
+          const s = data.session
+          if (!s) return
+          const expiresAtMs = (s.expires_at ?? 0) * 1000
+          if (expiresAtMs > 0 && expiresAtMs - Date.now() < 5 * 60 * 1000) {
+            const { data: refreshed } = await supabase.auth.refreshSession()
+            const next = refreshed.session?.access_token ?? null
+            if (next) token = next
+          } else {
+            token = s.access_token
+          }
+        })()
+      }, 2 * 60 * 1000)
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const upload = new Upload(args.file, {
+        endpoint,
+        retryDelays: [0, 3000, 5000, 10000, 20000],
+        headers: {
+          authorization: `Bearer ${token}`,
+          apikey: anonKey,
+          'x-upsert': 'true',
+        },
+        uploadDataDuringCreation: true,
+        removeFingerprintOnSuccess: true,
+        metadata: {
+          bucketName: LESSON_MEDIA_BUCKET_ID,
+          objectName: json.path as string,
+          contentType: args.file.type || 'audio/mpeg',
+          cacheControl: '3600',
+        },
+        chunkSize: 6 * 1024 * 1024,
+        onBeforeRequest: (req) => {
+          req.setHeader('authorization', `Bearer ${token}`)
+          req.setHeader('apikey', anonKey)
+        },
+        onProgress: (uploaded, total) => {
+          if (!args.onProgress || !total) return
+          const pct = Math.max(0, Math.min(100, Math.round((uploaded / total) * 100)))
+          args.onProgress(pct)
+        },
+        onError: (err) => {
+          if (refreshTimer) window.clearInterval(refreshTimer)
+          reject(err instanceof Error ? err : new Error(String(err)))
+        },
+        onSuccess: () => {
+          if (refreshTimer) window.clearInterval(refreshTimer)
+          args.onProgress?.(100)
+          resolve()
+        },
+      })
+      void upload.findPreviousUploads().then((previousUploads) => {
+        if (previousUploads.length) {
+          upload.resumeFromPreviousUpload(previousUploads[0])
+        }
+        startTokenRefreshLoop()
+        upload.start()
+      })
+    })
   } else {
     if (!json.token) {
       throw new Error('Invalid response from server')
