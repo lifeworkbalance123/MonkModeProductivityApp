@@ -15,10 +15,10 @@ function parseSupabaseProjectRef(): string {
   return m[1]
 }
 
-async function uploadViaTus(file: File, objectPath: string, accessToken: string): Promise<void> {
+async function uploadViaTus(file: File, objectPath: string, signedUploadToken: string): Promise<void> {
   const { Upload } = await import('tus-js-client')
   const projectRef = parseSupabaseProjectRef()
-  const endpoint = `https://${projectRef}.storage.supabase.co/storage/v1/upload/resumable`
+  const endpoint = `https://${projectRef}.storage.supabase.co/storage/v1/upload/resumable/sign`
   const anonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '').trim()
   if (!anonKey) throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is missing.')
 
@@ -27,8 +27,8 @@ async function uploadViaTus(file: File, objectPath: string, accessToken: string)
       endpoint,
       retryDelays: [0, 3000, 5000, 10000, 20000],
       headers: {
-        authorization: `Bearer ${accessToken}`,
         apikey: anonKey,
+        'x-signature': signedUploadToken,
         'x-upsert': 'true',
       },
       uploadDataDuringCreation: true,
@@ -95,7 +95,10 @@ export async function uploadSiteMediaWithAdminSession(
   }
 
   if (json.resumable) {
-    await uploadViaTus(file, json.path, session.access_token)
+    if (!json.token) {
+      throw new Error('Invalid response from server')
+    }
+    await uploadViaTus(file, json.path, json.token)
   } else {
     if (!json.token) {
       throw new Error('Invalid response from server')

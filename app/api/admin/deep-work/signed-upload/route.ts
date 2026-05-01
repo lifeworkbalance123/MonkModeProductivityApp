@@ -66,13 +66,6 @@ export async function POST(request: Request) {
   const key = DEEP_WORK_MP3_KEYS[slot]
   const objectPath = `deep-work/${key}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${ext}`
 
-  if (preferResumable) {
-    return NextResponse.json({
-      path: objectPath,
-      resumable: true as const,
-    })
-  }
-
   const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(objectPath, {
     upsert: true,
   })
@@ -82,6 +75,15 @@ export async function POST(request: Request) {
       { error: error?.message ?? 'Failed to create upload URL' },
       { status: 500 },
     )
+  }
+
+  /** TUS on `/upload/resumable/sign` + `x-signature` avoids session JWT on storage (Invalid Compact JWS). */
+  if (preferResumable) {
+    return NextResponse.json({
+      path: data.path,
+      token: data.token,
+      resumable: true as const,
+    })
   }
 
   return NextResponse.json({

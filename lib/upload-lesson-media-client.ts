@@ -64,32 +64,15 @@ export async function uploadDeepWorkMp3WithAdminSession(args: {
   }
 
   if (json.resumable) {
+    if (!json.token) {
+      throw new Error('Invalid response from server')
+    }
+    const signedUploadToken = json.token
     const { Upload } = await import('tus-js-client')
     const projectRef = parseSupabaseProjectRef()
-    const endpoint = `https://${projectRef}.storage.supabase.co/storage/v1/upload/resumable`
+    const endpoint = `https://${projectRef}.storage.supabase.co/storage/v1/upload/resumable/sign`
     const anonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '').trim()
     if (!anonKey) throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is missing.')
-
-    let token = session.access_token
-    let refreshTimer: number | null = null
-    const startTokenRefreshLoop = () => {
-      if (typeof window === 'undefined') return
-      refreshTimer = window.setInterval(() => {
-        void (async () => {
-          const { data } = await supabase.auth.getSession()
-          const s = data.session
-          if (!s) return
-          const expiresAtMs = (s.expires_at ?? 0) * 1000
-          if (expiresAtMs > 0 && expiresAtMs - Date.now() < 5 * 60 * 1000) {
-            const { data: refreshed } = await supabase.auth.refreshSession()
-            const next = refreshed.session?.access_token ?? null
-            if (next) token = next
-          } else {
-            token = s.access_token
-          }
-        })()
-      }, 2 * 60 * 1000)
-    }
 
     const totalKnown = args.file.size > 0 ? args.file.size : 0
     const emit = (uploadedBytes: number, totalBytes: number) => {
@@ -110,8 +93,8 @@ export async function uploadDeepWorkMp3WithAdminSession(args: {
         endpoint,
         retryDelays: [0, 3000, 5000, 10000, 20000],
         headers: {
-          authorization: `Bearer ${token}`,
           apikey: anonKey,
+          'x-signature': signedUploadToken,
           'x-upsert': 'true',
         },
         uploadDataDuringCreation: true,
@@ -123,21 +106,15 @@ export async function uploadDeepWorkMp3WithAdminSession(args: {
           cacheControl: '3600',
         },
         chunkSize: 6 * 1024 * 1024,
-        onBeforeRequest: (req) => {
-          req.setHeader('authorization', `Bearer ${token}`)
-          req.setHeader('apikey', anonKey)
-        },
         onProgress: (uploaded, total) => {
           const t =
             total && total > 0 ? total : totalKnown > 0 ? totalKnown : (total ?? 0)
           emit(uploaded, t)
         },
         onError: (err) => {
-          if (refreshTimer) window.clearInterval(refreshTimer)
           reject(err instanceof Error ? err : new Error(String(err)))
         },
         onSuccess: () => {
-          if (refreshTimer) window.clearInterval(refreshTimer)
           const t = totalKnown > 0 ? totalKnown : args.file.size
           if (t > 0) emit(t, t)
           else args.onProgress?.({ pct: 100, uploadedBytes: 0, totalBytes: 0 })
@@ -148,7 +125,6 @@ export async function uploadDeepWorkMp3WithAdminSession(args: {
         if (previousUploads.length) {
           upload.resumeFromPreviousUpload(previousUploads[0])
         }
-        startTokenRefreshLoop()
         upload.start()
       })
     })

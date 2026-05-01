@@ -90,19 +90,21 @@ export async function POST(request: Request) {
   const folder = prefix === 'rhythm' ? 'rhythm' : 'hero'
   const objectPath = `${folder}/${folder}-media-${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${ext}`
 
-  if (preferResumable) {
-    return NextResponse.json({
-      path: objectPath,
-      resumable: true as const,
-    })
-  }
-
   const { data, error } = await admin.storage.from(SITE_MEDIA_BUCKET_ID).createSignedUploadUrl(objectPath, {
     upsert: true,
   })
   if (error || !data) {
     console.error('createSignedUploadUrl:', error)
     return NextResponse.json({ error: error?.message ?? 'Failed to create upload URL' }, { status: 500 })
+  }
+
+  /** Resumable TUS uses `/upload/resumable/sign` + `x-signature` so storage never parses the browser session JWT (avoids Invalid Compact JWS on some projects). */
+  if (preferResumable) {
+    return NextResponse.json({
+      path: data.path,
+      token: data.token,
+      resumable: true as const,
+    })
   }
 
   return NextResponse.json({
