@@ -1,5 +1,6 @@
 'use client'
 
+import { humanizeStorageUploadError } from '@/lib/storage-upload-errors'
 import { supabase } from '@/lib/supabase'
 
 const LESSON_MEDIA_BUCKET_ID = 'lesson-media'
@@ -57,7 +58,9 @@ export async function uploadDeepWorkMp3WithAdminSession(args: {
   }
 
   if (!res.ok) {
-    throw new Error(json.error || `Upload setup failed (${res.status})`)
+    throw new Error(
+      humanizeStorageUploadError(json.error || `Upload setup failed (${res.status})`),
+    )
   }
   if (!json.path) {
     throw new Error('Invalid response from server')
@@ -112,7 +115,8 @@ export async function uploadDeepWorkMp3WithAdminSession(args: {
           emit(uploaded, t)
         },
         onError: (err) => {
-          reject(err instanceof Error ? err : new Error(String(err)))
+          const msg = err instanceof Error ? err.message : String(err)
+          reject(new Error(humanizeStorageUploadError(msg)))
         },
         onSuccess: () => {
           const t = totalKnown > 0 ? totalKnown : args.file.size
@@ -144,7 +148,9 @@ export async function uploadDeepWorkMp3WithAdminSession(args: {
         contentType: args.file.type || 'audio/mpeg',
         upsert: true,
       })
-    if (uploadError) throw uploadError
+    if (uploadError) {
+      throw new Error(humanizeStorageUploadError(uploadError.message))
+    }
     args.onProgress?.({
       pct: 100,
       uploadedBytes: args.file.size,

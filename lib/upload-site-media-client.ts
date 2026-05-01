@@ -1,5 +1,6 @@
 'use client'
 
+import { humanizeStorageUploadError } from '@/lib/storage-upload-errors'
 import { supabase } from '@/lib/supabase'
 import { SITE_MEDIA_BUCKET_ID } from '@/lib/site-media-storage'
 
@@ -41,7 +42,8 @@ async function uploadViaTus(file: File, objectPath: string, signedUploadToken: s
       },
       chunkSize: 6 * 1024 * 1024,
       onError: (err) => {
-        reject(err instanceof Error ? err : new Error(String(err)))
+        const msg = err instanceof Error ? err.message : String(err)
+        reject(new Error(humanizeStorageUploadError(msg)))
       },
       onSuccess: () => resolve(),
     })
@@ -88,7 +90,9 @@ export async function uploadSiteMediaWithAdminSession(
     resumable?: boolean
   }
   if (!res.ok) {
-    throw new Error(json.error || `Upload setup failed (${res.status})`)
+    throw new Error(
+      humanizeStorageUploadError(json.error || `Upload setup failed (${res.status})`),
+    )
   }
   if (!json.path) {
     throw new Error('Invalid response from server')
@@ -113,7 +117,9 @@ export async function uploadSiteMediaWithAdminSession(
         upsert: true,
       },
     )
-    if (uploadError) throw uploadError
+    if (uploadError) {
+      throw new Error(humanizeStorageUploadError(uploadError.message))
+    }
   }
 
   const { data: urlData } = supabase.storage.from(SITE_MEDIA_BUCKET_ID).getPublicUrl(json.path)

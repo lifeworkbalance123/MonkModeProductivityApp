@@ -421,8 +421,10 @@ export default function AdminDeepWorkPage() {
         <p className="mt-1 text-sm text-muted-foreground">
           Intro copy and up to eight MP3 ambient tracks for the Deep Work fullscreen player. MP3s are stored in the{' '}
           <code className="rounded bg-muted px-1 text-xs">lesson-media</code> bucket (browser uploads directly to
-          Storage; max about {Math.round(DEEP_WORK_MAX_MP3_BYTES / (1024 * 1024))}MB per file). While a file is
-          uploading, a progress bar appears under that slot.
+          Storage; this app allows up to about {Math.round(DEEP_WORK_MAX_MP3_BYTES / (1024 * 1024))}MB per file). Your
+          Supabase project also has a separate <strong className="font-medium text-foreground">global file size limit</strong>{' '}
+          (Project Settings → Storage); if uploads fail with “maximum size”, raise that limit above your MP3 size. While
+          a file is uploading, a progress bar appears under that slot.
         </p>
       </div>
 
