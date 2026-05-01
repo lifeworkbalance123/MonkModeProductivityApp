@@ -14,11 +14,18 @@ function parseSupabaseProjectRef(): string {
   return m[1]
 }
 
+export type DeepWorkMp3UploadProgress = {
+  /** 0–100 when total size is known; omitted when only bytes are known */
+  pct?: number
+  uploadedBytes: number
+  totalBytes: number
+}
+
 export async function uploadDeepWorkMp3WithAdminSession(args: {
   file: File
   slotIndex: number
   removePath: string | null
-  onProgress?: (pct: number) => void
+  onProgress?: (p: DeepWorkMp3UploadProgress) => void
 }): Promise<{ path: string; publicUrl: string }> {
   const { data: sessionData } = await supabase.auth.getSession()
   const session = sessionData.session
@@ -84,6 +91,20 @@ export async function uploadDeepWorkMp3WithAdminSession(args: {
       }, 2 * 60 * 1000)
     }
 
+    const totalKnown = args.file.size > 0 ? args.file.size : 0
+    const emit = (uploadedBytes: number, totalBytes: number) => {
+      if (!args.onProgress) return
+      const t = totalBytes > 0 ? totalBytes : totalKnown
+      if (t > 0) {
+        const pct = Math.max(0, Math.min(100, Math.round((uploadedBytes / t) * 100)))
+        args.onProgress({ pct, uploadedBytes, totalBytes: t })
+      } else {
+        args.onProgress({ uploadedBytes, totalBytes: 0 })
+      }
+    }
+
+    emit(0, totalKnown)
+
     await new Promise<void>((resolve, reject) => {
       const upload = new Upload(args.file, {
         endpoint,
@@ -107,9 +128,9 @@ export async function uploadDeepWorkMp3WithAdminSession(args: {
           req.setHeader('apikey', anonKey)
         },
         onProgress: (uploaded, total) => {
-          if (!args.onProgress || !total) return
-          const pct = Math.max(0, Math.min(100, Math.round((uploaded / total) * 100)))
-          args.onProgress(pct)
+          const t =
+            total && total > 0 ? total : totalKnown > 0 ? totalKnown : (total ?? 0)
+          emit(uploaded, t)
         },
         onError: (err) => {
           if (refreshTimer) window.clearInterval(refreshTimer)
@@ -117,7 +138,9 @@ export async function uploadDeepWorkMp3WithAdminSession(args: {
         },
         onSuccess: () => {
           if (refreshTimer) window.clearInterval(refreshTimer)
-          args.onProgress?.(100)
+          const t = totalKnown > 0 ? totalKnown : args.file.size
+          if (t > 0) emit(t, t)
+          else args.onProgress?.({ pct: 100, uploadedBytes: 0, totalBytes: 0 })
           resolve()
         },
       })
@@ -133,6 +156,11 @@ export async function uploadDeepWorkMp3WithAdminSession(args: {
     if (!json.token) {
       throw new Error('Invalid response from server')
     }
+    args.onProgress?.({
+      pct: 0,
+      uploadedBytes: 0,
+      totalBytes: Math.max(0, args.file.size),
+    })
     const { error: uploadError } = await supabase.storage
       .from(LESSON_MEDIA_BUCKET_ID)
       .uploadToSignedUrl(json.path, json.token, args.file, {
@@ -141,6 +169,11 @@ export async function uploadDeepWorkMp3WithAdminSession(args: {
         upsert: true,
       })
     if (uploadError) throw uploadError
+    args.onProgress?.({
+      pct: 100,
+      uploadedBytes: args.file.size,
+      totalBytes: Math.max(1, args.file.size),
+    })
   }
 
   const { data: urlData } = supabase.storage.from(LESSON_MEDIA_BUCKET_ID).getPublicUrl(json.path)

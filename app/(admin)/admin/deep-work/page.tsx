@@ -9,7 +9,10 @@ import {
   parseDeepWorkRows,
   type DeepWorkCmsState,
 } from '@/lib/deep-work-site-settings'
-import { uploadDeepWorkMp3WithAdminSession } from '@/lib/upload-lesson-media-client'
+import {
+  uploadDeepWorkMp3WithAdminSession,
+  type DeepWorkMp3UploadProgress,
+} from '@/lib/upload-lesson-media-client'
 
 async function getAccessToken(): Promise<string | null> {
   const {
@@ -51,6 +54,12 @@ export default function AdminDeepWorkPage() {
   const [slotMessage, setSlotMessage] = useState<null | {
     slotIndex: number
     text: string
+  }>(null)
+  const [slotUploadProgress, setSlotUploadProgress] = useState<null | {
+    slotIndex: number
+    pct: number | null
+    uploadedLabel: string
+    totalLabel: string | null
   }>(null)
   const [pendingCommit, setPendingCommit] = useState<null | {
     slotIndex: number
@@ -159,8 +168,13 @@ export default function AdminDeepWorkPage() {
       }
       return { ok: true as const }
     },
-    [load],
+    [],
   )
+
+  function formatUploadMb(n: number): string {
+    if (!Number.isFinite(n) || n <= 0) return '0'
+    return (n / (1024 * 1024)).toFixed(n >= 1024 * 1024 ? 1 : 2)
+  }
 
   async function uploadMp3(slotIndex: number, file: File) {
     if (!isLikelyMp3(file)) {
@@ -178,6 +192,12 @@ export default function AdminDeepWorkPage() {
     setUploadingSlot(slotIndex)
     setMessage(null)
     setSlotMessage(null)
+    setSlotUploadProgress({
+      slotIndex,
+      pct: null,
+      uploadedLabel: '0',
+      totalLabel: file.size > 0 ? formatUploadMb(file.size) : null,
+    })
     setUploadStage('uploading_to_storage')
     setUploadNote(
       `Uploading “${file.name}” (${Math.round(file.size / (1024 * 1024))}MB) to Storage…`,
@@ -199,11 +219,26 @@ export default function AdminDeepWorkPage() {
         file,
         slotIndex,
         removePath: prevPath,
-        onProgress: (pct) => {
+        onProgress: (p: DeepWorkMp3UploadProgress) => {
           setUploadStage('uploading_to_storage')
-          setUploadNote(
-            `Uploading “${safe}” (${Math.round(file.size / (1024 * 1024))}MB) to Storage… ${pct}%`,
-          )
+          const up = formatUploadMb(p.uploadedBytes)
+          const tot =
+            p.totalBytes > 0
+              ? formatUploadMb(p.totalBytes)
+              : file.size > 0
+                ? formatUploadMb(file.size)
+                : null
+          const pct = typeof p.pct === 'number' ? p.pct : null
+          setSlotUploadProgress({
+            slotIndex,
+            pct,
+            uploadedLabel: up,
+            totalLabel: tot,
+          })
+          const pctPart = pct !== null ? `${pct}% · ` : ''
+          const sizePart =
+            tot !== null ? `${pctPart}${up} / ${tot} MB` : `${pctPart}${up} MB sent`
+          setUploadNote(`Uploading “${safe}” to Storage… ${sizePart}`)
         },
       })
       const uploadPath = uploaded.path
@@ -257,6 +292,7 @@ export default function AdminDeepWorkPage() {
       setUploadingSlot(null)
       setUploadStage('idle')
       setUploadNote(null)
+      setSlotUploadProgress(null)
     }
   }
 
@@ -385,7 +421,8 @@ export default function AdminDeepWorkPage() {
         <p className="mt-1 text-sm text-muted-foreground">
           Intro copy and up to eight MP3 ambient tracks for the Deep Work fullscreen player. MP3s are stored in the{' '}
           <code className="rounded bg-muted px-1 text-xs">lesson-media</code> bucket (browser uploads directly to
-          Storage; max about {Math.round(DEEP_WORK_MAX_MP3_BYTES / (1024 * 1024))}MB per file).
+          Storage; max about {Math.round(DEEP_WORK_MAX_MP3_BYTES / (1024 * 1024))}MB per file). While a file is
+          uploading, a progress bar appears under that slot.
         </p>
       </div>
 
@@ -539,6 +576,21 @@ export default function AdminDeepWorkPage() {
               </button>
               {slotMessage?.slotIndex === i ? (
                 <p className="w-full text-xs text-muted-foreground">{slotMessage.text}</p>
+              ) : null}
+              {uploadingSlot === i && slotUploadProgress?.slotIndex === i ? (
+                <div className="w-full space-y-1">
+                  <progress
+                    className="h-2 w-full accent-primary"
+                    value={slotUploadProgress.pct !== null ? slotUploadProgress.pct : undefined}
+                    max={slotUploadProgress.pct !== null ? 100 : undefined}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {slotUploadProgress.pct !== null ? `${slotUploadProgress.pct}% · ` : ''}
+                    {slotUploadProgress.totalLabel !== null
+                      ? `${slotUploadProgress.uploadedLabel} / ${slotUploadProgress.totalLabel} MB`
+                      : `${slotUploadProgress.uploadedLabel} MB sent`}
+                  </p>
+                </div>
               ) : null}
               {tracks[i]?.url ? (
                 <>
