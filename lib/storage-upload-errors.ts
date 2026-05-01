@@ -4,8 +4,9 @@ export function humanizeStorageUploadError(raw: string): string {
   if (/413|Maximum size exceeded|max(imum)?\s+size/i.test(s)) {
     return [
       'This file is larger than your Supabase project’s Storage upload limit.',
-      'In Supabase: Project Settings → Storage → raise “Global file size limit” above this file’s size (the bucket can allow more, but the project-wide cap still applies).',
-      'Or use a smaller MP3 (lower bitrate / shorter length).',
+      'Dashboard: Storage → Storage settings → set “Global file size limit” at least to this file’s size; per-bucket limits cannot exceed that global cap.',
+      'On the Free plan Supabase caps a single upload at 50 MB—if your MP3 is larger, compress it (lower bitrate / shorter) or upgrade. Pro+ allows much higher limits.',
+      'Details: https://supabase.com/docs/guides/storage/uploads/file-limits',
     ].join(' ')
   }
   if (/Invalid Compact JWS/i.test(s)) {

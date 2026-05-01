@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { DailyLesson as DailyLessonType } from '@/lib/lessonContent'
+import {
+  inlineBonusTrackHasContent,
+  type DailyLesson as DailyLessonType,
+} from '@/lib/lessonContent'
+import { inferMediaFromAudioVideoUrls } from '@/lib/program-lesson-media'
 import {
   Dialog,
   DialogContent,
@@ -39,6 +43,12 @@ export default function DailyLesson({
   const [showTip, setShowTip] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [milestone, setMilestone] = useState<MilestoneCelebrationPayload | null>(null)
+
+  const showInlineBonus =
+    !lesson.isBonus && inlineBonusTrackHasContent(lesson)
+  const bonusTrackMedia = showInlineBonus
+    ? inferMediaFromAudioVideoUrls(lesson.bonus_audio_url, lesson.bonus_video_url)
+    : null
 
   const checkCompletion = useCallback(async () => {
     setLoading(true)
@@ -258,7 +268,69 @@ export default function DailyLesson({
           mediaUrl={lesson.media_url}
           companionMediaType={lesson.companion_media_type}
           companionMediaUrl={lesson.companion_media_url}
+          secondaryAudioUrl={lesson.secondary_audio_url}
         />
+
+        {showInlineBonus ? (
+          <div
+            style={{
+              marginTop: '24px',
+              padding: '18px 20px',
+              borderRadius: '14px',
+              border: `1px solid color-mix(in srgb, ${PU.chart2} 45%, ${PU.border})`,
+              background: `color-mix(in srgb, ${PU.chart2} 10%, ${PU.card})`,
+            }}
+          >
+            <h3
+              style={{
+                color: PU.fg,
+                fontSize: '18px',
+                fontWeight: 600,
+                margin: '0 0 14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                lineHeight: 1.3,
+              }}
+            >
+              <span aria-hidden>✨</span>
+              {lesson.bonus_label?.trim() || 'Bonus'}
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {lesson.bonus_title?.trim() ? (
+                <h4
+                  style={{
+                    color: PU.fg,
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    margin: 0,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {lesson.bonus_title.trim()}
+                </h4>
+              ) : null}
+              {lesson.bonus_body?.trim() ? (
+                <p
+                  style={{
+                    color: PU.mutedFg,
+                    fontSize: '15px',
+                    lineHeight: 1.75,
+                    margin: 0,
+                    whiteSpace: 'pre-line',
+                  }}
+                >
+                  {lesson.bonus_body.trim()}
+                </p>
+              ) : null}
+              <LessonMedia
+                mediaType={bonusTrackMedia?.media_type ?? null}
+                mediaUrl={bonusTrackMedia?.media_url ?? null}
+                secondaryAudioUrl={bonusTrackMedia?.secondary_audio_url ?? null}
+              />
+            </div>
+          </div>
+        ) : null}
 
         <div
           style={{

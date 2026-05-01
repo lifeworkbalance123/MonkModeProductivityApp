@@ -18,9 +18,14 @@ import { useProgram } from '@/hooks/useProgram'
 import { useProgramStatus } from '@/hooks/useProgramStatus'
 import {
   getPublishedLessonsForDayAsync,
+  inlineBonusTrackHasContent,
   type DailyLesson as DailyLessonData,
 } from '@/lib/lessonContent'
-import { getDailyProgramLessonForDay } from '@/lib/dailyProgramLessons'
+import {
+  dailyLessonFromPrimaryProgramRow,
+  getDailyProgramBonusLessonForDay,
+  getDailyProgramLessonForDay,
+} from '@/lib/dailyProgramLessons'
 import { supabase } from '@/lib/supabase'
 import {
   getMaxDays,
@@ -41,6 +46,7 @@ function TodayPageInner() {
   const { activeProgram, loading: statusLoading } = useProgramStatus()
   const [lesson, setLesson] = useState<DailyLessonData | null>(null)
   const [bonusLesson, setBonusLesson] = useState<DailyLessonData | null>(null)
+  const [bonusTabLabel, setBonusTabLabel] = useState('Bonus')
   const [activeTab, setActiveTab] = useState<'primary' | 'bonus'>('primary')
   const [lessonLoading, setLessonLoading] = useState(false)
   const [cmsLessonId, setCmsLessonId] = useState<string | null>(null)
@@ -87,34 +93,47 @@ function TodayPageInner() {
     if (!enrollment && !activeProgram) {
       setLesson(null)
       setBonusLesson(null)
+      setBonusTabLabel('Bonus')
       setActiveTab('primary')
       setCmsLessonId(null)
       setLessonLoading(false)
       return
     }
+
+    /** Avoid fetching with stale `activeProgram === null` before `/api/programs/status` resolves. */
+    if (statusLoading) {
+      setLessonLoading(true)
+      return
+    }
+
     const day = displayDay
     let cancelled = false
     async function fetchLesson() {
       setLessonLoading(true)
       if (activeProgram) {
         const row = await getDailyProgramLessonForDay(activeProgram.program_type, day)
-        const primary: DailyLessonData = row
-          ? {
-              day,
-              phase: 'student',
-              title: row.title,
-              lesson: row.content_markdown,
-              action: '',
-              actionLabel: '',
-              category: 'focus',
-              tip: row.tip_topic ?? undefined,
-            }
-          : (await getPublishedLessonsForDayAsync(day)).primary
+        if (!row) {
+          const published = await getPublishedLessonsForDayAsync(day)
+          if (!cancelled) {
+            setLesson(published.primary)
+            setBonusLesson(published.bonus)
+            setBonusTabLabel('Bonus')
+            setActiveTab('primary')
+            setCmsLessonId(null)
+            setLessonLoading(false)
+          }
+          return
+        }
+        const primary = dailyLessonFromPrimaryProgramRow(day, row)
+        const bonusPack = inlineBonusTrackHasContent(primary)
+          ? { lesson: null as DailyLessonData | null, tabLabel: 'Bonus' as const }
+          : await getDailyProgramBonusLessonForDay(activeProgram.program_type, day)
         if (!cancelled) {
           setLesson(primary)
-          setBonusLesson(null)
+          setBonusLesson(bonusPack.lesson)
+          setBonusTabLabel(bonusPack.tabLabel)
           setActiveTab('primary')
-          setCmsLessonId(row?.id ?? null)
+          setCmsLessonId(row.id)
           setLessonLoading(false)
         }
         return
@@ -132,17 +151,13 @@ function TodayPageInner() {
           if (pt !== '60day') {
             const row = await getDailyProgramLessonForDay(pt, day)
             if (row && !cancelled) {
-              setLesson({
-                day,
-                phase: 'student',
-                title: row.title,
-                lesson: row.content_markdown,
-                action: '',
-                actionLabel: '',
-                category: 'focus',
-                tip: row.tip_topic ?? undefined,
-              })
-              setBonusLesson(null)
+              const primaryLesson = dailyLessonFromPrimaryProgramRow(day, row)
+              const bonusPack = inlineBonusTrackHasContent(primaryLesson)
+                ? { lesson: null as DailyLessonData | null, tabLabel: 'Bonus' as const }
+                : await getDailyProgramBonusLessonForDay(pt, day)
+              setLesson(primaryLesson)
+              setBonusLesson(bonusPack.lesson)
+              setBonusTabLabel(bonusPack.tabLabel)
               setActiveTab('primary')
               setCmsLessonId(row.id)
               setLessonLoading(false)
@@ -158,6 +173,7 @@ function TodayPageInner() {
       if (!cancelled) {
         setLesson(primary)
         setBonusLesson(bonus)
+        setBonusTabLabel('Bonus')
         setActiveTab('primary')
         setCmsLessonId(null)
         setLessonLoading(false)
@@ -167,7 +183,7 @@ function TodayPageInner() {
     return () => {
       cancelled = true
     }
-  }, [enrollment, activeProgram, displayDay])
+  }, [enrollment, activeProgram, displayDay, statusLoading])
 
   useEffect(() => {
     if (!enrollment) {
@@ -463,7 +479,7 @@ function TodayPageInner() {
                         color: activeTab === 'bonus' ? PU.fg : PU.chart2,
                       }}
                     >
-                      ✨ Bonus Lesson
+                      ✨ {bonusTabLabel}
                     </button>
                   </div>
                 ) : null}

@@ -23,8 +23,11 @@ type Search = Promise<{ id?: string; program?: string; day?: string }>
 async function loadLesson(admin: ReturnType<typeof createServiceRoleClient>, id: string) {
   return admin
     .from('daily_lessons')
-    .select('id,title,content_markdown,program_type,program_day')
+    .select(
+      'id,title,content_markdown,program_type,program_day,bonus_label,bonus_title,bonus_body,bonus_audio_url,bonus_video_url',
+    )
     .eq('id', id)
+    .eq('is_bonus', false)
     .maybeSingle()
 }
 
@@ -36,7 +39,9 @@ async function loadLessonByProgramDay(
   if (!isCmsProgramType(program)) return { data: null as null, error: null }
   return admin
     .from('daily_lessons')
-    .select('id,title,content_markdown,program_type,program_day')
+    .select(
+      'id,title,content_markdown,program_type,program_day,bonus_label,bonus_title,bonus_body,bonus_audio_url,bonus_video_url',
+    )
     .eq('program_type', program)
     .eq('program_day', day)
     .eq('is_bonus', false)
@@ -93,6 +98,11 @@ export default async function LessonPage({ searchParams }: { searchParams: Searc
     content_markdown: string
     program_type: string
     program_day: number
+    bonus_label?: string | null
+    bonus_title?: string | null
+    bonus_body?: string | null
+    bonus_audio_url?: string | null
+    bonus_video_url?: string | null
   } | null = null
 
   if (id && UUID_RE.test(id)) {
@@ -104,6 +114,11 @@ export default async function LessonPage({ searchParams }: { searchParams: Searc
         content_markdown: row.content_markdown as string,
         program_type: row.program_type as string,
         program_day: Number(row.program_day),
+        bonus_label: row.bonus_label as string | null | undefined,
+        bonus_title: row.bonus_title as string | null | undefined,
+        bonus_body: row.bonus_body as string | null | undefined,
+        bonus_audio_url: row.bonus_audio_url as string | null | undefined,
+        bonus_video_url: row.bonus_video_url as string | null | undefined,
       }
     }
   } else if (program && Number.isFinite(dayNum) && dayNum >= 1) {
@@ -115,6 +130,11 @@ export default async function LessonPage({ searchParams }: { searchParams: Searc
         content_markdown: row.content_markdown as string,
         program_type: row.program_type as string,
         program_day: Number(row.program_day),
+        bonus_label: row.bonus_label as string | null | undefined,
+        bonus_title: row.bonus_title as string | null | undefined,
+        bonus_body: row.bonus_body as string | null | undefined,
+        bonus_audio_url: row.bonus_audio_url as string | null | undefined,
+        bonus_video_url: row.bonus_video_url as string | null | undefined,
       }
     }
   }
@@ -131,6 +151,11 @@ export default async function LessonPage({ searchParams }: { searchParams: Searc
         content_markdown: data.content_markdown,
         program_type: data.program_type,
         program_day: data.program_day,
+        bonus_label: data.bonus_label,
+        bonus_title: data.bonus_title,
+        bonus_body: data.bonus_body,
+        bonus_audio_url: data.bonus_audio_url,
+        bonus_video_url: data.bonus_video_url,
       }}
     />
   )
