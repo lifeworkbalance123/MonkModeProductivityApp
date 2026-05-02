@@ -32,6 +32,9 @@ export default function AdminTestingPage() {
     console.log('Router exists:', !!router)
     sessionStorage.setItem('admin_test_session', 'true')
     sessionStorage.setItem('admin_test_program', programType)
+    // Match keys ProgramOnboardingWizard reads so stale Monk Mode selection does not win.
+    sessionStorage.setItem('selectedProgram', programType)
+    localStorage.setItem('selectedProgram', programType)
     localStorage.setItem('skipPayment', 'true')
 
     toast.success(`Starting ${programType} onboarding...`)

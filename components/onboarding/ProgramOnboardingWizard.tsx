@@ -110,6 +110,7 @@ export default function ProgramOnboardingWizard({
       setFormData(emptyIntake(initialProgramFromUrl))
       setCurrentStepIndex(phaseIndexOf('intro'))
       localStorage.setItem('selectedProgram', initialProgramFromUrl)
+      sessionStorage.setItem('selectedProgram', initialProgramFromUrl)
     }
   }, [initialProgramFromUrl])
 
@@ -136,7 +137,20 @@ export default function ProgramOnboardingWizard({
       setFormData(emptyIntake(selectedFromUrl))
       setCurrentStepIndex(phaseIndexOf('intro'))
       localStorage.setItem('selectedProgram', selectedFromUrl)
+      sessionStorage.setItem('selectedProgram', selectedFromUrl)
       return
+    }
+
+    if (sessionStorage.getItem('admin_test_session') === 'true') {
+      const fromAdminTest = urlParamToSelectedProgram(sessionStorage.getItem('admin_test_program'))
+      if (fromAdminTest && isSelectedProgram(fromAdminTest)) {
+        setSelected(fromAdminTest)
+        setFormData(emptyIntake(fromAdminTest))
+        setCurrentStepIndex(phaseIndexOf('intro'))
+        localStorage.setItem('selectedProgram', fromAdminTest)
+        sessionStorage.setItem('selectedProgram', fromAdminTest)
+        return
+      }
     }
 
     const fromLocalStorage = urlParamToSelectedProgram(localStorage.getItem('selectedProgram'))

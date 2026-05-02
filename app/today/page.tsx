@@ -613,7 +613,7 @@ function TodayPageInner() {
             {!browsingHistory && enrollment.currentDay >= 3 ? (
               <DistractionLog dayNumber={enrollment.currentDay} />
             ) : null}
-            {!browsingHistory && enrollment.currentDay >= 7 ? (
+            {!browsingHistory && enrollment.currentDay >= 3 ? (
               <EnergyLog dayNumber={enrollment.currentDay} />
             ) : null}
           </>
