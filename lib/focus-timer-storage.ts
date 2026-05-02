@@ -12,6 +12,9 @@ export type PomodoroPersistedV1 = {
   status: 'idle' | 'running' | 'paused'
   wallEndMs: number | null
   pausedSec: number
+  /** When set, must match active preset totals for restore (defaults 25 / 5 min). */
+  workTotalSec?: number
+  breakTotalSec?: number
 }
 
 export function loadPomodoro(): PomodoroPersistedV1 | null {
@@ -25,6 +28,8 @@ export function loadPomodoro(): PomodoroPersistedV1 | null {
     if (p.mode !== 'work' && p.mode !== 'break') return null
     if (typeof p.pausedSec !== 'number' || p.pausedSec < 0) return null
     if (p.wallEndMs != null && (typeof p.wallEndMs !== 'number' || p.wallEndMs <= 0)) return null
+    if (p.workTotalSec != null && (typeof p.workTotalSec !== 'number' || p.workTotalSec < 60)) return null
+    if (p.breakTotalSec != null && (typeof p.breakTotalSec !== 'number' || p.breakTotalSec < 60)) return null
     return p
   } catch {
     return null

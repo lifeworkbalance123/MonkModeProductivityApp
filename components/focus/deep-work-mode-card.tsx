@@ -4,6 +4,7 @@ import Link from 'next/link'
 import type { Dispatch, RefObject, SetStateAction } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDeepWorkTimer } from '@/hooks/useDeepWorkTimer'
+import { useFaviconTimer } from '@/hooks/useFaviconTimer'
 import { useDataServiceContext } from '@/hooks/use-data-service-context'
 import { usePlan } from '@/hooks/usePlan'
 import {
@@ -29,17 +30,22 @@ import {
   createOceanSound,
   createRainSound,
   createWhiteNoise,
-  playChime,
   startMp3Loop,
   stopAmbient,
   stopMp3Loop,
   type AmbientNoiseHandle,
 } from '@/lib/deep-work-audio'
+import { playFocusEndChime, playFocusEndChimeOrDeepChime } from '@/lib/focus-end-chime'
 import {
-  playTimerAlarm,
+  playFocusTransitionCue,
+  playSoftTimerTick,
   pulseTimerVibration,
   showTimerNotification,
 } from '@/lib/timer-alarm'
+import { appendFocusIntentToDailyLog } from '@/lib/focus-intent-daily-log'
+import { isEditableOrTypingTarget } from '@/lib/keyboard-shortcut-guards'
+import { AudioTrackSelector } from '@/components/focus/AudioTrackSelector'
+import { Confetti } from '@/components/ui/Confetti'
 import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -142,13 +148,15 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
   const [breakModalOpen, setBreakModalOpen] = useState(false)
   const [endEarlyOpen, setEndEarlyOpen] = useState(false)
   const [earlyEndMinutes, setEarlyEndMinutes] = useState(0)
+  const [celebrateTick, setCelebrateTick] = useState(0)
+  const lastSprintTickSec = useRef<number | null>(null)
 
   // Alarm prefs via stable RefObjects from Focus page.
   const onSprintZero = useCallback(() => {
     if (!chimePlayed.current) {
       chimePlayed.current = true
       if (alarmSoundRef.current) {
-        playChime()
+        playFocusEndChimeOrDeepChime(true)
       }
     }
     if (alarmNotifyRef.current) {
@@ -181,7 +189,7 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
 
   const onBreakZero = useCallback(() => {
     if (alarmSoundRef.current) {
-      playTimerAlarm('deep-work-break')
+      playFocusEndChime(true, 'deep-work-break')
     }
     if (alarmNotifyRef.current) {
       showTimerNotification('Deep work — break over', 'Start your next sprint from the Focus page.')
@@ -211,6 +219,11 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
     getSprintElapsedMinutes,
     endSprintEarly,
   } = timer
+
+  useFaviconTimer(
+    secondsRemaining,
+    status === 'running' || status === 'break' || status === 'paused',
+  )
 
   const totalForRing = phase === 'break' ? breakTotalSeconds : sprintTotalSeconds
 
@@ -308,10 +321,29 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
     }
   }, [])
 
+  useEffect(() => {
+    if (phase !== 'sprint' || status !== 'running') {
+      lastSprintTickSec.current = null
+      return
+    }
+    if (secondsRemaining > 10 || secondsRemaining < 1) {
+      lastSprintTickSec.current = null
+      return
+    }
+    if (!alarmSoundRef.current) return
+    if (lastSprintTickSec.current === secondsRemaining) return
+    lastSprintTickSec.current = secondsRemaining
+    playSoftTimerTick(secondsRemaining)
+  }, [secondsRemaining, phase, status, alarmSoundRef])
+
   function handleStart() {
     if (!isPro || planLoading) return
     const t = task.trim()
     if (!t) return
+    if (alarmSoundRef.current) {
+      playFocusTransitionCue('start')
+    }
+    void appendFocusIntentToDailyLog(supabase, t)
     chimePlayed.current = false
     startSprint()
     if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
@@ -354,6 +386,9 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
   async function handleCheckIn(result: DeepWorkSessionResult) {
     setCheckInOpen(false)
     chimePlayed.current = false
+    if (result === 'crushed') {
+      setCelebrateTick((n) => n + 1)
+    }
     try {
       await persist(
         buildSession({
@@ -372,6 +407,70 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
 
   const locked = !planLoading && !isPro
 
+  const statusRefDw = useRef(status)
+  statusRefDw.current = status
+  const taskRefDw = useRef(task)
+  taskRefDw.current = task
+  const pauseRef = useRef(pause)
+  pauseRef.current = pause
+  const resumeRef = useRef(resume)
+  resumeRef.current = resume
+  const handleStartRef = useRef(handleStart)
+  handleStartRef.current = handleStart
+  const uiRef = useRef({ immersive, endEarlyOpen, breakModalOpen })
+  uiRef.current = { immersive, endEarlyOpen, breakModalOpen }
+  const stopAllAudioRef = useRef(stopAllAudio)
+  stopAllAudioRef.current = stopAllAudio
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return
+      if (isEditableOrTypingTarget(e)) return
+      if (locked) return
+
+      if (e.code === 'Escape') {
+        const ui = uiRef.current
+        if (ui.immersive) {
+          e.preventDefault()
+          stopAllAudioRef.current()
+          setImmersive(false)
+          return
+        }
+        if (ui.endEarlyOpen) {
+          e.preventDefault()
+          setEndEarlyOpen(false)
+          return
+        }
+        if (ui.breakModalOpen) {
+          e.preventDefault()
+          setBreakModalOpen(false)
+          return
+        }
+        return
+      }
+
+      if (e.code === 'Space') {
+        const st = statusRefDw.current
+        if (st === 'running' || st === 'break') {
+          e.preventDefault()
+          pauseRef.current()
+        } else if (st === 'paused') {
+          e.preventDefault()
+          resumeRef.current()
+        } else if (
+          st === 'idle' &&
+          taskRefDw.current.trim() &&
+          !uiRef.current.breakModalOpen
+        ) {
+          e.preventDefault()
+          handleStartRef.current()
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [locked])
+
   const centerLabel =
     phase === 'break' || breakModalOpen
       ? 'Break'
@@ -379,6 +478,7 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
 
   return (
     <>
+      <Confetti trigger={celebrateTick} />
       <Card
         id="deep-work"
         className="relative scroll-mt-24 overflow-hidden border-border p-6 md:scroll-mt-28"
@@ -434,7 +534,19 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
               size={280}
             />
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-              <p className="text-4xl font-bold tabular-nums text-foreground">
+              <p
+                className={cn(
+                  'timer-digit font-bold text-foreground',
+                  (status === 'running' || status === 'break') && 'running',
+                  status === 'paused' && 'paused',
+                  status === 'completed' && 'completed',
+                  status === 'running' &&
+                    phase === 'sprint' &&
+                    secondsRemaining <= 10 &&
+                    secondsRemaining >= 1 &&
+                    'urgent',
+                )}
+              >
                 {formatMmSs(secondsRemaining)}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">{centerLabel}</p>
@@ -498,6 +610,17 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
               End Session
             </Button>
           </div>
+          {!locked ? (
+            <div className="mt-8 border-t border-border pt-6">
+              <AudioTrackSelector
+                ambient={ambient}
+                onAmbientChange={(id) => setAmbient(id as AmbientId)}
+                mp3Tracks={loadedMp3Tracks}
+                disabled={false}
+                compact
+              />
+            </div>
+          ) : null}
         </div>
       </Card>
 
@@ -560,7 +683,12 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
               sprint.
             </DialogDescription>
           </DialogHeader>
-          <p className="text-center text-4xl font-bold tabular-nums text-foreground">
+          <p
+            className={cn(
+              'timer-digit timer-digit-sm text-center font-bold text-foreground',
+              status === 'break' && 'running',
+            )}
+          >
             {formatMmSs(secondsRemaining)}
           </p>
           <DialogFooter className="flex-col gap-2 sm:flex-row">
@@ -620,7 +748,19 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
                 size={300}
               />
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <p className="text-4xl font-bold tabular-nums text-foreground md:text-5xl">
+                <p
+                  className={cn(
+                    'timer-digit font-bold text-foreground',
+                    (status === 'running' || status === 'break') && 'running',
+                    status === 'paused' && 'paused',
+                    status === 'completed' && 'completed',
+                    status === 'running' &&
+                      phase === 'sprint' &&
+                      secondsRemaining <= 10 &&
+                      secondsRemaining >= 1 &&
+                      'urgent',
+                  )}
+                >
                   {formatMmSs(secondsRemaining)}
                 </p>
                 <p className="mt-2 text-sm text-muted-foreground">{centerLabel}</p>
@@ -650,64 +790,12 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
             </Button>
           </div>
           <div className="border-t border-border px-6 py-4">
-            <p className="mb-3 text-center text-xs text-muted-foreground">
-              Ambient sound
-            </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              {(
-                [
-                  ['silence', '🔇'],
-                  ['rain', '🌧️'],
-                  ['ocean', '🌊'],
-                  ['white', '⬜'],
-                ] as const
-              ).map(([id, icon]) => (
-                <button
-                  key={id}
-                  type="button"
-                  title={id}
-                  className={cn(
-                    'flex h-12 w-12 items-center justify-center rounded-lg border text-lg transition-colors',
-                    ambient === id
-                      ? 'border-accent bg-accent/20'
-                      : 'border-border bg-muted/40 hover:bg-muted/70',
-                  )}
-                  onClick={() => setAmbient(id)}
-                >
-                  <span aria-hidden>{icon}</span>
-                  <span className="sr-only">{id}</span>
-                </button>
-              ))}
-            </div>
-            {loadedMp3Tracks.length > 0 ? (
-              <>
-                <p className="mb-3 mt-5 text-center text-xs text-muted-foreground">
-                  Curated (MP3)
-                </p>
-                <div className="flex flex-wrap justify-center gap-2">
-                  {loadedMp3Tracks.map((t) => (
-                    <button
-                      key={t.key}
-                      type="button"
-                      title={t.label}
-                      className={cn(
-                        'min-h-12 min-w-[3.5rem] rounded-lg border px-2 text-xs font-medium transition-colors',
-                        ambient === t.key
-                          ? 'border-accent bg-accent/20 text-foreground'
-                          : 'border-border bg-muted/40 text-muted-foreground hover:bg-muted/70',
-                      )}
-                      onClick={() => setAmbient(t.key)}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <p className="mt-5 text-center text-xs text-muted-foreground">
-                No focus music available. Check back later.
-              </p>
-            )}
+            <AudioTrackSelector
+              ambient={ambient}
+              onAmbientChange={(id) => setAmbient(id as AmbientId)}
+              mp3Tracks={loadedMp3Tracks}
+              disabled={false}
+            />
           </div>
         </div>
       ) : null}

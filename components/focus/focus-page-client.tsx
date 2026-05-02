@@ -12,15 +12,18 @@ import { useDataServiceContext } from '@/hooks/use-data-service-context'
 import { usePlan } from '@/hooks/usePlan'
 import { useTimerAlarmSettings } from '@/hooks/useTimerAlarmSettings'
 import { listDeepWorkSessions, shouldSyncToCloud } from '@/lib/dataService'
+import { fetchDeepWorkMinutesToday } from '@/lib/deep-work-minutes-today-db'
 import {
   loadDeepWorkSessionsLocal,
   type DeepWorkSession,
 } from '@/lib/deep-work-sessions'
+import { supabase } from '@/lib/supabase'
 
 export function FocusPageClient() {
   const ctx = useDataServiceContext()
   const { isLoading: planLoading } = usePlan()
   const [sessions, setSessions] = useState<DeepWorkSession[]>([])
+  const [serverTodayMinutes, setServerTodayMinutes] = useState<number | null>(null)
   const alarm = useTimerAlarmSettings()
 
   useEffect(() => {
@@ -29,8 +32,14 @@ export function FocusPageClient() {
       void listDeepWorkSessions(ctx).then(setSessions)
     } else {
       setSessions(loadDeepWorkSessionsLocal())
+      setServerTodayMinutes(null)
     }
   }, [planLoading, ctx.userId, ctx.isPro])
+
+  useEffect(() => {
+    if (planLoading || !shouldSyncToCloud(ctx)) return
+    void fetchDeepWorkMinutesToday(supabase).then(setServerTodayMinutes)
+  }, [planLoading, ctx.userId, ctx.isPro, sessions])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -97,7 +106,7 @@ export function FocusPageClient() {
           alarmSoundRef={alarm.soundRef}
           alarmNotifyRef={alarm.notifyRef}
         />
-        <DeepWorkStatsStrip sessions={sessions} />
+        <DeepWorkStatsStrip sessions={sessions} serverTodayMinutes={serverTodayMinutes} />
       </div>
     </div>
   )
