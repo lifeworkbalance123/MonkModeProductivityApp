@@ -1083,23 +1083,6 @@ html[data-color-theme='sage'] {
   display: none;
 }
 
-/* Landing: PWA install button + hero CTA mobile fixes */
-.install-button {
-  background: transparent;
-  border: 1px solid #3b82f6;
-  color: #3b82f6;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.install-button:hover {
-  background: #3b82f6;
-  color: white;
-}
-
 /* Bonus badge */
 .bonus-badge {
   display: inline-flex;
