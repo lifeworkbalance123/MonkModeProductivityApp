@@ -35,6 +35,9 @@ export type AdminUserRow = {
   at_risk: boolean
   logs_last_7_days: number
   plan: string | null
+  program_track_type?: string | null
+  program_trial_end?: string | null
+  program_payment_status?: string | null
 }
 
 const EMAIL_TYPES = [
@@ -50,6 +53,11 @@ const EMAIL_TYPES = [
   're_engagement_7days',
   're_engagement_14days',
 ] as const
+
+function isMissingResendEnv(message: string): boolean {
+  const m = message.toLowerCase()
+  return m.includes('resend_api_key') || m.includes('email_from')
+}
 
 export default function UserTable() {
   const [rows, setRows] = useState<AdminUserRow[]>([])
@@ -79,6 +87,12 @@ export default function UserTable() {
   const [working, setWorking] = useState(false)
   const [refundCents, setRefundCents] = useState('')
   const [refundReason, setRefundReason] = useState('')
+  const [emailDisabledReason, setEmailDisabledReason] = useState<string | null>(null)
+  /** False until `/api/admin/email-status` finishes when the email dialog is open. */
+  const [emailEnvChecked, setEmailEnvChecked] = useState(false)
+  const [extendTrialOpen, setExtendTrialOpen] = useState(false)
+  const [extendTrialDays, setExtendTrialDays] = useState('3')
+  const [extendTrialEndIso, setExtendTrialEndIso] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -146,7 +160,13 @@ export default function UserTable() {
     const json = (await res.json().catch(() => ({}))) as { error?: string }
     setWorking(false)
     if (!res.ok) {
-      setMessage(json.error ?? `Error ${res.status}`)
+      const msg = json.error ?? `Error ${res.status}`
+      setMessage(msg)
+      if (path.includes('/send-email') && isMissingResendEnv(msg)) {
+        setEmailDisabledReason(
+          'Email disabled: add RESEND_API_KEY and EMAIL_FROM to .env.local (see .env.example), then restart the dev server.',
+        )
+      }
       return
     }
     onOk()
@@ -154,6 +174,58 @@ export default function UserTable() {
   }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
+
+  useEffect(() => {
+    if (!emailOpen) {
+      setEmailEnvChecked(false)
+      return
+    }
+    let cancelled = false
+    setEmailEnvChecked(false)
+    ;(async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) {
+        if (!cancelled) {
+          setEmailEnvChecked(true)
+          setEmailDisabledReason('Not signed in')
+        }
+        return
+      }
+      const res = await fetch('/api/admin/email-status', {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      })
+      const json = (await res.json().catch(() => ({}))) as {
+        configured?: boolean
+        missing?: string[]
+      }
+      if (cancelled) return
+      setEmailEnvChecked(true)
+      if (!res.ok) {
+        setEmailDisabledReason(
+          `Could not verify email configuration (HTTP ${res.status}).`,
+        )
+        return
+      }
+      if (!json.configured) {
+        const miss =
+          json.missing && json.missing.length > 0
+            ? json.missing.join(', ')
+            : 'RESEND_API_KEY and EMAIL_FROM'
+        setEmailDisabledReason(
+          `Email disabled: add ${miss} to .env.local (see .env.example), then restart the dev server.`,
+        )
+      } else {
+        setEmailDisabledReason(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [emailOpen])
 
   return (
     <div className="space-y-4">
@@ -258,7 +330,12 @@ export default function UserTable() {
                 {rows.map((u) => (
                   <tr key={u.id} className="border-b border-border">
                     <td className="px-3 py-2 text-muted-foreground">
-                      <div className="font-medium text-foreground">{u.email ?? '—'}</div>
+                      <Link
+                        href={`/admin/users/${u.id}`}
+                        className="block font-medium text-foreground hover:text-primary hover:underline"
+                      >
+                        {u.email ?? '—'}
+                      </Link>
                       <div className="text-[11px]">{u.name ?? ''}</div>
                       {u.at_risk ? (
                         <span className="mt-1 inline-block rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] text-amber-700 dark:text-amber-400">
@@ -267,7 +344,18 @@ export default function UserTable() {
                       ) : null}
                     </td>
                     <td className="px-3 py-2">
-                      {u.program_type ?? '—'} · Day {u.program_day ?? '—'}
+                      <div>
+                        {u.program_type ?? '—'} · Day {u.program_day ?? '—'}
+                      </div>
+                      {u.program_track_type != null || u.program_payment_status != null ? (
+                        <div className="mt-1 max-w-[220px] text-[10px] leading-tight text-muted-foreground">
+                          user_programs: {u.program_track_type ?? u.program_type ?? '—'} ·{' '}
+                          {u.program_payment_status ?? '—'}
+                          {u.program_trial_end && u.program_payment_status === 'trial' ? (
+                            <span> · ends {new Date(u.program_trial_end).toLocaleString()}</span>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-3 py-2 capitalize">{u.phase ?? '—'}</td>
                     <td className="px-3 py-2 capitalize">{u.status ?? '—'}</td>
@@ -280,6 +368,11 @@ export default function UserTable() {
                     <td className="px-3 py-2">{u.logs_last_7_days}</td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap gap-1">
+                        <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" asChild>
+                          <Link href={`/admin/users/${u.id}`} title="Open user details & extend trial">
+                            Details
+                          </Link>
+                        </Button>
                         <Button variant="outline" size="sm" className="h-7 text-[11px] px-2" asChild>
                           <Link href={`/admin/users/${u.id}/logs`}>Logs</Link>
                         </Button>
@@ -329,10 +422,24 @@ export default function UserTable() {
                           className="h-7 text-[11px] px-2"
                           onClick={() => {
                             setActiveUser(u)
+                            setEmailDisabledReason(null)
                             setEmailOpen(true)
                           }}
                         >
                           Email
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-[11px] px-2"
+                          onClick={() => {
+                            setActiveUser(u)
+                            setExtendTrialDays('3')
+                            setExtendTrialEndIso('')
+                            setExtendTrialOpen(true)
+                          }}
+                        >
+                          Trial
                         </Button>
                       </div>
                     </td>
@@ -539,11 +646,88 @@ export default function UserTable() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={extendTrialOpen} onOpenChange={setExtendTrialOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Extend program trial</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Targets <code className="text-xs">user_programs</code> by this user&apos;s program track (Sprint /
+            Monk Mode / Transform). Adds calendar days to <code className="text-xs">trial_end</code> (default{' '}
+            <strong>3</strong> days if omitted on the API), or set an absolute ISO end. Sets{' '}
+            <code className="text-xs">payment_status</code> to <code className="text-xs">trial</code>.
+          </p>
+          <div className="space-y-3">
+            <div>
+              <Label>Extend by days (min 1)</Label>
+              <Input
+                type="number"
+                min={1}
+                className="mt-1"
+                value={extendTrialDays}
+                onChange={(e) => setExtendTrialDays(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Or trial end (ISO timestamp, optional)</Label>
+              <Input
+                className="mt-1 font-mono text-xs"
+                placeholder="2026-05-10T12:00:00.000Z"
+                value={extendTrialEndIso}
+                onChange={(e) => setExtendTrialEndIso(e.target.value)}
+              />
+            </div>
+            <Button
+              disabled={working || !activeUser}
+              onClick={() => {
+                if (!activeUser) return
+                const track =
+                  activeUser.program_track_type ??
+                  (activeUser.program_type === 'sprint_standard' ||
+                  activeUser.program_type === 'sprint_monk' ||
+                  activeUser.program_type === 'transform'
+                    ? activeUser.program_type
+                    : null)
+                if (!track) {
+                  setMessage('This user has no user_programs track (Sprint / Monk Mode / Transform) on file.')
+                  return
+                }
+                const body: Record<string, unknown> = {
+                  userId: activeUser.id,
+                  programType: track,
+                }
+                if (extendTrialEndIso.trim()) {
+                  body.trialEnd = extendTrialEndIso.trim()
+                } else {
+                  const n = Number.parseInt(extendTrialDays, 10)
+                  if (!Number.isFinite(n) || n < 1) {
+                    setMessage('Enter at least 1 day or an ISO trial end.')
+                    return
+                  }
+                  body.extraDays = n
+                }
+                void postAction('/api/admin/extend-trial', body, () => setExtendTrialOpen(false))
+              }}
+            >
+              Apply extension
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Send test lifecycle email</DialogTitle>
           </DialogHeader>
+          {emailOpen && !emailEnvChecked ? (
+            <p className="text-xs text-muted-foreground">Checking email configuration…</p>
+          ) : null}
+          {emailDisabledReason ? (
+            <p className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              {emailDisabledReason}
+            </p>
+          ) : null}
           <Select value={emailType} onValueChange={setEmailType}>
             <SelectTrigger>
               <SelectValue />
@@ -557,7 +741,9 @@ export default function UserTable() {
             </SelectContent>
           </Select>
           <Button
-            disabled={working || !activeUser}
+            disabled={
+              working || !activeUser || !emailEnvChecked || !!emailDisabledReason
+            }
             onClick={() =>
               void postAction(
                 `/api/admin/users/${activeUser!.id}/send-email`,
@@ -566,7 +752,11 @@ export default function UserTable() {
               )
             }
           >
-            Send
+            {!emailEnvChecked
+              ? 'Checking…'
+              : emailDisabledReason
+                ? 'Email disabled'
+                : 'Send'}
           </Button>
         </DialogContent>
       </Dialog>

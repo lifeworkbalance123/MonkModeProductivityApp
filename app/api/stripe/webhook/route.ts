@@ -90,6 +90,18 @@ export async function POST(request: Request) {
           } else {
             console.error('V2 program enrollment failed for user:', userId)
           }
+          const nowIso = new Date().toISOString()
+          const { error: upProgErr } = await admin
+            .from('user_programs')
+            .update({
+              payment_status: 'paid',
+              trial_end: null,
+              updated_at: nowIso,
+            })
+            .eq('user_id', userId)
+          if (upProgErr) {
+            console.warn('user_programs paid update after program checkout:', upProgErr.message)
+          }
           await logWebhook(admin, eventType, eventId, userId, enrolled)
           break
         }

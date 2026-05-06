@@ -263,6 +263,7 @@ export default function TrainingPage() {
   const [viewerNotes, setViewerNotes] = useState('')
 
   const [deletePersonalId, setDeletePersonalId] = useState<string | null>(null)
+  const [guidedProgramTrialExpired, setGuidedProgramTrialExpired] = useState(false)
 
   const reloadPersonal = useCallback(async () => {
     if (shouldSyncToCloud(ctx)) {
@@ -284,6 +285,27 @@ export default function TrainingPage() {
       cancelled = true
     }
   }, [planLoading, reloadPersonal])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (!session?.access_token) return
+      const res = await fetch('/api/program/access', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        cache: 'no-store',
+      })
+      if (!res.ok || cancelled) return
+      const j = (await res.json()) as { reason?: string }
+      if (cancelled) return
+      if (j.reason === 'trial_expired') setGuidedProgramTrialExpired(true)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     async function loadModules() {
@@ -491,6 +513,15 @@ export default function TrainingPage() {
     <AppPageChrome>
       <div className="min-h-screen bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-16">
+        {guidedProgramTrialExpired ? (
+          <div className="rounded-lg border border-primary/40 bg-primary/10 px-4 py-3 text-sm text-foreground">
+            Your guided program trial has ended.{' '}
+            <Link href="/join?trial=expired" className="font-medium text-primary underline">
+              Purchase to continue the program track
+            </Link>
+            .
+          </div>
+        ) : null}
         <section className="space-y-8">
           <div className="text-center space-y-1 max-w-2xl mx-auto">
             <h1 className="text-2xl sm:text-3xl font-semibold">monkcubed training</h1>

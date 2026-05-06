@@ -23,6 +23,7 @@ export default function SharePage() {
   const { user } = useAuth()
   const { showToast } = useToast()
   const [stats, setStats] = useState<ShareStats | null>(null)
+  const [imageFailed, setImageFailed] = useState(false)
 
   useEffect(() => {
     if (!userId || !user?.id || user.id !== userId) return
@@ -52,19 +53,12 @@ export default function SharePage() {
     return `/api/share/generate-image?${q.toString()}`
   }, [stats, userId])
 
-  async function saveImage() {
-    if (!imageUrl) return
-    const res = await fetch(imageUrl)
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `monkcubed-streak-${stats?.streakCount ?? 0}.png`
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
-  }
+  useEffect(() => {
+    setImageFailed(false)
+  }, [imageUrl])
+
+  const downloadName = `monkcubed-streak-${stats?.streakCount ?? 0}.png`
+  const canSaveImage = Boolean(imageUrl) && !imageFailed
 
   const origin = publicSiteOrigin()
   const referralCode = stats?.referralCode ?? 'MONKCUBED'
@@ -88,14 +82,33 @@ export default function SharePage() {
 
         <Card className="mt-5 p-4">
           {imageUrl ? (
-            <img src={imageUrl} alt="Shareable streak image" className="w-full rounded-lg border border-border" />
+            imageFailed ? (
+              <div className="rounded-lg border border-border bg-secondary/30 p-4 text-sm text-muted-foreground">
+                Could not generate the share image. Please refresh and try again.
+              </div>
+            ) : (
+              <img
+                src={imageUrl}
+                alt="Shareable streak image"
+                className="w-full rounded-lg border border-border"
+                onError={() => setImageFailed(true)}
+              />
+            )
           ) : (
             <div className="h-[360px] animate-pulse rounded-lg bg-secondary/50" />
           )}
           <div className="mt-4 space-y-2">
-            <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => void saveImage()}>
-              Save image
-            </Button>
+            {canSaveImage ? (
+              <Button asChild className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+                <a href={imageUrl} download={downloadName}>
+                  Save image
+                </a>
+              </Button>
+            ) : (
+              <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled>
+                Save image
+              </Button>
+            )}
             <a href={twitterHref} target="_blank" rel="noreferrer">
               <Button variant="outline" className="w-full">
                 Share on X

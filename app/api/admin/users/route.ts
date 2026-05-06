@@ -115,6 +115,25 @@ export async function GET(request: Request) {
   const users = userRows ?? []
   const ids = users.map((u) => u.id)
 
+  const { data: programRows } = ids.length
+    ? await admin
+        .from('user_programs')
+        .select('user_id, program_type, trial_end, payment_status')
+        .in('user_id', ids)
+    : { data: [] as { user_id: string; program_type: string | null; trial_end: string | null; payment_status: string | null }[] }
+
+  const progByUser = new Map(
+    (programRows ?? []).map((p) => [
+      p.user_id,
+      p as {
+        user_id: string
+        program_type: string | null
+        trial_end: string | null
+        payment_status: string | null
+      },
+    ]),
+  )
+
   const weekAgo = new Date()
   weekAgo.setDate(weekAgo.getDate() - 7)
   const weekAgoIso = weekAgo.toISOString()
@@ -135,6 +154,7 @@ export async function GET(request: Request) {
 
   const rows = users.map((u) => {
     const en = enByUser.get(u.id)
+    const prog = progByUser.get(u.id)
     const missed = en?.start_date
       ? countMissedProgramDaysInRollingWeek({
           startDateKey: en.start_date,
@@ -164,6 +184,9 @@ export async function GET(request: Request) {
       rescue_mode: atRisk,
       at_risk: atRisk,
       logs_last_7_days: recentCount.get(u.id) ?? 0,
+      program_track_type: prog?.program_type ?? null,
+      program_trial_end: prog?.trial_end ?? null,
+      program_payment_status: prog?.payment_status ?? null,
     }
   })
 

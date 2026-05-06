@@ -530,7 +530,14 @@ export default function AdminUsersPage() {
       </div>
 
       <div className="mb-10">
-        <h2 className="mb-3 text-lg font-medium text-foreground">Progress & support</h2>
+        <h2 className="mb-2 text-lg font-medium text-foreground">Progress & support</h2>
+        <p className="mb-3 max-w-3xl text-sm text-muted-foreground">
+          Click an email or{' '}
+          <span className="font-medium text-foreground">Details</span> for extend trial (pick Sprint /
+          Monk Mode / Transform + extra days). The row itself is not clickable — use{' '}
+          <span className="font-medium text-foreground">Trial</span> in Actions for the compact extend
+          dialog.
+        </p>
         <UserTable />
       </div>
 
