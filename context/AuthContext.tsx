@@ -10,8 +10,6 @@ import {
   type ReactNode,
 } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
-import { withAuthStorageLockRetry } from '@/lib/authStorageLock'
-import { isInvalidRefreshTokenError } from '@/lib/supabase-auth-errors'
 import { supabase } from '@/lib/supabase'
 import * as Sentry from '@sentry/nextjs'
 import { identifyAnalyticsUser, resetAnalyticsUser } from '@/lib/analytics'
@@ -36,58 +34,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true
 
-    void (async () => {
-      try {
-        const { data: sessData, error: sessErr } = await withAuthStorageLockRetry(() =>
-          supabase.auth.getSession(),
-        )
-        if (!mounted) return
-
-        if (sessErr && isInvalidRefreshTokenError(sessErr)) {
-          await supabase.auth.signOut({ scope: 'local' })
-          if (mounted) setSession(null)
-          return
-        }
-
-        if (sessData.session) {
-          // Fail fast on bad refresh tokens so background auto-refresh does not log AuthApiError.
-          const { data: refData, error: refErr } = await supabase.auth.refreshSession()
-          if (refErr && isInvalidRefreshTokenError(refErr)) {
-            await supabase.auth.signOut({ scope: 'local' })
-            if (mounted) setSession(null)
-            return
-          }
-
-          const { error: userErr } = await supabase.auth.getUser()
-          if (userErr && isInvalidRefreshTokenError(userErr)) {
-            await supabase.auth.signOut({ scope: 'local' })
-            if (mounted) setSession(null)
-            return
-          }
-
-          if (!mounted) return
-          setSession(refData.session ?? sessData.session)
-          return
-        }
-
-        if (!mounted) return
-        setSession(sessData.session)
-      } catch (err) {
-        if (isInvalidRefreshTokenError(err)) {
-          try {
-            await supabase.auth.signOut({ scope: 'local' })
-          } catch {
-            /* ignore */
-          }
-          if (mounted) setSession(null)
-        } else {
-          console.warn('AuthProvider getSession:', err)
-          if (mounted) setSession(null)
-        }
-      } finally {
-        if (mounted) setIsLoading(false)
-      }
-    })()
+    supabase.auth.getSession().then(({ data: { session: initial } }) => {
+      if (!mounted) return
+      setSession(initial)
+      setIsLoading(false)
+    })
 
     const {
       data: { subscription },

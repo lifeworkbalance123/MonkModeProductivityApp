@@ -27,18 +27,14 @@ import {
   applyTemplateToWeek,
   categoryToColorClass,
   getTemplate,
-  timeSlotsFromTemplate,
   type ScheduleTemplate,
 } from '@/lib/scheduleTemplate'
 import { computeStreak, habitWeekProgress } from '@/lib/monk-streak'
 import { youtubeEmbedFromUrl } from '@/lib/morning-video'
 import { usePlan } from '@/hooks/usePlan'
 import { useToast } from '@/context/ToastContext'
-import { useUpgradeOffer } from '@/context/UpgradeOfferContext'
 import { GettingStartedChecklist } from '@/components/GettingStartedChecklist'
 import ProgramHeader from '@/components/program/ProgramHeader'
-import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
-import { HoverTooltip } from '@/components/ui/HoverTooltip'
 import type { DataServiceContext } from '@/lib/dataService'
 import {
   applyTimeBlockToPlannerWeek,
@@ -53,7 +49,6 @@ import {
 } from '@/lib/dataService'
 import { captureEvent } from '@/lib/analytics'
 import { getWeeklyStreak, getWeekProgressMessage, type StreakData } from '@/lib/streak'
-import { countLocalDashboardDays, hasLocalDashboardDay } from '@/lib/dashboard-day-local'
 
 const daysShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -65,26 +60,26 @@ type Props = {
   onChange: (next: MonkData) => void
   dataContext: DataServiceContext
   userId?: string
-  /** Increment after global schedule clear so per-day planner UI reloads without full page refresh. */
-  scheduleReloadTick?: number
 }
 
-export function DashboardApp({
-  data,
-  onChange,
-  dataContext,
-  userId,
-  scheduleReloadTick = 0,
-}: Props) {
+export function DashboardApp({ data, onChange, dataContext, userId }: Props) {
   const { showToast } = useToast()
-  const { openUpgrade } = useUpgradeOffer()
-  const { isPro, isLoading: planLoading, trialExpired } = usePlan()
+  const { isPro, isLoading: planLoading } = usePlan()
   const journalEvening = !planLoading && isPro
   const analyticsAccess = !planLoading && isPro
-  const freeAfterTrial = !planLoading && !isPro && trialExpired
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [localVideoPreviewUrl, setLocalVideoPreviewUrl] = useState<string | null>(
+    null,
+  )
   const [trackedMorningJournal, setTrackedMorningJournal] = useState(false)
   const [trackedEveningJournal, setTrackedEveningJournal] = useState(false)
   const [weekStreak, setWeekStreak] = useState<StreakData | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (localVideoPreviewUrl) URL.revokeObjectURL(localVideoPreviewUrl)
+    }
+  }, [localVideoPreviewUrl])
 
   const [weekOffset, setWeekOffset] = useState(0)
   const [dayIndex, setDayIndex] = useState(() => {
@@ -94,8 +89,7 @@ export function DashboardApp({
       6,
       Math.max(
         0,
-        // Use floor so the highlighted day doesn't jump ahead after midday.
-        Math.floor((today.getTime() - monday.getTime()) / 86400000),
+        Math.round((today.getTime() - monday.getTime()) / 86400000),
       ),
     )
   })
@@ -111,7 +105,6 @@ export function DashboardApp({
   const [dayGratitude, setDayGratitude] = useState<string[]>(['', '', ''])
   const [dayAchievements, setDayAchievements] = useState<string[]>(['', '', ''])
   const [dayTimeSlots, setDayTimeSlots] = useState<TimeSlot[]>([])
-  const [weekTimeSlotCount, setWeekTimeSlotCount] = useState(0)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [currentTemplate, setCurrentTemplate] = useState<ScheduleTemplate | null>(null)
   const [showSaved, setShowSaved] = useState(false)
@@ -135,20 +128,6 @@ export function DashboardApp({
 
   const saveJournalOnly = useCallback(
     async (date: string) => {
-      if (freeAfterTrial && !hasLocalDashboardDay(date)) {
-        const count = countLocalDashboardDays()
-        const hasAnyText = [...gratitudeRef.current, ...achievementsRef.current].some(
-          (s) => String(s ?? '').trim().length > 0,
-        )
-        if (hasAnyText && count >= 3) {
-          showToast('Free plan limit: 3 journal days. Upgrade to keep journaling.', 'info')
-          openUpgrade({
-            featureContext:
-              'Free plan (after trial) includes up to 3 journal days. Upgrade for unlimited journaling and sync.',
-          })
-          return
-        }
-      }
       await saveDashboardDayJournal(
         dataContext,
         date,
@@ -158,7 +137,7 @@ export function DashboardApp({
       setShowSaved(true)
       setTimeout(() => setShowSaved(false), 2000)
     },
-    [dataContext, freeAfterTrial, openUpgrade, showToast],
+    [dataContext],
   )
 
   const loadDayData = useCallback(
@@ -203,38 +182,6 @@ export function DashboardApp({
     [dataContext, userId],
   )
 
-  // If the user clears schedule data, immediately cancel any pending autosave that could re-write it.
-  useEffect(() => {
-    function onCleared() {
-      if (slotsDebounceRef.current) {
-        clearTimeout(slotsDebounceRef.current)
-        slotsDebounceRef.current = null
-      }
-      slotsRef.current = []
-      setDayTimeSlots([])
-    }
-    if (typeof window === 'undefined') return
-    window.addEventListener('monk:schedule:cleared', onCleared)
-    return () => window.removeEventListener('monk:schedule:cleared', onCleared)
-  }, [])
-
-  const recomputeWeekSlotCount = useCallback(async () => {
-    if (!freeAfterTrial) {
-      setWeekTimeSlotCount(0)
-      return
-    }
-    // Compute Monday inside the callback — `weekStart` from render is a new Date each time and
-    // would break useCallback identity every render → effect ➜ loadDayData ➜ setState loop.
-    const calendarMonday = startOfWeek(new Date(), { weekStartsOn: 1 })
-    const ws = addWeeks(calendarMonday, weekOffset)
-    const days = Array.from({ length: 7 }, (_, i) =>
-      format(addDays(ws, i), 'yyyy-MM-dd'),
-    )
-    const results = await Promise.all(days.map((d) => loadPlannerSlotsForDate(dataContext, d)))
-    const count = results.reduce((sum, slots) => sum + (slots?.length ?? 0), 0)
-    setWeekTimeSlotCount(count)
-  }, [dataContext, freeAfterTrial, weekOffset])
-
   useEffect(() => {
     if (dateKey === todayKey) {
       setTodayGratitudeSnapshot([...dayGratitude])
@@ -244,13 +191,12 @@ export function DashboardApp({
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      if (slotsDebounceRef.current) {
-        clearTimeout(slotsDebounceRef.current)
-        slotsDebounceRef.current = null
-      }
       const prev = prevDateKeyRef.current
       if (prev !== null && prev !== dateKey) {
-        // Flush journal for the day being left so switching dates does not drop unsaved text.
+        if (slotsDebounceRef.current) {
+          clearTimeout(slotsDebounceRef.current)
+          slotsDebounceRef.current = null
+        }
         await saveDashboardDayJournal(
           dataContext,
           prev,
@@ -263,12 +209,11 @@ export function DashboardApp({
       }
       prevDateKeyRef.current = dateKey
       await loadDayData(dateKey)
-      void recomputeWeekSlotCount()
     })()
     return () => {
       cancelled = true
     }
-  }, [dateKey, loadDayData, dataContext, scheduleReloadTick, recomputeWeekSlotCount])
+  }, [dateKey, loadDayData, dataContext])
 
   useEffect(() => {
     if (!userId) {
@@ -320,6 +265,16 @@ export function DashboardApp({
 
   const setMorningVideoNote = (value: string) => {
     onChange({ ...data, morningVideoNote: value })
+  }
+
+  const onMorningVideoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setLocalVideoPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return URL.createObjectURL(file)
+    })
+    e.target.value = ''
   }
 
   const toggleHabit = (habitId: string) => {
@@ -396,32 +351,29 @@ export function DashboardApp({
   }
 
   return (
-    <div className="mx-auto min-w-0 max-w-7xl px-4 py-4 pt-2 sm:px-6 lg:px-8">
+    <div className="mx-auto min-w-0 max-w-7xl px-4 py-8 pt-24 sm:px-6 lg:px-8">
       <GettingStartedChecklist
         data={data}
         morningGratitudeFields={todayGratitudeSnapshot}
       />
       <div className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-2xl sm:p-6">
-        <HoverTooltip
-          text="See your streak, badges, and weekly progress at a glance. Your transformation starts here."
-        >
-          <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-xl font-semibold">{heading}</h1>
-              <p className="text-sm text-muted-foreground">
-                Week {weekNum} of 52
-                {weekOffset !== 0 && (
-                  <button
-                    type="button"
-                    onClick={jumpToToday}
-                    className="ml-2 inline-flex min-h-11 items-center text-accent underline-offset-2 hover:underline font-medium md:min-h-0"
-                  >
-                    Today
-                  </button>
-                )}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-xl font-semibold">{heading}</h1>
+            <p className="text-sm text-muted-foreground">
+              Week {weekNum} of 52
+              {weekOffset !== 0 && (
+                <button
+                  type="button"
+                  onClick={jumpToToday}
+                  className="ml-2 inline-flex min-h-11 items-center text-accent underline-offset-2 hover:underline font-medium md:min-h-0"
+                >
+                  Today
+                </button>
+              )}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               className="inline-flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-lg hover:bg-secondary md:h-9 md:w-9"
@@ -430,7 +382,7 @@ export function DashboardApp({
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <div className="weekday-buttons flex min-w-0 flex-1 flex-wrap items-center justify-center gap-1 md:flex-none md:justify-start">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-1 md:flex-none md:justify-start">
               {showSaved ? (
                 <span className="text-[11px] text-emerald-600 dark:text-emerald-400 shrink-0 md:order-last md:ml-1">
                   ✓ Saved
@@ -460,8 +412,7 @@ export function DashboardApp({
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-          </div>
-        </HoverTooltip>
+        </div>
 
         <ProgramHeader />
 
@@ -493,64 +444,77 @@ export function DashboardApp({
                   </div>
                 ))}
               </div>
-              <CollapsibleSection
-                title="Morning Motivation & Video"
-                storageKey="morning-section-expanded"
-                defaultExpanded={false}
-                icon={<Video className="size-4 text-accent" aria-hidden />}
-                className="mb-0 mt-4 rounded-lg border border-border/60 bg-background/30"
-              >
-                <div className="space-y-3">
-                  <p className="text-xs text-muted-foreground">
-                    Paste a YouTube link to save your morning motivation video.
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      or paste a URL below
-                    </span>
-                  </div>
-                  <Input
-                    value={data.morningVideoUrl}
-                    onChange={(e) => setMorningVideoUrl(e.target.value)}
-                    className="h-9 text-sm bg-background/60 border-border"
-                    placeholder="YouTube URL (e.g. https://www.youtube.com/watch?v=...)"
-                  />
-                  <Textarea
-                    value={data.morningVideoNote}
-                    onChange={(e) => setMorningVideoNote(e.target.value)}
-                    className="min-h-[72px] text-sm bg-background/60 border-border resize-y"
-                    placeholder="Motivation text, intention, or notes for this morning…"
-                  />
-                  {data.morningVideoUrl.trim() &&
-                  youtubeEmbedFromUrl(data.morningVideoUrl) ? (
-                    <div className="space-y-2">
-                      <a
-                        href={data.morningVideoUrl.trim()}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex text-xs font-medium text-accent hover:underline"
-                      >
-                        Watch on YouTube
-                      </a>
-                    <iframe
-                      title="Morning video"
-                      src={youtubeEmbedFromUrl(data.morningVideoUrl)!}
-                      className="aspect-video w-full max-w-md rounded-md border border-border"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                    </div>
-                  ) : null}
-                  {data.morningVideoUrl.trim() &&
-                  !youtubeEmbedFromUrl(data.morningVideoUrl) ? (
-                    <video
-                      src={data.morningVideoUrl.trim()}
-                      controls
-                      className="w-full max-w-md rounded-md border border-border"
-                    />
-                  ) : null}
+              <div className="mt-4 pt-3 border-t border-border/60 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Video className="w-4 h-4 text-accent shrink-0" />
+                  <span className="text-sm font-medium">
+                    Morning video & motivation text
+                  </span>
                 </div>
-              </CollapsibleSection>
+                <p className="text-xs text-muted-foreground">
+                  Upload plays in your browser for this session only. Paste a YouTube
+                  or direct video URL to keep it with your saved data.
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={onMorningVideoFile}
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-medium hover:bg-secondary md:min-h-0 md:px-2 md:py-1.5"
+                  >
+                    <Video className="w-3.5 h-3.5" />
+                    Upload video
+                  </button>
+                  <span className="text-xs text-muted-foreground">
+                    or paste a URL below
+                  </span>
+                </div>
+                <Input
+                  value={data.morningVideoUrl}
+                  onChange={(e) => setMorningVideoUrl(e.target.value)}
+                  className="h-9 text-sm bg-background/60 border-border"
+                  placeholder="Video URL (YouTube, or direct .mp4 / .webm link)"
+                />
+                <Textarea
+                  value={data.morningVideoNote}
+                  onChange={(e) => setMorningVideoNote(e.target.value)}
+                  className="min-h-[72px] text-sm bg-background/60 border-border resize-y"
+                  placeholder="Motivation text, intention, or notes for this morning…"
+                />
+                {localVideoPreviewUrl ? (
+                  <video
+                    src={localVideoPreviewUrl}
+                    controls
+                    className="w-full max-w-md rounded-md border border-border"
+                  />
+                ) : null}
+                {!localVideoPreviewUrl &&
+                data.morningVideoUrl.trim() &&
+                youtubeEmbedFromUrl(data.morningVideoUrl) ? (
+                  <iframe
+                    title="Morning video"
+                    src={youtubeEmbedFromUrl(data.morningVideoUrl)!}
+                    className="aspect-video w-full max-w-md rounded-md border border-border"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : null}
+                {!localVideoPreviewUrl &&
+                data.morningVideoUrl.trim() &&
+                !youtubeEmbedFromUrl(data.morningVideoUrl) ? (
+                  <video
+                    src={data.morningVideoUrl.trim()}
+                    controls
+                    className="w-full max-w-md rounded-md border border-border"
+                  />
+                ) : null}
+              </div>
             </Card>
 
             <TimeScheduleCard
@@ -577,22 +541,10 @@ export function DashboardApp({
                     // DB rows here remounts list items and breaks text caret.
                     setShowSaved(true)
                     setTimeout(() => setShowSaved(false), 2000)
-                    void recomputeWeekSlotCount()
                   })()
                 }, 400)
               }}
               getNewSlotId={() => newTimeSlotClientId(dataContext)}
-              addDisabled={freeAfterTrial && weekTimeSlotCount >= 1}
-              onAddDisabledClick={() => {
-                showToast(
-                  'Free plan limit: 1 time block across the week. Delete your existing block to move it, or upgrade for unlimited timeboxing.',
-                  'info',
-                )
-                openUpgrade({
-                  featureContext:
-                    'Free plan (after trial) includes 1 time block across the week. Upgrade for unlimited timeboxing.',
-                })
-              }}
               headerActions={
                 <>
                   {currentTemplate && shouldSyncToCloud(dataContext) ? (
@@ -605,26 +557,15 @@ export function DashboardApp({
                           )
                         )
                           return
-                        if (slotsDebounceRef.current) {
-                          clearTimeout(slotsDebounceRef.current)
-                          slotsDebounceRef.current = null
-                        }
                         void (async () => {
                           if (!userId || !currentTemplate) return
-                          const nextSlots = timeSlotsFromTemplate(
+                          const ok = await applyTemplateToDate(
+                            userId,
+                            dateKey,
                             currentTemplate,
+                            true,
                           )
-                          const { error, slots } =
-                            await replacePlannerSlotsForDate(
-                              dataContext,
-                              dateKey,
-                              nextSlots,
-                            )
-                          if (error) {
-                            showToast(error, 'error')
-                            return
-                          }
-                          setDayTimeSlots(slots)
+                          if (ok) await loadDayData(dateKey)
                         })()
                       }}
                       className="rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-secondary"
@@ -716,7 +657,7 @@ export function DashboardApp({
                 {data.goals.map((goal) => (
                   <div
                     key={goal.id}
-                    className="checklist-item flex min-h-[44px] items-start gap-3 py-0.5 md:min-h-0 md:py-0"
+                    className="flex min-h-[44px] items-start gap-3 py-0.5 md:min-h-0 md:py-0"
                   >
                     <Checkbox
                       checked={goal.completed}
@@ -761,7 +702,7 @@ export function DashboardApp({
                   return (
                     <div key={habit.id} className="space-y-1">
                       <div className="flex min-h-[44px] items-center justify-between gap-2 py-0.5 md:min-h-0 md:py-0">
-                        <div className="checklist-item flex min-w-0 items-center gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
                           <Checkbox
                             checked={completed}
                             onCheckedChange={() => toggleHabit(habit.id)}
@@ -865,9 +806,6 @@ export function DashboardApp({
                             style={{
                               width: '28px',
                               height: '28px',
-                              // Prevent flexbox from stretching/shrinking into an oval on narrow layouts.
-                              flex: '0 0 28px',
-                              aspectRatio: '1 / 1',
                               borderRadius: '50%',
                               background: filled ? '#F59E0B' : '#0F172A',
                               border: `2px solid ${

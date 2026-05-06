@@ -4,8 +4,6 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import type { SelectedProgram } from '@/lib/onboardingProgramFlow'
-import { isSelectedProgram } from '@/lib/onboardingProgramFlow'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,6 +14,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+
+const PROGRAM_TYPES = ['sprint_standard', 'sprint_monk', 'transform'] as const
+type SelectedProgram = (typeof PROGRAM_TYPES)[number]
+
+function isSelectedProgram(v: string): v is SelectedProgram {
+  return (PROGRAM_TYPES as readonly string[]).includes(v)
+}
 
 type GuidedProgramRow = {
   program_type: string | null

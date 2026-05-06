@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server'
-import { getAdminUser } from '@/lib/admin'
-import { insertAdminAudit } from '@/lib/admin-api'
+import { insertAdminAudit, requireAdmin } from '@/lib/admin-api'
 import { createServiceRoleClient } from '@/lib/supabase-service'
-import { isSelectedProgram } from '@/lib/onboardingProgramFlow'
-import type { SelectedProgram } from '@/lib/onboardingProgramFlow'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
+
+const PROGRAM_TYPES = ['sprint_standard', 'sprint_monk', 'transform'] as const
+type SelectedProgram = (typeof PROGRAM_TYPES)[number]
+
+function isSelectedProgram(v: string): v is SelectedProgram {
+  return (PROGRAM_TYPES as readonly string[]).includes(v)
+}
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -23,10 +27,9 @@ const UUID_RE =
  * actions are logged to `admin_audit_log`.
  */
 export async function POST(req: Request) {
-  const auth = await getAdminUser(req)
-  if (auth.error || !auth.user) {
-    return NextResponse.json({ error: auth.error ?? 'Unauthorized' }, { status: auth.status })
-  }
+  const gate = await requireAdmin(req)
+  if ('response' in gate) return gate.response
+  const { adminUserId } = gate
 
   let body: Record<string, unknown>
   try {
@@ -140,7 +143,7 @@ export async function POST(req: Request) {
   }
 
   await insertAdminAudit(admin, {
-    admin_user_id: auth.user.id,
+    admin_user_id: adminUserId,
     target_user_id: userId,
     action: 'extend_trial',
     details: {
