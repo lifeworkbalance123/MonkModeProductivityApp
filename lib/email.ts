@@ -102,8 +102,8 @@ export async function sendTrialExpiryEmail(
       appUrl: appUrl(),
       recipientEmail: email,
       planOptions: planOptions ?? {
-        monthly: '$9.99/mo',
-        annual: '$59.99/yr (save 50%)',
+        monthly: '$7.99/mo',
+        annual: '$49.99/yr (save 48%)',
         lifetime: '$149 once',
       },
     }),
@@ -186,7 +186,7 @@ export async function sendWinbackEmail(email: string, firstName?: string | null)
           <p>Your monkcubed Pro subscription has ended.</p>
           <p>Everything you built is still here — your habits, goals, and journal entries are safe on the Free plan.</p>
           <p>Whenever you're ready to get back to full focus, your Pro access is one click away.</p>
-          <p style="font-size:18px;color:#F59E0B;font-weight:700">$59.99/year — less than $5/month</p>
+          <p style="font-size:18px;color:#F59E0B;font-weight:700">$49.99/year — about $4.17/month</p>
           <p><a href="${upgradeUrl}" style="color:#111827;background:#F59E0B;padding:10px 14px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block">Come back to Pro →</a></p>
           <p style="color:#9CA3AF;font-size:13px">PS: Reply to this email if there was something we could have done better. We read every reply.</p>
         </div>
@@ -350,8 +350,7 @@ export async function sendWaitlistConfirmationEmail(email: string) {
           <p>We'll email you the moment monkcubed launches on iOS and Android.</p>
           <p>As a waitlist member, you'll get:</p>
           <ul>
-            <li>30-day free Pro trial (vs 14 days for regular signups)</li>
-            <li>Lifetime deal locked at $99 (vs $149 at public launch)</li>
+            <li>7-day free trial access</li>
             <li>Founding member badge in the app</li>
             <li>Direct input on features before v2.0 ships</li>
           </ul>

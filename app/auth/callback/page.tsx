@@ -11,6 +11,14 @@ import {
 } from '@/lib/authRecovery'
 import { supabase } from '@/lib/supabase'
 
+function safeRedirectPath(input: string | null): string | null {
+  if (!input) return null
+  const value = input.trim()
+  if (!value.startsWith('/')) return null
+  if (value.startsWith('//')) return null
+  return value
+}
+
 /**
  * Completes OAuth / magic-link redirects. Handles PKCE ?code= exchange and
  * short delays while the client parses hash tokens from the URL.
@@ -86,6 +94,7 @@ export default function AuthCallbackPage() {
     void (async () => {
       try {
         const url = new URL(window.location.href)
+        const redirectPath = safeRedirectPath(url.searchParams.get('redirect'))
         const recoveryFromEmail = url.searchParams.get('recovery') === '1'
         const oauthErr = url.searchParams.get('error_description') ?? url.searchParams.get('error')
         if (oauthErr) {
@@ -127,7 +136,7 @@ export default function AuthCallbackPage() {
           }
           await claimReferralIfPresent()
           await claimBuddyIfPresent()
-          router.replace('/dashboard')
+          router.replace(redirectPath ?? '/dashboard')
           return
         }
 
@@ -149,7 +158,7 @@ export default function AuthCallbackPage() {
             }
             await claimReferralIfPresent()
             await claimBuddyIfPresent()
-            router.replace('/dashboard')
+            router.replace(redirectPath ?? '/dashboard')
             return
           }
         }

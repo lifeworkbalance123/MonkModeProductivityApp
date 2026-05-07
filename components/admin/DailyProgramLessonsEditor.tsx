@@ -9,6 +9,7 @@ import {
   type ProgramType,
 } from '@/lib/programUtils'
 import type { DailyProgramLessonRow } from '@/lib/dailyProgramLessons'
+import { BonusTrackSectionControlled } from '@/components/admin/BonusTrackSection'
 
 const PROGRAM_TYPES: ProgramType[] = [
   'sprint_standard',
@@ -28,6 +29,12 @@ type Draft = {
   audio_url: string
   video_url: string
   tip_topic: string
+  /** Inline bonus track (primary rows only; stored on same DB row). */
+  bonus_label: string
+  bonus_title: string
+  bonus_body: string
+  bonus_audio_url: string
+  bonus_video_url: string
 }
 
 function emptyDraft(programType: ProgramType, day: number, isBonus: boolean): Draft {
@@ -41,6 +48,11 @@ function emptyDraft(programType: ProgramType, day: number, isBonus: boolean): Dr
     audio_url: '',
     video_url: '',
     tip_topic: '',
+    bonus_label: '',
+    bonus_title: '',
+    bonus_body: '',
+    bonus_audio_url: '',
+    bonus_video_url: '',
   }
 }
 
@@ -57,6 +69,11 @@ function rowToDraft(row: DailyProgramLessonRow): Draft {
     audio_url: row.audio_url ?? '',
     video_url: row.video_url ?? '',
     tip_topic: row.tip_topic ?? '',
+    bonus_label: row.bonus_label ?? '',
+    bonus_title: row.bonus_title ?? '',
+    bonus_body: row.bonus_body ?? '',
+    bonus_audio_url: row.bonus_audio_url ?? '',
+    bonus_video_url: row.bonus_video_url ?? '',
   }
 }
 
@@ -129,7 +146,7 @@ export default function DailyProgramLessonsEditor() {
     setSaving(true)
     const bonus = isBonus
     const day = draft.program_day
-    const payload = {
+    const payload: Record<string, unknown> = {
       program_type: draft.program_type,
       program_day: day,
       is_bonus: bonus,
@@ -141,7 +158,20 @@ export default function DailyProgramLessonsEditor() {
       video_url: draft.video_url.trim() || null,
       tip_topic: draft.tip_topic.trim() || null,
     }
-    const { error } = await supabase.from('daily_lessons').upsert(payload, {
+    if (!bonus) {
+      payload.bonus_label = draft.bonus_label.trim() || null
+      payload.bonus_title = draft.bonus_title.trim() || null
+      payload.bonus_body = draft.bonus_body.trim() || null
+      payload.bonus_audio_url = draft.bonus_audio_url.trim() || null
+      payload.bonus_video_url = draft.bonus_video_url.trim() || null
+    } else {
+      payload.bonus_label = null
+      payload.bonus_title = null
+      payload.bonus_body = null
+      payload.bonus_audio_url = null
+      payload.bonus_video_url = null
+    }
+    const { error } = await supabase.from('daily_lessons').upsert(payload as never, {
       onConflict: 'program_type,program_day,is_bonus',
     })
     setSaving(false)
@@ -215,9 +245,10 @@ export default function DailyProgramLessonsEditor() {
   return (
     <div>
       <p style={{ color: 'var(--muted-foreground)', fontSize: '14px', marginBottom: '16px', maxWidth: '720px' }}>
-        One primary row per calendar day for each program track (30 / 21 / 56 / 90 days). Optional bonus row
-        per day and optional audio and video URLs
-        (hosted files or YouTube links). Use markdown for the 2‑minute tip body.
+        One primary row per calendar day for each program track (30 / 21 / 56 / 90 days). Add an optional
+        bonus track (label, title, markdown, MP3, video) on the primary day, or use the legacy separate
+        bonus row via the checkbox. Optional audio and video URLs (hosted files or YouTube links). Use
+        markdown for lesson bodies.
       </p>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', marginBottom: '20px' }}>
@@ -442,6 +473,22 @@ export default function DailyProgramLessonsEditor() {
                   placeholder="YouTube or hosted video URL"
                 />
               </label>
+
+              {!isBonus ? (
+                <BonusTrackSectionControlled
+                  values={{
+                    bonus_label: draft.bonus_label,
+                    bonus_title: draft.bonus_title,
+                    bonus_body: draft.bonus_body,
+                    bonus_audio_url: draft.bonus_audio_url,
+                    bonus_video_url: draft.bonus_video_url,
+                  }}
+                  onChange={(partial) => {
+                    draftDirtyRef.current = true
+                    setDraft((d) => ({ ...d, ...partial }))
+                  }}
+                />
+              ) : null}
             </div>
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px', flexWrap: 'wrap' }}>

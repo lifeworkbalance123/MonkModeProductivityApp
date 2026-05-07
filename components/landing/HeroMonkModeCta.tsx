@@ -2,20 +2,32 @@
 
 import Link from 'next/link'
 import { findPricingRow, formatPriceCents, usePricing } from '@/hooks/usePricing'
-
-/** Seed default when `pricing_config` row is missing or API fails. */
-const FALLBACK_MONK_CENTS = 1900
-const FALLBACK_CURRENCY = 'AUD'
+import { PROGRAM_FALLBACK_CENTS, PROGRAM_FALLBACK_CURRENCY } from '@/lib/programCatalog'
+import { HoverTooltip } from '@/components/ui/HoverTooltip'
 
 export function HeroMonkModeCta() {
   const { prices } = usePricing()
   const row = findPricingRow(prices, 'monk_mode')
-  const cents = row?.current_price ?? FALLBACK_MONK_CENTS
-  const currency = row?.currency ?? FALLBACK_CURRENCY
+  const cents = row?.current_price ?? PROGRAM_FALLBACK_CENTS.monk_mode
+  const currency = row?.currency ?? PROGRAM_FALLBACK_CURRENCY
+  const formatted = formatPriceCents(cents, currency)
 
   return (
-    <Link href="/join" className="rounded-md bg-accent px-5 py-3 font-semibold text-accent-foreground">
-      Start the Monk Mode program — {formatPriceCents(cents, currency)}
-    </Link>
+    <HoverTooltip
+      text="Start your journey. Choose Sprint, Monk Mode, or Transform. First step: 2 minutes."
+      position="top"
+      className="inline-block"
+    >
+      <div className="program-cta-container">
+        <Link
+          href="/onboarding?program=monk_mode"
+          className="start-program-button"
+        >
+          Start Monk Mode
+        </Link>
+        <div className="program-price">{formatted} one-time</div>
+        <div className="program-price">Prices shown in USD.</div>
+      </div>
+    </HoverTooltip>
   )
 }

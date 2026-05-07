@@ -159,6 +159,53 @@ export async function enrollProgramForUser(
   return true
 }
 
+/** CMS tracks that match `user_programs.program_type` + onboarding intake. */
+const ENROLLMENT_TRACKS_FROM_INTAKE = new Set<ProgramType>([
+  'sprint_standard',
+  'sprint_monk',
+  'transform',
+])
+
+/**
+ * Upserts `program_enrollments` for a CMS track (Day 1, active, today as start).
+ * Keeps Today (`useProgram`) and `user_programs` in sync after intake persistence.
+ */
+export async function upsertProgramEnrollmentForTrack(
+  client: SupabaseClient,
+  userId: string,
+  programType: ProgramType,
+  opts?: { startDate?: string },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!ENROLLMENT_TRACKS_FROM_INTAKE.has(programType)) {
+    return {
+      ok: false,
+      error: `program_enrollments not upserted for program_type: ${programType}`,
+    }
+  }
+  const date = opts?.startDate ?? todayDateKey()
+  const now = new Date().toISOString()
+  const { error } = await client.from('program_enrollments').upsert(
+    {
+      user_id: userId,
+      program_type: programType,
+      start_date: date,
+      current_day: 1,
+      phase: 'student',
+      status: 'active',
+      paused_at: null,
+      completed_days: [],
+      last_active_date: date,
+      updated_at: now,
+    },
+    { onConflict: 'user_id' },
+  )
+  if (error) {
+    console.error('upsertProgramEnrollmentForTrack', error)
+    return { ok: false, error: error.message }
+  }
+  return { ok: true }
+}
+
 export async function enrollUser(
   userId: string,
   startDate?: string,
@@ -241,6 +288,54 @@ export const PROGRAM_LABELS: Record<ProgramType, string> = {
   sprint_monk: '21-Day Monk Mode',
   transform: '56-Day Transform',
   mastery: '90-Day Mastery',
+}
+
+/** Continuation Pro days after the program’s calendar length (business rule). */
+export const PROGRAM_BUNDLE_PRO_EXTRA_DAYS = 30
+
+/**
+ * ISO timestamp: end of the last calendar day of bundled Pro access.
+ * Rule: **program length (calendar days) + continuation days** from enrollment start
+ * (enrollment date = program day 1). Equivalent to: last program calendar day, then
+ * {@link PROGRAM_BUNDLE_PRO_EXTRA_DAYS} more calendar days of Pro.
+ */
+export function computeProgramProAccessUntilIso(
+  enrollmentStartDateKey: string,
+  programType: ProgramType,
+): string {
+  const programLengthDays = PROGRAM_DURATIONS[programType] ?? 30
+  const continuationDays = PROGRAM_BUNDLE_PRO_EXTRA_DAYS
+
+  const start = parseLocalDateKey(enrollmentStartDateKey)
+  const lastProgramCalendarDay = addDays(start, programLengthDays - 1)
+  const lastProCalendarDay = addDays(lastProgramCalendarDay, continuationDays)
+
+  const end = new Date(lastProCalendarDay)
+  end.setHours(23, 59, 59, 999)
+  return end.toISOString()
+}
+
+/** Effective max program day index (1-based): optional admin override vs track default. */
+export function effectiveMaxProgramDay(
+  programType: string | null | undefined,
+  maxProgramDayOverride: number | null | undefined,
+): number {
+  const pt = programType ?? '60day'
+  const t = pt as ProgramType
+  const base =
+    t in PROGRAM_DURATIONS
+      ? PROGRAM_DURATIONS[t]
+      : pt === 'legacy' || pt === 'sprint'
+        ? 60
+        : 90
+  if (
+    maxProgramDayOverride != null &&
+    Number.isFinite(maxProgramDayOverride) &&
+    maxProgramDayOverride >= 1
+  ) {
+    return Math.min(365, Math.max(base, Math.floor(maxProgramDayOverride)))
+  }
+  return base
 }
 
 export async function pauseProgram(userId: string): Promise<boolean> {

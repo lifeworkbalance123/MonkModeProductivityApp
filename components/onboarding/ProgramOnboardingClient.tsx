@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '@/lib/supabase'
-import { enrollUser } from '@/lib/programUtils'
+import { enrollUser, getEnrollment } from '@/lib/programUtils'
 import { useToast } from '@/context/ToastContext'
 import { buildOnboardingStepsFromCms, type OnboardingContentRow, type OnboardingHabitRow } from '@/lib/onboardingCms'
 import {
@@ -16,6 +16,14 @@ import {
 import { youtubeEmbedFromUrl } from '@/lib/morning-video'
 import { MonkCubedLogo } from '@/components/brand/MonkCubedLogo'
 import LessonMedia from '@/components/program/LessonMedia'
+import { findPricingRow, formatPriceCents, usePricing } from '@/hooks/usePricing'
+import {
+  isProgramCheckoutId,
+  PROGRAM_FALLBACK_CENTS,
+  PROGRAM_FALLBACK_CURRENCY,
+  PROGRAM_MARKETING_CARDS,
+} from '@/lib/programCatalog'
+import { startProgramCheckout, type ProgramCheckoutKind } from '@/lib/stripe-checkout'
 
 const BG = '#121212'
 const SURFACE = '#1E1E1E'
@@ -50,7 +58,27 @@ const DEFAULT_HABITS_STATIC = [
   { name: 'Read 20 minutes', icon: '📚' },
 ] as const
 
-type Goal = 'sprint' | 'transform' | 'mastery'
+const PAY_STEP_ID = 'client-program-pay'
+
+function insertProgramPayBeforeReady(steps: OnboardingStepRow[]): OnboardingStepRow[] {
+  if (steps.some((s) => s.id === PAY_STEP_ID)) return steps
+  const idx = steps.findIndex((s) => s.step_kind === 'ready')
+  if (idx === -1) return steps
+  const t = new Date().toISOString()
+  const pay: OnboardingStepRow = {
+    id: PAY_STEP_ID,
+    step_order: idx,
+    title: 'Complete your purchase',
+    description:
+      'One-time program payment through Stripe. After payment you can finish setup and open Today.',
+    video_url: null,
+    action_label: 'Continue to checkout',
+    step_kind: 'program_pay',
+    created_at: t,
+    updated_at: t,
+  }
+  return [...steps.slice(0, idx), pay, ...steps.slice(idx)]
+}
 
 function StepMedia({ step }: { step: OnboardingStepRow }) {
   if (step.media_url && step.media_type) {
@@ -108,9 +136,14 @@ function ctaButtonStyle(enabled: boolean, loadingBtn?: boolean): CSSProperties {
   }
 }
 
-export default function ProgramOnboardingClient() {
+export default function ProgramOnboardingClient({
+  initialProgram = null,
+}: {
+  initialProgram?: string | null
+}) {
   const router = useRouter()
   const { showToast } = useToast()
+  const { prices } = usePricing()
   const [steps, setSteps] = useState<OnboardingStepRow[]>([])
   const [starterHabits, setStarterHabits] = useState<{ name: string; icon: string }[]>([...DEFAULT_HABITS_STATIC])
   const [index, setIndex] = useState(0)
@@ -119,10 +152,11 @@ export default function ProgramOnboardingClient() {
   const [commitment, setCommitment] = useState(false)
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
-  const [goal, setGoal] = useState<Goal | null>(null)
+  const [payBusy, setPayBusy] = useState(false)
+  const [hasActiveProgram, setHasActiveProgram] = useState(false)
+  const [goal, setGoal] = useState<ProgramCheckoutKind | null>(null)
   const [sprintProject, setSprintProject] = useState('')
   const [transformVars, setTransformVars] = useState('')
-  const [masteryLines, setMasteryLines] = useState('')
   const [envChecks, setEnvChecks] = useState<boolean[]>([])
 
   const loadSteps = useCallback(async () => {
@@ -145,25 +179,57 @@ export default function ProgramOnboardingClient() {
         setStarterHabits([...DEFAULT_HABITS_STATIC])
       }
 
-      setSteps(buildOnboardingStepsFromCms(content, habits.length ? habits : ([] as OnboardingHabitRow[])))
+      const built = buildOnboardingStepsFromCms(
+        content,
+        habits.length ? habits : ([] as OnboardingHabitRow[]),
+      )
+      let next = [...built]
+      if (initialProgram && isProgramCheckoutId(initialProgram)) {
+        setGoal(initialProgram)
+        next = next.filter((s) => s.step_kind !== 'goal_choice')
+      }
+      setSteps(insertProgramPayBeforeReady(next))
     } catch (e) {
       console.error('load onboarding cms', e)
       setStarterHabits([...DEFAULT_HABITS_STATIC])
-      setSteps(buildOnboardingStepsFromCms([], []))
+      const built = buildOnboardingStepsFromCms([], [])
+      let next = [...built]
+      if (initialProgram && isProgramCheckoutId(initialProgram)) {
+        setGoal(initialProgram)
+        next = next.filter((s) => s.step_kind !== 'goal_choice')
+      }
+      setSteps(insertProgramPayBeforeReady(next))
     } finally {
       setLoadingSteps(false)
     }
-  }, [])
+  }, [initialProgram])
 
   useEffect(() => {
     void loadSteps()
   }, [loadSteps])
 
   useEffect(() => {
+    const suffix =
+      initialProgram && isProgramCheckoutId(initialProgram)
+        ? `?program=${encodeURIComponent(initialProgram)}`
+        : ''
     void supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) router.replace('/auth?redirect=/onboarding')
+      if (!user) {
+        router.replace(`/auth?redirect=${encodeURIComponent(`/onboarding${suffix}`)}`)
+      }
     })
-  }, [router])
+  }, [router, initialProgram])
+
+  useEffect(() => {
+    void (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
+      const e = await getEnrollment(user.id)
+      setHasActiveProgram(Boolean(e && e.status === 'active'))
+    })()
+  }, [])
 
   const step = steps[index] ?? null
   const needsCommitment = useMemo(() => steps.some((s) => s.step_kind === 'commitment'), [steps])
@@ -190,10 +256,10 @@ export default function ProgramOnboardingClient() {
 
   const conditionalOk = useMemo(() => {
     if (!goal) return false
-    if (goal === 'sprint') return sprintProject.trim().length >= 2
+    if (goal === 'sprint' || goal === 'monk_mode') return sprintProject.trim().length >= 2
     if (goal === 'transform') return transformVars.trim().length >= 6
-    return masteryLines.trim().length >= 6
-  }, [goal, sprintProject, transformVars, masteryLines])
+    return false
+  }, [goal, sprintProject, transformVars])
 
   const envOk = useMemo(() => {
     if (envItems.length === 0) return true
@@ -253,9 +319,25 @@ export default function ProgramOnboardingClient() {
         }
       }
 
-      router.push('/today')
+      router.push('/dashboard')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleProgramCheckout() {
+    if (!goal) {
+      showToast('Choose a program on the previous step.', 'error')
+      return
+    }
+    setPayBusy(true)
+    try {
+      const result = await startProgramCheckout(goal)
+      if (!result.ok) {
+        showToast(result.error, 'error')
+      }
+    } finally {
+      setPayBusy(false)
     }
   }
 
@@ -266,6 +348,7 @@ export default function ProgramOnboardingClient() {
 
   function primaryAction() {
     if (!step) return
+    if (step.step_kind === 'program_pay') return
     if (isLast && step.step_kind === 'ready') {
       void handleComplete()
       return
@@ -305,10 +388,10 @@ export default function ProgramOnboardingClient() {
   const conditionalTitle =
     goal === 'sprint'
       ? 'Name your One Big Project.'
-      : goal === 'transform'
-        ? 'Choose 1–3 personal variables (for example: no sugar, meditate 10 min).'
-        : goal === 'mastery'
-          ? 'Set your daily non-negotiables (meditation, exercise, no alcohol or cannabis).'
+      : goal === 'monk_mode'
+        ? 'What is your primary deep-work focus for the next 21 days?'
+        : goal === 'transform'
+          ? 'Choose 1–3 personal variables (for example: no sugar, meditate 10 min).'
           : step.title
 
   return (
@@ -417,14 +500,11 @@ export default function ProgramOnboardingClient() {
               {step.description ?? ''}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
-              {(
-                [
-                  { id: 'sprint' as const, label: 'Sprint', sub: '21–60 days · Complete a project.' },
-                  { id: 'transform' as const, label: 'Transform', sub: '60 days · Holistic habit change.' },
-                  { id: 'mastery' as const, label: 'Mastery', sub: '90+ days · Advanced discipline.' },
-                ] as const
-              ).map((opt) => {
+              {PROGRAM_MARKETING_CARDS.map((opt) => {
                 const selected = goal === opt.id
+                const row = findPricingRow(prices, opt.id)
+                const cents = row?.current_price ?? PROGRAM_FALLBACK_CENTS[opt.id]
+                const cur = row?.currency ?? PROGRAM_FALLBACK_CURRENCY
                 return (
                   <button
                     key={opt.id}
@@ -439,8 +519,11 @@ export default function ProgramOnboardingClient() {
                       cursor: 'pointer',
                     }}
                   >
-                    <div style={{ color: TEXT, fontWeight: 600, fontSize: '16px' }}>{opt.label}</div>
-                    <div style={{ color: MUTED, fontSize: '13px', marginTop: '6px' }}>{opt.sub}</div>
+                    <div style={{ color: TEXT, fontWeight: 600, fontSize: '16px' }}>{opt.title}</div>
+                    <div style={{ color: MUTED, fontSize: '13px', marginTop: '6px' }}>{opt.subtitle}</div>
+                    <div style={{ color: GOLD, fontSize: '12px', marginTop: '8px', fontWeight: 600 }}>
+                      {formatPriceCents(cents, cur)} one-time
+                    </div>
                   </button>
                 )
               })}
@@ -461,22 +544,27 @@ export default function ProgramOnboardingClient() {
               </p>
             ) : null}
             <textarea
-              value={goal === 'sprint' ? sprintProject : goal === 'transform' ? transformVars : masteryLines}
+              value={
+                goal === 'sprint' || goal === 'monk_mode'
+                  ? sprintProject
+                  : goal === 'transform'
+                    ? transformVars
+                    : ''
+              }
               onChange={(e) => {
                 const v = e.target.value
-                if (goal === 'sprint') setSprintProject(v)
+                if (goal === 'sprint' || goal === 'monk_mode') setSprintProject(v)
                 else if (goal === 'transform') setTransformVars(v)
-                else setMasteryLines(v)
               }}
               disabled={!goal}
               rows={5}
               placeholder={
                 goal === 'sprint'
                   ? 'Project name'
-                  : goal === 'transform'
-                    ? 'Variables, one per line'
-                    : goal === 'mastery'
-                      ? 'Non-negotiables, one per line'
+                  : goal === 'monk_mode'
+                    ? 'Main focus (e.g. ship v1 of the app)'
+                    : goal === 'transform'
+                      ? 'Variables, one per line'
                       : 'Choose a path on the previous step.'
               }
               style={{
@@ -663,6 +751,40 @@ export default function ProgramOnboardingClient() {
             >
               {step.action_label}
             </button>
+          </div>
+        ) : null}
+
+        {step.step_kind === 'program_pay' ? (
+          <div style={{ textAlign: 'center' }}>
+            <h2 style={{ color: TEXT, fontSize: '22px', fontWeight: 600, margin: '0 0 12px', lineHeight: 1.35 }}>
+              {step.title}
+            </h2>
+            <p style={{ color: MUTED, fontSize: '15px', lineHeight: 1.5, margin: '0 0 20px', whiteSpace: 'pre-line' }}>
+              {step.description ?? ''}
+            </p>
+            {goal ? (
+              <p style={{ color: GOLD, fontSize: '20px', fontWeight: 700, margin: '0 0 24px' }}>
+                {formatPriceCents(
+                  findPricingRow(prices, goal)?.current_price ?? PROGRAM_FALLBACK_CENTS[goal],
+                  findPricingRow(prices, goal)?.currency ?? PROGRAM_FALLBACK_CURRENCY,
+                )}{' '}
+                <span style={{ color: MUTED, fontSize: '14px', fontWeight: 500 }}>one-time</span>
+              </p>
+            ) : null}
+            {hasActiveProgram ? (
+              <button type="button" onClick={() => goNext()} style={ctaButtonStyle(true)}>
+                Continue setup
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void handleProgramCheckout()}
+                disabled={payBusy || !goal}
+                style={ctaButtonStyle(!payBusy && !!goal, payBusy)}
+              >
+                {payBusy ? 'Opening Stripe…' : step.action_label}
+              </button>
+            )}
           </div>
         ) : null}
 

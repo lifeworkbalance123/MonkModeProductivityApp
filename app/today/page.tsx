@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import BuddyEncouragementSection from '@/components/program/BuddyEncouragementSection'
 import DailyLessonComponent from '@/components/program/DailyLesson'
@@ -10,12 +11,21 @@ import EnergyLog from '@/components/program/EnergyLog'
 import NextDayCountdown from '@/components/program/NextDayCountdown'
 import OneBigTask from '@/components/program/OneBigTask'
 import ProgramHeader from '@/components/program/ProgramHeader'
+import { Tooltip } from '@/components/ui/first-visit-tooltip'
+import { FEATURE_INTRO_TOOLTIP_TODAY } from '@/lib/feature-intro-tooltips'
 import WeeklyReview, { isReviewDay } from '@/components/program/WeeklyReview'
 import { useProgram } from '@/hooks/useProgram'
+import { useProgramStatus } from '@/hooks/useProgramStatus'
 import {
   getPublishedLessonsForDayAsync,
+  inlineBonusTrackHasContent,
   type DailyLesson as DailyLessonData,
 } from '@/lib/lessonContent'
+import {
+  dailyLessonFromPrimaryProgramRow,
+  getDailyProgramBonusLessonForDay,
+  getDailyProgramLessonForDay,
+} from '@/lib/dailyProgramLessons'
 import { supabase } from '@/lib/supabase'
 import {
   getMaxDays,
@@ -28,13 +38,18 @@ import {
   getWakeComparisonMessage,
   saveWakeTarget,
 } from '@/lib/wakeProgression'
+import CommentList from '@/components/lesson/CommentList'
 
-export default function TodayPage() {
+function TodayPageInner() {
+  const searchParams = useSearchParams()
   const { enrollment, loading, enrolled, refresh } = useProgram()
+  const { activeProgram, loading: statusLoading } = useProgramStatus()
   const [lesson, setLesson] = useState<DailyLessonData | null>(null)
   const [bonusLesson, setBonusLesson] = useState<DailyLessonData | null>(null)
+  const [bonusTabLabel, setBonusTabLabel] = useState('Bonus')
   const [activeTab, setActiveTab] = useState<'primary' | 'bonus'>('primary')
   const [lessonLoading, setLessonLoading] = useState(false)
+  const [cmsLessonId, setCmsLessonId] = useState<string | null>(null)
   const [viewingDay, setViewingDay] = useState<number | null>(null)
   const [actionCompletedCurrent, setActionCompletedCurrent] = useState(false)
   const [programType, setProgramType] = useState<ProgramType>('60day')
@@ -46,12 +61,21 @@ export default function TodayPage() {
     minutesDiff: number
   } | null>(null)
 
-  const programDay = enrollment?.currentDay ?? 1
+  const programDay = activeProgram?.currentDay ?? enrollment?.currentDay ?? 1
   const displayDay = viewingDay ?? programDay
   const canGoBack = displayDay > 1
   const canGoForward = viewingDay !== null && viewingDay < programDay
   const isPastDay = viewingDay !== null && viewingDay < programDay
   const browsingHistory = viewingDay !== null
+
+  useEffect(() => {
+    const dayParam = searchParams.get('day')
+    if (!dayParam) return
+    const n = parseInt(dayParam, 10)
+    if (Number.isFinite(n) && n >= 1) {
+      setViewingDay(n)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (viewingDay != null && enrollment && viewingDay > enrollment.currentDay) {
@@ -66,22 +90,92 @@ export default function TodayPage() {
   }, [viewingDay])
 
   useEffect(() => {
-    if (!enrollment) {
+    if (!enrollment && !activeProgram) {
       setLesson(null)
       setBonusLesson(null)
+      setBonusTabLabel('Bonus')
       setActiveTab('primary')
+      setCmsLessonId(null)
       setLessonLoading(false)
       return
     }
+
+    /** Avoid fetching with stale `activeProgram === null` before `/api/programs/status` resolves. */
+    if (statusLoading) {
+      setLessonLoading(true)
+      return
+    }
+
     const day = displayDay
     let cancelled = false
     async function fetchLesson() {
       setLessonLoading(true)
+      if (activeProgram) {
+        const row = await getDailyProgramLessonForDay(activeProgram.program_type, day)
+        if (!row) {
+          const published = await getPublishedLessonsForDayAsync(day)
+          if (!cancelled) {
+            setLesson(published.primary)
+            setBonusLesson(published.bonus)
+            setBonusTabLabel('Bonus')
+            setActiveTab('primary')
+            setCmsLessonId(null)
+            setLessonLoading(false)
+          }
+          return
+        }
+        const primary = dailyLessonFromPrimaryProgramRow(day, row)
+        const bonusPack = inlineBonusTrackHasContent(primary)
+          ? { lesson: null as DailyLessonData | null, tabLabel: 'Bonus' as const }
+          : await getDailyProgramBonusLessonForDay(activeProgram.program_type, day)
+        if (!cancelled) {
+          setLesson(primary)
+          setBonusLesson(bonusPack.lesson)
+          setBonusTabLabel(bonusPack.tabLabel)
+          setActiveTab('primary')
+          setCmsLessonId(row.id)
+          setLessonLoading(false)
+        }
+        return
+      }
+
+      // Production users may have `program_enrollments.program_type` set (Sprint/Transform/etc.)
+      // but no active `user_programs` row yet. In that case, still try to load the CMS lesson so
+      // Discussions can attach to a real `daily_lessons.id`.
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        if (user?.id) {
+          const pt = await getProgramType(user.id)
+          if (pt !== '60day') {
+            const row = await getDailyProgramLessonForDay(pt, day)
+            if (row && !cancelled) {
+              const primaryLesson = dailyLessonFromPrimaryProgramRow(day, row)
+              const bonusPack = inlineBonusTrackHasContent(primaryLesson)
+                ? { lesson: null as DailyLessonData | null, tabLabel: 'Bonus' as const }
+                : await getDailyProgramBonusLessonForDay(pt, day)
+              setLesson(primaryLesson)
+              setBonusLesson(bonusPack.lesson)
+              setBonusTabLabel(bonusPack.tabLabel)
+              setActiveTab('primary')
+              setCmsLessonId(row.id)
+              setLessonLoading(false)
+              return
+            }
+          }
+        }
+      } catch {
+        // Fall through to the published lesson below.
+      }
+
       const { primary, bonus } = await getPublishedLessonsForDayAsync(day)
       if (!cancelled) {
         setLesson(primary)
         setBonusLesson(bonus)
+        setBonusTabLabel('Bonus')
         setActiveTab('primary')
+        setCmsLessonId(null)
         setLessonLoading(false)
       }
     }
@@ -89,7 +183,7 @@ export default function TodayPage() {
     return () => {
       cancelled = true
     }
-  }, [enrollment, displayDay])
+  }, [enrollment, activeProgram, displayDay, statusLoading])
 
   useEffect(() => {
     if (!enrollment) {
@@ -136,18 +230,20 @@ export default function TodayPage() {
         ) : null}
 
         {!loading && !enrolled ? (
-          <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-sm">
-            <h2 className="mb-3 text-xl font-semibold text-foreground">Start your 60-day journey</h2>
-            <p className="mb-6 text-sm text-muted-foreground">
-              Enroll in the program to unlock your daily lesson and one-tap action.
-            </p>
-            <Link
-              href="/onboarding"
-              className="inline-flex items-center justify-center rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground hover:bg-accent/90"
-            >
-              Begin Day 1 →
-            </Link>
-          </div>
+          <Tooltip id="tooltip_today" text={FEATURE_INTRO_TOOLTIP_TODAY}>
+            <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-sm">
+              <h2 className="mb-3 text-xl font-semibold text-foreground">Start your journey</h2>
+              <p className="mb-6 text-sm text-muted-foreground">
+                Enroll in the program to unlock your daily lesson and one-tap action.
+              </p>
+              <Link
+                href="/onboarding"
+                className="inline-flex items-center justify-center rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground hover:bg-accent/90"
+              >
+                Begin Day 1 →
+              </Link>
+            </div>
+          </Tooltip>
         ) : null}
 
         {!loading && enrolled && enrollment?.status === 'paused' ? (
@@ -241,7 +337,9 @@ export default function TodayPage() {
               </div>
             ) : null}
 
-            <ProgramHeader />
+            <Tooltip id="tooltip_today" text={FEATURE_INTRO_TOOLTIP_TODAY}>
+              <ProgramHeader />
+            </Tooltip>
 
             <BuddyEncouragementSection
               currentProgramDay={enrollment.currentDay}
@@ -285,7 +383,7 @@ export default function TodayPage() {
                       fontWeight: '500',
                     }}
                   >
-                    {viewingDay ? `Viewing Day ${viewingDay}` : `Today — Day ${enrollment.currentDay}`}
+                    {viewingDay ? `Viewing Day ${viewingDay}` : `Today — Day ${programDay}`}
                   </span>
                   {viewingDay ? (
                     <button
@@ -381,7 +479,7 @@ export default function TodayPage() {
                         color: activeTab === 'bonus' ? PU.fg : PU.chart2,
                       }}
                     >
-                      ✨ Bonus Lesson
+                      ✨ {bonusTabLabel}
                     </button>
                   </div>
                 ) : null}
@@ -392,6 +490,11 @@ export default function TodayPage() {
                   readOnly={isPastDay}
                   onCompletionLoaded={onCompletionLoaded}
                   onComplete={() => void refresh()}
+                />
+                <CommentList
+                  lessonId={cmsLessonId}
+                  programType={activeProgram?.program_type}
+                  day={displayDay}
                 />
                 {wakeTarget ? (
                   <div
@@ -510,12 +613,27 @@ export default function TodayPage() {
             {!browsingHistory && enrollment.currentDay >= 3 ? (
               <DistractionLog dayNumber={enrollment.currentDay} />
             ) : null}
-            {!browsingHistory && enrollment.currentDay >= 7 ? (
+            {!browsingHistory && enrollment.currentDay >= 3 ? (
               <EnergyLog dayNumber={enrollment.currentDay} />
             ) : null}
           </>
         ) : null}
       </div>
     </div>
+  )
+}
+
+export default function TodayPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background py-24 text-muted-foreground">
+          <Loader2 className="h-8 w-8 animate-spin" aria-hidden />
+          <span className="text-sm">Loading…</span>
+        </div>
+      }
+    >
+      <TodayPageInner />
+    </Suspense>
   )
 }

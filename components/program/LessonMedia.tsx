@@ -7,6 +7,8 @@ type LessonMediaProps = {
   mediaUrl: string | null | undefined
   companionMediaType?: string | null
   companionMediaUrl?: string | null
+  /** Extra MP3 after YouTube / MP4 main media (program bonus tracks). */
+  secondaryAudioUrl?: string | null
 }
 
 function getYouTubeId(url: string) {
@@ -78,51 +80,64 @@ export default function LessonMedia({
   mediaUrl,
   companionMediaType,
   companionMediaUrl,
+  secondaryAudioUrl,
 }: LessonMediaProps) {
-  if (!mediaType || !mediaUrl) return null
+  const extraAudio = secondaryAudioUrl?.trim()
+
+  if (!mediaType || !mediaUrl) {
+    return extraAudio ? <AudioBlock url={extraAudio} /> : null
+  }
 
   if (mediaType === 'youtube') {
     const videoId = getYouTubeId(mediaUrl)
     if (!videoId) return null
 
     return (
-      <div
-        style={{
-          position: 'relative',
-          paddingBottom: '56.25%',
-          height: 0,
-          overflow: 'hidden',
-          borderRadius: '10px',
-          marginBottom: '16px',
-          background: '#000',
-        }}
-      >
-        <iframe
-          src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
-          title="Lesson video"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
+      <>
+        <div
           style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            border: 'none',
+            position: 'relative',
+            paddingBottom: '56.25%',
+            height: 0,
+            overflow: 'hidden',
+            borderRadius: '10px',
+            marginBottom: '16px',
+            background: '#000',
           }}
-        />
-      </div>
+        >
+          <iframe
+            src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
+            title="Lesson video"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              border: 'none',
+            }}
+          />
+        </div>
+        {extraAudio ? <AudioBlock url={extraAudio} /> : null}
+      </>
     )
   }
 
   if (mediaType === 'video') {
     return (
-      <div style={{ borderRadius: '10px', overflow: 'hidden', marginBottom: '16px', background: '#000' }}>
-        <video controls style={{ width: '100%', maxHeight: '400px', display: 'block' }} playsInline>
-          <source src={mediaUrl} type="video/mp4" />
-          Your browser does not support video playback.
-        </video>
-      </div>
+      <>
+        <div
+          style={{ borderRadius: '10px', overflow: 'hidden', marginBottom: '16px', background: '#000' }}
+        >
+          <video controls style={{ width: '100%', maxHeight: '400px', display: 'block' }} playsInline>
+            <source src={mediaUrl} type="video/mp4" />
+            Your browser does not support video playback.
+          </video>
+        </div>
+        {extraAudio ? <AudioBlock url={extraAudio} /> : null}
+      </>
     )
   }
 

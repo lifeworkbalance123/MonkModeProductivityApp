@@ -5,11 +5,13 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { BonusBadge } from "@/components/bonus-badge"
 import { ProBadge } from "@/components/pro-badge"
 import { useUpgradeOffer } from "@/context/UpgradeOfferContext"
 import { useAuth } from "@/context/AuthContext"
 import { useTrialBanner } from "@/hooks/use-trial-banner"
 import { usePlan } from "@/hooks/usePlan"
+import { useProgramStatus } from "@/hooks/useProgramStatus"
 import { allNavItems, type NavItem } from "@/lib/nav-config"
 import { DesktopSidebar } from "@/components/DesktopSidebar"
 import { MobileBottomNav } from "@/components/MobileBottomNav"
@@ -74,6 +76,7 @@ function MarketingNavigation({
               const Icon = item.icon
               const locked = showProGate(item)
               if (locked) {
+                const Badge = item.paywallBadge === "bonus" ? BonusBadge : ProBadge
                 return (
                   <button
                     key={item.label}
@@ -90,7 +93,7 @@ function MarketingNavigation({
                       <Icon className="w-4 h-4 shrink-0 opacity-80" />
                       {item.label}
                     </span>
-                    <ProBadge className="absolute -top-0.5 right-1" />
+                    <Badge className="absolute -top-0.5 right-1" />
                   </button>
                 )
               }
@@ -176,6 +179,7 @@ function MarketingNavigation({
               const Icon = item.icon
               const locked = showProGate(item)
               if (locked) {
+                const Badge = item.paywallBadge === "bonus" ? BonusBadge : ProBadge
                 return (
                   <button
                     key={item.label}
@@ -191,7 +195,7 @@ function MarketingNavigation({
                   >
                     <Icon className="w-4 h-4 shrink-0" />
                     <span className="flex-1">{item.label}</span>
-                    <ProBadge />
+                    <Badge />
                   </button>
                 )
               }
@@ -231,7 +235,7 @@ function MarketingNavigation({
   )
 }
 
-export function Navigation() {
+export function Navigation({ forceMarketing = false }: { forceMarketing?: boolean } = {}) {
   const pathname = usePathname()
   const [marketingMobileOpen, setMarketingMobileOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -244,6 +248,7 @@ export function Navigation() {
 
   const showProGate = (item: NavItem) =>
     item.proOnly === true && !planLoading && !isPro
+  const { buttonText: programButtonText } = useProgramStatus(!!user)
 
   const showTrialStrip = useShowTrialStrip()
 
@@ -275,7 +280,7 @@ export function Navigation() {
     setMenuHint(false)
   }
 
-  if (!user) {
+  if (!user || forceMarketing) {
     return (
       <MarketingNavigation
         mobileOpen={marketingMobileOpen}
@@ -362,13 +367,18 @@ export function Navigation() {
         ) : null}
       </header>
 
-      <DesktopSidebar showProGate={showProGate} onProLocked={openProUpgrade} />
+      <DesktopSidebar
+        showProGate={showProGate}
+        onProLocked={openProUpgrade}
+        programButtonText={programButtonText}
+      />
 
       <MobileBottomNav
         onOpenMenu={() => setDrawerOpen(true)}
         menuOpen={drawerOpen}
         showMenuHint={menuHint}
         onDismissMenuHint={dismissMenuHint}
+        programButtonText={programButtonText}
       />
 
       <MobileDrawer
@@ -390,14 +400,16 @@ export function Navigation() {
 export function AppPageChrome({
   className,
   children,
+  forceMarketingNav = false,
 }: {
   className?: string
   children: React.ReactNode
+  forceMarketingNav?: boolean
 }) {
   return (
-    <>
-      <Navigation />
-      <MainShell className={className}>{children}</MainShell>
-    </>
+    <div className="flex min-h-screen w-full flex-col">
+      <Navigation forceMarketing={forceMarketingNav} />
+      <MainShell className={cn('min-h-0 flex-1', className)}>{children}</MainShell>
+    </div>
   )
 }

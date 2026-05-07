@@ -9,6 +9,9 @@ const nextConfig = {
   turbopack: {
     root: __dirname,
   },
+  devIndicators: {
+    buildActivity: false,
+  },
   images: {
     unoptimized: true,
   },

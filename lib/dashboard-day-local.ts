@@ -28,6 +28,14 @@ function writeAll(map: Record<string, DashboardDayPayload>) {
   }
 }
 
+export function countLocalDashboardDays(): number {
+  return Object.keys(readAll()).length
+}
+
+export function hasLocalDashboardDay(date: string): boolean {
+  return readAll()[date] != null
+}
+
 export function loadDayLocal(date: string): DashboardDayPayload | null {
   const m = readAll()[date]
   if (!m) return null

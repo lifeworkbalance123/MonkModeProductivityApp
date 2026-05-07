@@ -172,13 +172,12 @@ export function WaitlistPageClient() {
         <div className="rounded-2xl border border-accent/40 bg-card p-6">
           <h3 className="text-xl font-bold text-accent">Waitlist members get:</h3>
           <ul className="mt-4 space-y-2 text-foreground">
-            <li>✅ 30-day free Pro trial (vs 14 days for regular signups)</li>
-            <li>✅ Lifetime deal locked at $99 (vs $149 at public launch)</li>
+            <li>✅ 7-day free trial access</li>
             <li>✅ Founding member badge in the app</li>
             <li>✅ Direct input on features before v2.0 ships</li>
           </ul>
           <p className="mt-4 text-xs text-muted-foreground">
-            Early access pricing is only available to waitlist members and expires at App Store launch.
+            Early access perks are only available to waitlist members and may change at App Store launch.
           </p>
         </div>
       </section>

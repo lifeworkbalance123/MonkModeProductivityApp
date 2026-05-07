@@ -12,6 +12,8 @@ type UserRow = {
   is_admin?: boolean | null
   trial_end_date: string | null
   created_at: string | null
+  subscription_end_date?: string | null
+  program_pro_access_until?: string | null
 }
 
 type EnrollmentRow = {
@@ -425,7 +427,7 @@ export default function AdminUsersPage() {
     const { data, error } = await supabase
       .from('users')
       .select(
-        'id, email, plan, is_admin, trial_end_date, created_at, is_pro',
+        'id, email, plan, is_admin, trial_end_date, created_at, is_pro, subscription_end_date, program_pro_access_until',
       )
       .order('created_at', { ascending: false })
     if (error) {
@@ -511,6 +513,44 @@ export default function AdminUsersPage() {
     window.setTimeout(() => setMessage(''), 3000)
   }
 
+  async function adjustProgramBundlePro(userId: string, days: number) {
+    setUpdatingUser(userId)
+    setMessage('')
+    setErrorMsg('')
+    const ok = await patchUser(userId, { extend_program_pro_days: days })
+    if (ok) {
+      setMessage(
+        days === 0
+          ? 'No change'
+          : days > 0
+            ? `Bundle Pro end +${days} day(s)`
+            : `Bundle Pro end ${days} day(s)`,
+      )
+      await loadUsers()
+    }
+    setUpdatingUser(null)
+    window.setTimeout(() => setMessage(''), 3000)
+  }
+
+  async function adjustProgramMaxDay(userId: string, delta: number) {
+    setUpdatingUser(userId)
+    setMessage('')
+    setErrorMsg('')
+    const ok = await patchUser(userId, { extend_max_program_day_by: delta })
+    if (ok) {
+      setMessage(
+        delta === 0
+          ? 'No change'
+          : delta > 0
+            ? `Max program day +${delta}`
+            : `Max program day ${delta}`,
+      )
+      await loadUsers()
+    }
+    setUpdatingUser(null)
+    window.setTimeout(() => setMessage(''), 3000)
+  }
+
   const filtered = users.filter((u) => {
     const matchSearch =
       !search ||
@@ -543,7 +583,11 @@ export default function AdminUsersPage() {
 
       <div className="mb-8">
         <h2 className="text-lg font-medium text-foreground">Plans & trials</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{users.length} total users</p>
+        <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+          {users.length} total users. For Sprint / Monk Mode / Transform, bundled Pro ends at the end of
+          program length + 30 calendar days from enrollment (day 1 = start). Use ± buttons to adjust
+          bundle Pro end or max program day (not below track default).
+        </p>
       </div>
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
@@ -582,16 +626,22 @@ export default function AdminUsersPage() {
             <table className="w-full border-collapse text-[13px]">
               <thead>
                 <tr className="border-b border-border">
-                  {['Email', 'Plan', 'Trial ends', 'Signed up', 'Actions'].map(
-                    (h) => (
-                      <th
-                        key={h}
-                        className="px-5 py-3.5 text-left text-xs font-medium text-muted-foreground"
-                      >
-                        {h}
-                      </th>
-                    ),
-                  )}
+                  {[
+                    'Email',
+                    'Plan',
+                    'Trial ends',
+                    'Bundle Pro ends',
+                    'Subscription renew',
+                    'Signed up',
+                    'Actions',
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className="px-5 py-3.5 text-left text-xs font-medium text-muted-foreground"
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -611,6 +661,16 @@ export default function AdminUsersPage() {
                     <td className="px-5 py-3.5 text-xs text-muted-foreground">
                       {user.trial_end_date
                         ? new Date(user.trial_end_date).toLocaleDateString('en-AU')
+                        : '—'}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs text-muted-foreground">
+                      {user.program_pro_access_until
+                        ? new Date(user.program_pro_access_until).toLocaleString('en-AU')
+                        : '—'}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs text-muted-foreground">
+                      {user.subscription_end_date
+                        ? new Date(user.subscription_end_date).toLocaleDateString('en-AU')
                         : '—'}
                     </td>
                     <td className="px-5 py-3.5 text-xs text-muted-foreground">
@@ -644,6 +704,42 @@ export default function AdminUsersPage() {
                           onClick={() => void extendTrial(user.id)}
                         >
                           +14 day trial
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:bg-muted disabled:opacity-50"
+                          disabled={updatingUser === user.id}
+                          onClick={() => void adjustProgramBundlePro(user.id, 30)}
+                          title="Add 30 calendar days to bundle Pro end (from today if expired, else from current end)"
+                        >
+                          Bundle Pro +30
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:bg-muted disabled:opacity-50"
+                          disabled={updatingUser === user.id}
+                          onClick={() => void adjustProgramBundlePro(user.id, -7)}
+                          title="Subtract 7 days from bundle Pro end (requires an existing bundle end date)"
+                        >
+                          Bundle Pro −7
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:bg-muted disabled:opacity-50"
+                          disabled={updatingUser === user.id}
+                          onClick={() => void adjustProgramMaxDay(user.id, 7)}
+                          title="Increase max program day by 7 (needs enrollment)"
+                        >
+                          Program +7
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:bg-muted disabled:opacity-50"
+                          disabled={updatingUser === user.id}
+                          onClick={() => void adjustProgramMaxDay(user.id, -7)}
+                          title="Decrease max program day by 7 (not below default track length)"
+                        >
+                          Program −7
                         </button>
                       </div>
                     </td>

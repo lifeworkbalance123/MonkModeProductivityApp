@@ -59,9 +59,7 @@ function mergeLoaded(raw: string): MonkData {
   const parsed = JSON.parse(raw) as Partial<MonkData>
   return {
     habits:
-      Array.isArray(parsed.habits) && parsed.habits.length > 0
-        ? parsed.habits
-        : defaultMonkData.habits,
+      Array.isArray(parsed.habits) ? parsed.habits : defaultMonkData.habits,
     goals:
       Array.isArray(parsed.goals) && parsed.goals.length > 0
         ? parsed.goals
@@ -83,9 +81,7 @@ function mergeLoaded(raw: string): MonkData {
         ? parsed.morningVideoNote
         : defaultMonkData.morningVideoNote,
     timeSlots:
-      Array.isArray(parsed.timeSlots) && parsed.timeSlots.length > 0
-        ? parsed.timeSlots
-        : defaultMonkData.timeSlots,
+      Array.isArray(parsed.timeSlots) ? parsed.timeSlots : defaultMonkData.timeSlots,
     habitLog:
       parsed.habitLog && typeof parsed.habitLog === 'object'
         ? parsed.habitLog

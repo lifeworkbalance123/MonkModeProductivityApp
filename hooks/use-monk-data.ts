@@ -6,6 +6,7 @@ import { defaultMonkData } from '@/lib/monk-storage'
 import {
   loadFullMonkData,
   persistFullMonkData,
+  replayOfflineHabitQueue,
 } from '@/lib/dataService'
 import { useDataServiceContext } from '@/hooks/use-data-service-context'
 import { useToast } from '@/context/ToastContext'
@@ -67,7 +68,7 @@ export function useMonkData() {
     return () => {
       cancelled = true
     }
-  }, [userId, isPro])
+  }, [userId])
 
   useEffect(() => {
     function onOnline() {
@@ -75,10 +76,12 @@ export function useMonkData() {
         const r = await persistFullMonkData(ctxRef.current, dataRef.current)
         if (r.ok && r.deferred) {
           showToast('Saved locally - will sync when online', 'warning')
-          return
-        }
-        if (!r.ok && r.error) {
+        } else if (!r.ok && r.error) {
           showToast("Couldn't save changes. Please try again.", 'error')
+        }
+        const n = await replayOfflineHabitQueue(ctxRef.current)
+        if (n > 0) {
+          showToast(`Synced ${n} offline habit update${n === 1 ? '' : 's'}.`, 'success')
         }
       })()
     }

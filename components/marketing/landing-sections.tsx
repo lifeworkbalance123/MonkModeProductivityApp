@@ -1,12 +1,18 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
-import { formatPriceCents, lifetimePriceFromRows, useAppSubscriptionPrices } from '@/hooks/usePricing'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { findPricingRow, formatPriceCents, useAppSubscriptionPrices, usePricing } from '@/hooks/usePricing'
+import {
+  PROGRAM_FALLBACK_CENTS,
+  PROGRAM_FALLBACK_CURRENCY,
+  PROGRAM_MARKETING_CARDS,
+} from '@/lib/programCatalog'
 import { MonkCubedLogo } from '@/components/brand/MonkCubedLogo'
 import { MONKCUBED_TAGLINE } from '@/components/brand/MonkCubedLogo'
 import { supabase } from '@/lib/supabase'
 import { SALES_EMAIL } from '@/lib/site-contact'
+import { Button } from '@/components/ui/button'
 
 function getYouTubeId(url: string) {
   const patterns = [
@@ -26,7 +32,7 @@ export function SocialProofBar() {
   return (
     <section className="border-y border-border bg-card">
       <div className="mx-auto grid max-w-[1100px] grid-cols-1 gap-4 px-4 py-5 text-center text-sm text-muted-foreground md:grid-cols-3">
-        <p>14-day free trial. No card required.</p>
+        <p>7-day free trial. No card required.</p>
         <p>Works on iOS, Android, and web.</p>
         <p>Your data, your control.</p>
       </div>
@@ -34,30 +40,146 @@ export function SocialProofBar() {
   )
 }
 
+function FeatureBonusTooltip({ children }: { children: ReactNode }) {
+  return (
+    <span className="bonus-tooltip" tabIndex={0} role="note">
+      ⚡ Bonus
+      <span className="tooltip-text">{children}</span>
+    </span>
+  )
+}
+
 export function FeaturesSection() {
-  const features = [
-    ['🗓️ Weekly Planner', 'Time-box every 30-minute block of your week. 10 colour-coded categories. Drag to reschedule.'],
-    ['✅ Habit Tracker', 'Build daily rituals with visual progress bars and a streak counter that keeps you accountable.'],
-    ['🎯 Top 5 Goals', 'Intentionally limited to 5. Because focus beats a 50-item to-do list every time.'],
-    ['⏱️ Pomodoro & Deep Work', '25-minute Pomodoro sessions or 90-minute deep work sprints. Your focus, your rules.'],
-    ['📋 Kanban Board', 'Move tasks from To Do → In Progress → Done. Linked to your daily goals automatically.'],
-    ['📓 Gratitude Journal', 'Morning gratitude and evening reflection built into your daily routine.'],
-    ['📊 Progress Analytics', 'Habit heatmaps, streak history, and weekly reports. See your growth in numbers.'],
-    ['📚 Training Hub', 'Embedded videos and guides on Pomodoro, time boxing, atomic habits, and deep work.'],
-    ['☁️ Cloud Sync', 'All your data synced across every device, always backed up, never lost. (Pro feature)'],
+  const features: {
+    title: string
+    desc: string
+    bonus?: ReactNode
+  }[] = [
+    {
+      title: '🗓️ Weekly Planner',
+      desc: 'Time-box every 30-minute block of your week. 10 colour-coded categories. Drag to reschedule.',
+    },
+    {
+      title: '✅ Habit Tracker',
+      desc: 'Build daily rituals with visual progress bars and a streak counter that keeps you accountable.',
+    },
+    {
+      title: '🎯 Top 5 Goals',
+      desc: 'Intentionally limited to 5. Because focus beats a 50-item to-do list every time.',
+    },
+    {
+      title: '⏱️ Pomodoro & Deep Work',
+      desc: '25-minute Pomodoro sessions or 90-minute deep work sprints. Your focus, your rules.',
+    },
+    {
+      title: '📋 Kanban Board',
+      desc: 'Move tasks from To Do → In Progress → Done. Linked to your daily goals automatically.',
+    },
+    {
+      title: '📓 Gratitude Journal',
+      desc: 'Morning gratitude and evening reflection built into your daily routine.',
+    },
+    {
+      title: '📈 Progress Analytics',
+      desc: 'Habit heatmaps, streak history, and weekly reports. See your growth in numbers.',
+    },
+    {
+      title: '📚 Training Hub',
+      desc: 'Embedded videos and guides on Pomodoro, time boxing, atomic habits, and deep work.',
+      bonus: (
+        <>
+          ⚡ Bonus feature included with Pro.
+          <br />
+          As-is, best effort. Video links may change.
+        </>
+      ),
+    },
+    {
+      title: '☁️ Cloud Sync',
+      desc: 'All your data synced across every device, always backed up, never lost.',
+      bonus: (
+        <>
+          ⚡ Bonus feature included with Pro.
+          <br />
+          Provided as-is, best effort.
+          <br />
+          May change without notice.
+        </>
+      ),
+    },
+    {
+      title: '📊 CSV Export',
+      desc: 'Export habits and progress as CSV from your dashboard where available.',
+      bonus: (
+        <>
+          ⚡ Bonus feature included with Pro.
+          <br />
+          Format may change. No guarantee on data formatting.
+        </>
+      ),
+    },
   ]
   return (
     <section id="features" className="mx-auto max-w-[1100px] px-4 py-20">
       <h2 className="text-center text-3xl font-semibold text-foreground">Everything you need for structured depth</h2>
       <p className="mx-auto mt-3 max-w-2xl text-center text-muted-foreground">A complete productivity system built around one principle: intentional living.</p>
       <div className="mt-10 grid gap-4 md:grid-cols-3">
-        {features.map(([title, desc]) => (
+        {features.map(({ title, desc, bonus }) => (
           <div key={title} className="rounded-xl border border-border bg-card/60 p-5">
-            <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+            <h3 className="text-lg font-semibold text-foreground flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span>{title}</span>
+              {bonus ? <FeatureBonusTooltip>{bonus}</FeatureBonusTooltip> : null}
+            </h3>
             <p className="mt-2 text-sm text-muted-foreground">{desc}</p>
           </div>
         ))}
       </div>
+    </section>
+  )
+}
+
+export function ProgramsOfferSection() {
+  const { prices } = usePricing()
+  return (
+    <section id="programs" className="mx-auto max-w-[1100px] px-4 py-20">
+      <h2 className="text-center text-3xl font-semibold text-foreground">Programs</h2>
+      <p className="mx-auto mt-3 max-w-2xl text-center text-muted-foreground">
+        Sprint, Monk Mode, and Transform are one-time purchases. Continue into onboarding to finish setup
+        and pay when prompted.
+      </p>
+      <div className="mt-10 grid gap-4 md:grid-cols-3">
+        {PROGRAM_MARKETING_CARDS.map((p) => {
+          const row = findPricingRow(prices, p.id)
+          const cents = row?.current_price ?? PROGRAM_FALLBACK_CENTS[p.id]
+          const cur = row?.currency ?? PROGRAM_FALLBACK_CURRENCY
+          return (
+            <div key={p.id} className="rounded-xl border border-border bg-card/60 p-5">
+              <h3 className="text-xl font-semibold text-foreground">{p.title}</h3>
+              <p className="mt-2 text-accent">
+                <span className="text-lg font-bold">{formatPriceCents(cents, cur)}</span>{' '}
+                <span className="text-sm font-normal text-muted-foreground">one-time</span>
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">{p.subtitle}</p>
+              <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                {p.features.slice(0, 4).map((f) => (
+                  <li key={f} className="flex gap-2">
+                    <span className="text-accent">✓</span>
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button asChild className="mt-6 w-full bg-accent text-accent-foreground hover:bg-accent/90">
+                <Link href={`/onboarding?program=${p.id}`}>{p.ctaTitle}</Link>
+              </Button>
+            </div>
+          )
+        })}
+      </div>
+      <p className="mt-8 text-center text-sm text-muted-foreground">
+        <Link href="/join" className="text-accent hover:underline">
+          Open full join page
+        </Link>
+      </p>
     </section>
   )
 }
@@ -136,8 +258,9 @@ export function HowItWorksSection() {
 
 export function PricingSection() {
   const [annual, setAnnual] = useState(true)
+  const [loading, setLoading] = useState<string | null>(null)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const {
-    prices,
     monthlyCents,
     annualCents,
     monthlyCurrency,
@@ -145,43 +268,76 @@ export function PricingSection() {
     annualPerMonthCents,
     annualSavingsLine,
   } = useAppSubscriptionPrices()
-  const { cents: lifetimeCents, currency: lifetimeCurrency } = lifetimePriceFromRows(prices)
+  const priceIds = {
+    monthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_APP_MONTHLY,
+    annual: process.env.NEXT_PUBLIC_STRIPE_PRICE_APP_ANNUAL,
+  } as const
 
   const plans = useMemo(
     () => [
       { title: 'Free', price: '$0', desc: 'Core habits, goals and dashboard.', featured: false },
       {
-        title: 'Pro',
+        title: annual ? 'Annual Pro (Save 48%)' : 'Monthly Pro',
         price: annual
-          ? `${formatPriceCents(annualPerMonthCents, annualCurrency)}/mo`
-          : `${formatPriceCents(monthlyCents, monthlyCurrency)}/mo`,
-        desc: annual
-          ? `billed as ${formatPriceCents(annualCents, annualCurrency)}/year`
-          : 'monthly billing',
+          ? `${formatPriceCents(annualCents, annualCurrency)}/year`
+          : `${formatPriceCents(monthlyCents, monthlyCurrency)}/month`,
+        desc: annual ? (
+          <>
+            Billed yearly. Cancel anytime. Equivalent to{' '}
+            {formatPriceCents(annualPerMonthCents, annualCurrency)}/month.
+          </>
+        ) : (
+          <>Billed monthly. Cancel anytime.</>
+        ),
         featured: true,
       },
-      {
-        title: 'Lifetime',
-        price: `${formatPriceCents(lifetimeCents, lifetimeCurrency)} once`,
-        desc: 'One-time payment for everything forever.',
-        featured: false,
-      },
     ],
-    [
-      annual,
-      annualCents,
-      annualCurrency,
-      annualPerMonthCents,
-      lifetimeCents,
-      lifetimeCurrency,
-      monthlyCents,
-      monthlyCurrency,
-    ],
+    [annual, annualCents, annualCurrency, annualPerMonthCents, monthlyCents, monthlyCurrency],
   )
+
+  async function openStripeCheckout(kind: 'monthly' | 'annual') {
+    try {
+      setLoading(kind)
+      setCheckoutError(null)
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`
+      }
+
+      const envPriceId = kind === 'monthly' ? priceIds.monthly : priceIds.annual
+      const body = envPriceId
+        ? { priceId: envPriceId, userId: session?.user?.id, userEmail: session?.user?.email }
+        : { priceKind: kind }
+
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      })
+      const data = (await response.json()) as { url?: string; error?: string }
+      if (!response.ok || !data.url) {
+        setCheckoutError(data.error ?? 'Could not start checkout. Try again later.')
+        return
+      }
+      window.location.href = data.url
+    } catch {
+      setCheckoutError('Checkout failed. Please try again.')
+    } finally {
+      setLoading(null)
+    }
+  }
+
   return (
     <section id="pricing" className="mx-auto max-w-[1100px] px-4 py-20">
       <h2 className="text-center text-3xl font-semibold text-foreground">Simple, honest pricing</h2>
       <p className="mx-auto mt-3 max-w-2xl text-center text-muted-foreground">Start free. Upgrade when you&apos;re ready. Cancel anytime.</p>
+      <p className="mt-2 text-center text-xs text-muted-foreground">Prices shown in USD.</p>
       <div className="mx-auto mt-6 flex max-w-sm items-center justify-between gap-3 rounded-full border border-accent/30 bg-background/60 p-1">
         <button
           type="button"
@@ -197,29 +353,48 @@ export function PricingSection() {
         >
           Annual
           <span className="absolute -right-1 -top-2 rounded bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
-            SAVE 50%
+            SAVE 48%
           </span>
         </button>
       </div>
-      <div className="mt-10 grid gap-4 md:grid-cols-3">
+      <div className="mt-10 grid gap-4 md:grid-cols-2">
         {plans.map((p) => (
-          <div key={p.title} className={`rounded-xl border p-5 ${p.featured ? 'border-accent/70 bg-accent/10' : 'border-border bg-card/60'}`}>
+          <div
+            key={p.featured ? 'pro' : 'free'}
+            className={`rounded-xl border p-5 ${p.featured ? 'border-accent/70 bg-accent/10' : 'border-border bg-card/60'}`}
+          >
             <h3 className="text-xl font-semibold text-foreground">{p.title}</h3>
-            <p className="mt-2 text-accent">{p.price}</p>
+            <p className="mt-2 text-2xl font-bold text-accent">{p.price}</p>
             <p className="mt-2 text-sm text-muted-foreground">{p.desc}</p>
-            <Link href="/auth" className="mt-4 inline-block rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
-              {p.title === 'Pro'
-                ? annual
-                  ? `Start free trial — ${formatPriceCents(annualCents, annualCurrency)}/yr`
-                  : `Start free trial — ${formatPriceCents(monthlyCents, monthlyCurrency)}/mo`
-                : 'Start free trial'}
-            </Link>
-            {p.title === 'Pro' && annual && annualSavingsLine ? (
+            {p.title === 'Free' ? (
+              <Link href="/auth" className="mt-4 inline-block rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground">
+                Start free trial
+              </Link>
+            ) : (
+              <Button
+                type="button"
+                className="mt-4 inline-block rounded-md bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:bg-accent/90"
+                onClick={() => void openStripeCheckout(annual ? 'annual' : 'monthly')}
+                disabled={loading === 'annual' || loading === 'monthly'}
+              >
+                {loading === 'annual' || loading === 'monthly'
+                  ? 'Loading...'
+                  : p.featured
+                    ? annual
+                      ? `Start free trial — ${formatPriceCents(annualCents, annualCurrency)}/yr`
+                      : `Start free trial — ${formatPriceCents(monthlyCents, monthlyCurrency)}/mo`
+                    : 'Start free trial'}
+              </Button>
+            )}
+            {p.featured && annual && annualSavingsLine ? (
               <p className="mt-2 text-xs text-primary">{annualSavingsLine}</p>
             ) : null}
           </div>
         ))}
       </div>
+      {checkoutError ? (
+        <p className="mt-4 text-center text-sm text-red-400">{checkoutError}</p>
+      ) : null}
     </section>
   )
 }
@@ -254,7 +429,7 @@ export function FinalCtaSection() {
     <section id="roadmap" className="border-t border-accent/40 bg-background py-20">
       <div className="mx-auto max-w-[1100px] px-4 text-center">
         <h2 className="text-4xl font-semibold text-foreground">Your focused life starts today.</h2>
-        <p className="mx-auto mt-3 max-w-xl text-muted-foreground">Join monkcubed free. Fourteen days of full Pro access. No card required.</p>
+        <p className="mx-auto mt-3 max-w-xl text-muted-foreground">Join monkcubed free. Seven days of full Pro access. No card required.</p>
         <Link href="/auth" className="mt-6 inline-block rounded-md bg-accent px-6 py-3 font-semibold text-accent-foreground">Begin</Link>
         <div className="mt-3">
           <Link href="/waitlist" className="text-sm text-muted-foreground hover:text-foreground">

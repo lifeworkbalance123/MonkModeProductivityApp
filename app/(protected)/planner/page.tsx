@@ -7,6 +7,7 @@ import { ErrorBanner } from '@/components/ErrorBanner'
 import { Card } from '@/components/ui/card'
 import { useMonkData } from '@/hooks/use-monk-data'
 import { usePlan } from '@/hooks/usePlan'
+import { useUpgradeOffer } from '@/context/UpgradeOfferContext'
 import {
   newTimeSlotClientId,
   savePlannerSlot,
@@ -24,10 +25,20 @@ export default function PlannerPage() {
     loadError,
     reload,
   } = useMonkData()
-  const { isPro, isLoading: planLoading } = usePlan()
-  const allowFullWeek = !planLoading && isPro
+  const { openUpgrade } = useUpgradeOffer()
+  const { isPro, isLoading: planLoading, trialExpired } = usePlan()
+  const allowFullWeek = true
+  const freeAfterTrial = !planLoading && !isPro && trialExpired
+  const atTimeboxLimit = freeAfterTrial && data.timeSlots.length >= 1
 
   function addFirstSlot() {
+    if (atTimeboxLimit) {
+      openUpgrade({
+        featureContext:
+          'Free plan (after trial) includes 1 time block across the week. Upgrade for unlimited timeboxing.',
+      })
+      return
+    }
     const c = TIME_SLOT_CATEGORY_OPTIONS[0]
     const slot = {
       id: newTimeSlotClientId(dataContext),
@@ -46,6 +57,13 @@ export default function PlannerPage() {
   }
 
   function applyMorningTemplate() {
+    if (atTimeboxLimit) {
+      openUpgrade({
+        featureContext:
+          'Free plan (after trial) includes 1 time block across the week. Upgrade for unlimited timeboxing.',
+      })
+      return
+    }
     const slots = morningRoutineTemplateSlots(() =>
       newTimeSlotClientId(dataContext),
     )

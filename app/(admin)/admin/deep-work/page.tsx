@@ -9,8 +9,36 @@ import {
   parseDeepWorkRows,
   type DeepWorkCmsState,
 } from '@/lib/deep-work-site-settings'
+import {
+  uploadDeepWorkMp3WithAdminSession,
+  type DeepWorkMp3UploadProgress,
+} from '@/lib/upload-lesson-media-client'
 
-const BUCKET = 'lesson-media'
+async function getAccessToken(): Promise<string | null> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (session?.access_token) return session.access_token
+  const { data } = await supabase.auth.refreshSession()
+  return data.session?.access_token ?? null
+}
+
+/** Aligned with `lesson-media` bucket `file_size_limit` (see migrations). */
+const DEEP_WORK_MAX_MP3_BYTES = 512 * 1024 * 1024
+
+/** Vercel serverless request bodies are capped (~4.5 MiB); larger files must use direct Storage upload only. */
+const SERVER_UPLOAD_FALLBACK_MAX_BYTES = 4 * 1024 * 1024
+
+function isLikelyMp3(file: File): boolean {
+  if (file.name.toLowerCase().endsWith('.mp3')) return true
+  const t = (file.type || '').toLowerCase()
+  return (
+    t.includes('mpeg') ||
+    t === 'audio/mp3' ||
+    t === 'audio/x-mpeg' ||
+    t === '' /* some browsers omit type */
+  )
+}
 
 export default function AdminDeepWorkPage() {
   const [loading, setLoading] = useState(true)
@@ -18,17 +46,35 @@ export default function AdminDeepWorkPage() {
   const [intro, setIntro] = useState('')
   const [tracks, setTracks] = useState<DeepWorkCmsState['tracks']>([])
   const [uploadingSlot, setUploadingSlot] = useState<number | null>(null)
+  const [uploadStage, setUploadStage] = useState<
+    'idle' | 'uploading_to_storage' | 'saving_metadata'
+  >('idle')
+  const [uploadNote, setUploadNote] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
-  const fileRef0 = useRef<HTMLInputElement>(null)
-  const fileRef1 = useRef<HTMLInputElement>(null)
-  const fileRef2 = useRef<HTMLInputElement>(null)
-  const fileRefs = [fileRef0, fileRef1, fileRef2] as const
+  const [slotMessage, setSlotMessage] = useState<null | {
+    slotIndex: number
+    text: string
+  }>(null)
+  const [slotUploadProgress, setSlotUploadProgress] = useState<null | {
+    slotIndex: number
+    pct: number | null
+    uploadedLabel: string
+    totalLabel: string | null
+  }>(null)
+  const [pendingCommit, setPendingCommit] = useState<null | {
+    slotIndex: number
+    label: string
+    publicUrl: string
+    storagePath: string
+    isActive: boolean
+  }>(null)
+  const fileRefMap = useRef<Record<number, HTMLInputElement | null>>({})
 
   const load = useCallback(async () => {
     setLoading(true)
     const { data, error } = await supabase
       .from('site_settings')
-      .select('key, value, media_url, media_storage_path')
+      .select('key, value, media_url, media_storage_path, is_active')
       .in('key', [DEEP_WORK_INTRO_KEY, ...DEEP_WORK_MP3_KEYS])
 
     if (error) {
@@ -46,19 +92,40 @@ export default function AdminDeepWorkPage() {
     void load()
   }, [load])
 
+  useEffect(() => {
+    if (uploadingSlot === null) return
+    const warnLeave = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warnLeave)
+    return () => window.removeEventListener('beforeunload', warnLeave)
+  }, [uploadingSlot])
+
   async function saveIntro() {
     setSaving(true)
     setMessage(null)
     try {
-      const { error } = await supabase
-        .from('site_settings')
-        .update({
-          value: intro,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('key', DEEP_WORK_INTRO_KEY)
-      if (error) throw error
+      const token = await getAccessToken()
+      if (!token) {
+        setMessage('Sign in again to save (no session).')
+        return
+      }
+      const res = await fetch('/api/admin/deep-work/save-intro', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: intro }),
+      })
+      const payload = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        setMessage(payload.error ?? `Save failed (${res.status})`)
+        return
+      }
       setMessage('Saved intro text.')
+      void load()
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Save failed')
     } finally {
@@ -66,46 +133,142 @@ export default function AdminDeepWorkPage() {
     }
   }
 
+  const commitTrack = useCallback(
+    async (args: {
+      slotIndex: number
+      label: string
+      publicUrl: string
+      storagePath: string
+      isActive: boolean
+    }) => {
+      const token = await getAccessToken()
+      if (!token) {
+        return { ok: false as const, error: 'Sign in again to save (no session).' }
+      }
+      const commitRes = await fetch('/api/admin/deep-work/commit-track', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          slot: args.slotIndex,
+          label: args.label,
+          publicUrl: args.publicUrl,
+          storagePath: args.storagePath,
+          isActive: args.isActive,
+        }),
+      })
+      const commitPayload = (await commitRes.json().catch(() => ({}))) as { error?: string }
+      if (!commitRes.ok) {
+        return {
+          ok: false as const,
+          error: commitPayload.error ?? `Save failed (${commitRes.status})`,
+        }
+      }
+      return { ok: true as const }
+    },
+    [],
+  )
+
+  function formatUploadMb(n: number): string {
+    if (!Number.isFinite(n) || n <= 0) return '0'
+    return (n / (1024 * 1024)).toFixed(n >= 1024 * 1024 ? 1 : 2)
+  }
+
   async function uploadMp3(slotIndex: number, file: File) {
-    if (!file.type.includes('mpeg') && !file.name.toLowerCase().endsWith('.mp3')) {
+    if (!isLikelyMp3(file)) {
       setMessage('Please choose an MP3 file.')
+      setSlotMessage({ slotIndex, text: 'Please choose an MP3 file.' })
+      return
+    }
+    if (file.size > DEEP_WORK_MAX_MP3_BYTES) {
+      const t = `That MP3 is too large (max ${Math.round(DEEP_WORK_MAX_MP3_BYTES / (1024 * 1024))}MB).`
+      setMessage(t)
+      setSlotMessage({ slotIndex, text: t })
       return
     }
     const key = DEEP_WORK_MP3_KEYS[slotIndex]
     setUploadingSlot(slotIndex)
     setMessage(null)
+    setSlotMessage(null)
+    setSlotUploadProgress({
+      slotIndex,
+      pct: null,
+      uploadedLabel: '0',
+      totalLabel: file.size > 0 ? formatUploadMb(file.size) : null,
+    })
+    setUploadStage('uploading_to_storage')
+    setUploadNote(
+      `Uploading “${file.name}” (${Math.round(file.size / (1024 * 1024))}MB) to Storage…`,
+    )
     try {
-      const prevPath = tracks[slotIndex]?.storagePath
-      if (prevPath) {
-        await supabase.storage.from(BUCKET).remove([prevPath])
+      const token = await getAccessToken()
+      if (!token) {
+        const t = 'Sign in again to upload (no session).'
+        setMessage(t)
+        setSlotMessage({ slotIndex, text: t })
+        return
       }
 
-      const safe = file.name.replace(/[^\w.\-]+/g, '_')
-      const path = `deep-work/${key}-${Date.now()}-${safe}`
-      const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, {
-        cacheControl: '3600',
-        contentType: 'audio/mpeg',
-        upsert: false,
-      })
-      if (upErr) throw upErr
-
-      const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path)
-      const publicUrl = pub.publicUrl
-
       const label = tracks[slotIndex]?.label?.trim() || `Track ${slotIndex + 1}`
-
-      const { error: dbErr } = await supabase.from('site_settings').upsert(
-        {
-          key,
-          value: label,
-          media_type: 'audio',
-          media_url: publicUrl,
-          media_storage_path: path,
-          updated_at: new Date().toISOString(),
+      const safe = file.name.replace(/[^\w.\-]+/g, '_')
+      const prevPath = tracks[slotIndex]?.storagePath ?? null
+      // Use Supabase-recommended resumable upload for large files to avoid fetch stalls.
+      const uploaded = await uploadDeepWorkMp3WithAdminSession({
+        file,
+        slotIndex,
+        removePath: prevPath,
+        onProgress: (p: DeepWorkMp3UploadProgress) => {
+          setUploadStage('uploading_to_storage')
+          const up = formatUploadMb(p.uploadedBytes)
+          const tot =
+            p.totalBytes > 0
+              ? formatUploadMb(p.totalBytes)
+              : file.size > 0
+                ? formatUploadMb(file.size)
+                : null
+          const pct = typeof p.pct === 'number' ? p.pct : null
+          setSlotUploadProgress({
+            slotIndex,
+            pct,
+            uploadedLabel: up,
+            totalLabel: tot,
+          })
+          const pctPart = pct !== null ? `${pct}% · ` : ''
+          const sizePart =
+            tot !== null ? `${pctPart}${up} / ${tot} MB` : `${pctPart}${up} MB sent`
+          setUploadNote(`Uploading “${safe}” to Storage… ${sizePart}`)
         },
-        { onConflict: 'key' },
-      )
-      if (dbErr) throw dbErr
+      })
+      const uploadPath = uploaded.path
+      const publicUrl = uploaded.publicUrl
+
+      setUploadStage('saving_metadata')
+      setUploadNote('Upload complete. Saving track metadata…')
+
+      const isActive = tracks[slotIndex]?.isActive !== false
+      const commit = await commitTrack({
+        slotIndex,
+        label,
+        publicUrl,
+        storagePath: uploadPath,
+        isActive,
+      })
+      if (!commit.ok) {
+        setPendingCommit({
+          slotIndex,
+          label,
+          publicUrl,
+          storagePath: uploadPath,
+          isActive,
+        })
+        const t = `Upload finished, but saving the track failed. ${commit.error} Click “Retry save” to finalize without re-uploading.`
+        setMessage(t)
+        setSlotMessage({ slotIndex, text: t })
+        return
+      }
+      setPendingCommit(null)
 
       setTracks((prev) => {
         const next = [...prev]
@@ -113,39 +276,49 @@ export default function AdminDeepWorkPage() {
           ...next[slotIndex],
           key,
           url: publicUrl,
-          storagePath: path,
+          storagePath: uploadPath,
         }
         return next
       })
-      setMessage(`Uploaded ${key}.`)
+      const t = `Uploaded ${key}.`
+      setMessage(t)
+      setSlotMessage({ slotIndex, text: t })
+      void load()
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'Upload failed')
+      const t = e instanceof Error ? e.message : 'Upload failed'
+      setMessage(t)
+      setSlotMessage({ slotIndex, text: t })
     } finally {
       setUploadingSlot(null)
+      setUploadStage('idle')
+      setUploadNote(null)
+      setSlotUploadProgress(null)
     }
   }
 
   async function clearMp3(slotIndex: number) {
     const key = DEEP_WORK_MP3_KEYS[slotIndex]
-    const prevPath = tracks[slotIndex]?.storagePath
     setMessage(null)
     try {
-      if (prevPath) {
-        await supabase.storage.from(BUCKET).remove([prevPath])
+      const token = await getAccessToken()
+      if (!token) {
+        setMessage('Sign in again to remove the file.')
+        return
       }
-      const label = tracks[slotIndex]?.label?.trim() || `Track ${slotIndex + 1}`
-      const { error } = await supabase.from('site_settings').upsert(
-        {
-          key,
-          value: label,
-          media_type: null,
-          media_url: null,
-          media_storage_path: null,
-          updated_at: new Date().toISOString(),
+
+      const res = await fetch('/api/admin/deep-work/clear-audio', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-        { onConflict: 'key' },
-      )
-      if (error) throw error
+        body: JSON.stringify({ slot: slotIndex }),
+      })
+      const payload = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        setMessage(payload.error ?? `Remove failed (${res.status})`)
+        return
+      }
       setTracks((prev) => {
         const next = [...prev]
         next[slotIndex] = {
@@ -183,6 +356,53 @@ export default function AdminDeepWorkPage() {
     }
   }
 
+  async function saveSlotActive(slotIndex: number, isActive: boolean) {
+    const key = DEEP_WORK_MP3_KEYS[slotIndex]
+    const label = tracks[slotIndex]?.label?.trim() || `Track ${slotIndex + 1}`
+    setSaving(true)
+    setMessage(null)
+    try {
+      const { data: existing, error: selErr } = await supabase
+        .from('site_settings')
+        .select('key')
+        .eq('key', key)
+        .maybeSingle()
+      if (selErr) throw selErr
+
+      if (existing) {
+        const { error } = await supabase
+          .from('site_settings')
+          .update({
+            is_active: isActive,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('key', key)
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('site_settings').insert({
+          key,
+          value: label,
+          media_type: null,
+          media_url: null,
+          media_storage_path: null,
+          is_active: isActive,
+          updated_at: new Date().toISOString(),
+        })
+        if (error) throw error
+      }
+      setMessage(isActive ? 'Track is live on the Focus page.' : 'Track hidden from the Focus page.')
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Save failed')
+      setTracks((prev) => {
+        const next = [...prev]
+        next[slotIndex] = { ...next[slotIndex], isActive: !isActive }
+        return next
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="p-8 text-muted-foreground">
@@ -199,13 +419,73 @@ export default function AdminDeepWorkPage() {
         </Link>
         <h1 className="mt-4 text-2xl font-semibold tracking-tight">Deep Work (Focus page)</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Intro copy and up to three MP3 ambient tracks for the Deep Work fullscreen player. Files upload to the{' '}
-          <code className="rounded bg-muted px-1 text-xs">lesson-media</code> bucket.
+          Intro copy and up to eight MP3 ambient tracks for the Deep Work fullscreen player. MP3s are stored in the{' '}
+          <code className="rounded bg-muted px-1 text-xs">lesson-media</code> bucket (browser uploads directly to
+          Storage; this app allows up to about {Math.round(DEEP_WORK_MAX_MP3_BYTES / (1024 * 1024))}MB per file). Your
+          Supabase project also has a separate <strong className="font-medium text-foreground">global file size limit</strong>{' '}
+          (Project Settings → Storage); if uploads fail with “maximum size”, raise that limit above your MP3 size. While
+          a file is uploading, a progress bar appears under that slot.
         </p>
       </div>
 
+      {uploadingSlot !== null ? (
+        <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-foreground">
+          Upload in progress (slot {uploadingSlot + 1}). Stay on this page until it finishes—switching away can stop the
+          upload and you may lose unsaved intro text in this session.
+        </p>
+      ) : null}
+      {uploadingSlot !== null && uploadNote ? (
+        <p className="rounded-md border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+          {uploadStage === 'uploading_to_storage' ? 'Step 1/2:' : uploadStage === 'saving_metadata' ? 'Step 2/2:' : ''}
+          {' '}
+          {uploadNote}
+        </p>
+      ) : null}
+
       {message ? (
         <p className="rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground">{message}</p>
+      ) : null}
+      {pendingCommit ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card px-3 py-2">
+          <button
+            type="button"
+            className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            disabled={saving || uploadingSlot !== null}
+            onClick={() => {
+              void (async () => {
+                setSaving(true)
+                setMessage(null)
+                try {
+                  const commit = await commitTrack(pendingCommit)
+                  if (!commit.ok) {
+                    setMessage(commit.error)
+                    return
+                  }
+                  setPendingCommit(null)
+                  setMessage('Saved track metadata. Refreshing…')
+                  await load()
+                  setMessage('Saved track.')
+                } catch (e) {
+                  setMessage(e instanceof Error ? e.message : 'Retry failed')
+                } finally {
+                  setSaving(false)
+                }
+              })()
+            }}
+          >
+            Retry save
+          </button>
+          <button
+            type="button"
+            className="rounded-md border border-border bg-secondary px-3 py-2 text-sm hover:bg-secondary/80"
+            onClick={() => setPendingCommit(null)}
+          >
+            Dismiss
+          </button>
+          <p className="text-xs text-muted-foreground">
+            Slot {pendingCommit.slotIndex + 1} is already uploaded; this only retries the DB save step.
+          </p>
+        </div>
       ) : null}
 
       <section className="space-y-3 rounded-xl border border-border bg-card p-5">
@@ -231,14 +511,32 @@ export default function AdminDeepWorkPage() {
       </section>
 
       <section className="space-y-6 rounded-xl border border-border bg-card p-5">
-        <h2 className="text-lg font-medium">Ambient MP3 tracks (3 slots)</h2>
+        <h2 className="text-lg font-medium">Ambient MP3 tracks (8 slots)</h2>
         <p className="text-xs text-muted-foreground">
-          MP3 only. Users pick these in Deep Work fullscreen next to Rain / Ocean / White noise. Leave a slot empty to hide it.
+          MP3 only (up to ~{Math.round(DEEP_WORK_MAX_MP3_BYTES / (1024 * 1024))}MB). Large uploads need a stable
+          connection. Users only see tracks that have an uploaded file and &quot;Live on Focus page&quot; enabled.
         </p>
 
-        {[0, 1, 2].map((i) => (
-          <div key={DEEP_WORK_MP3_KEYS[i]} className="space-y-2 border-b border-border pb-6 last:border-0 last:pb-0">
+        {DEEP_WORK_MP3_KEYS.map((slotKey, i) => (
+          <div key={slotKey} className="space-y-2 border-b border-border pb-6 last:border-0 last:pb-0">
             <p className="text-sm font-medium">Slot {i + 1}</p>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={tracks[i]?.isActive !== false}
+                onChange={(e) => {
+                  const v = e.target.checked
+                  setTracks((prev) => {
+                    const next = [...prev]
+                    next[i] = { ...next[i], isActive: v }
+                    return next
+                  })
+                  void saveSlotActive(i, v)
+                }}
+                disabled={saving}
+              />
+              <span>Live on Focus page</span>
+            </label>
             <label className="block text-xs text-muted-foreground">
               Button label
               <input
@@ -258,7 +556,9 @@ export default function AdminDeepWorkPage() {
             </label>
             <div className="flex flex-wrap items-center gap-2">
               <input
-                ref={fileRefs[i]}
+                ref={(el) => {
+                  fileRefMap.current[i] = el
+                }}
                 type="file"
                 accept="audio/mpeg,audio/mp3,.mp3"
                 className="hidden"
@@ -271,11 +571,29 @@ export default function AdminDeepWorkPage() {
               <button
                 type="button"
                 disabled={uploadingSlot === i}
-                onClick={() => fileRefs[i].current?.click()}
+                onClick={() => fileRefMap.current[i]?.click()}
                 className="rounded-md border border-border bg-secondary px-3 py-1.5 text-sm hover:bg-secondary/80 disabled:opacity-50"
               >
                 {uploadingSlot === i ? 'Uploading…' : tracks[i]?.url ? 'Replace MP3' : 'Upload MP3'}
               </button>
+              {slotMessage?.slotIndex === i ? (
+                <p className="w-full text-xs text-muted-foreground">{slotMessage.text}</p>
+              ) : null}
+              {uploadingSlot === i && slotUploadProgress?.slotIndex === i ? (
+                <div className="w-full space-y-1">
+                  <progress
+                    className="h-2 w-full accent-primary"
+                    value={slotUploadProgress.pct !== null ? slotUploadProgress.pct : undefined}
+                    max={slotUploadProgress.pct !== null ? 100 : undefined}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {slotUploadProgress.pct !== null ? `${slotUploadProgress.pct}% · ` : ''}
+                    {slotUploadProgress.totalLabel !== null
+                      ? `${slotUploadProgress.uploadedLabel} / ${slotUploadProgress.totalLabel} MB`
+                      : `${slotUploadProgress.uploadedLabel} MB sent`}
+                  </p>
+                </div>
+              ) : null}
               {tracks[i]?.url ? (
                 <>
                   <audio controls src={tracks[i].url} className="h-8 max-w-[200px] md:max-w-xs" />

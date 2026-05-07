@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useUpgradeOffer } from '@/context/UpgradeOfferContext'
 import { usePlan, notifyEntitlementRefresh } from '@/hooks/usePlan'
+import { formatPriceCents, useAppSubscriptionPrices } from '@/hooks/usePricing'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +28,7 @@ import { supabase } from '@/lib/supabase'
 import { captureEvent } from '@/lib/analytics'
 import { mailtoSupport, publicSiteOrigin, SUPPORT_EMAIL } from '@/lib/site-contact'
 import ProgramControls from '@/components/settings/ProgramControls'
+import { Tooltip } from '@/components/ui/first-visit-tooltip'
 
 function formatBillingDate(iso: string | null): string | null {
   if (!iso) return null
@@ -158,6 +160,14 @@ export default function SettingsPage() {
     isTrial,
     trialEndDate,
   } = usePlan()
+  const {
+    monthlyCents,
+    annualCents,
+    monthlyCurrency,
+    annualCurrency,
+    annualPerMonthCents,
+  } = useAppSubscriptionPrices()
+  const saveYearlyVsMonthlyCents = Math.max(0, monthlyCents * 12 - annualCents)
   const [restoreBusy, setRestoreBusy] = useState(false)
   const [portalBusy, setPortalBusy] = useState(false)
   const [switchBusy, setSwitchBusy] = useState(false)
@@ -352,13 +362,18 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Settings</h1>
-          <p className="text-sm text-muted-foreground">
-            Signed-in users can keep data in the browser, on our servers (Pro), or
-            both depending on plan.
-          </p>
-        </div>
+        <Tooltip
+          id="tooltip_settings"
+          text="Adjust notifications, pause your program, or invite a buddy. Your discipline, your rules."
+        >
+          <div>
+            <h1 className="text-2xl font-semibold">Settings</h1>
+            <p className="text-sm text-muted-foreground">
+              Signed-in users can keep data in the browser, on our servers (Pro), or
+              both depending on plan.
+            </p>
+          </div>
+        </Tooltip>
         <Card className="p-4 space-y-4">
           <div>
             <h2 className="font-medium mb-1">Appearance</h2>
@@ -377,8 +392,14 @@ export default function SettingsPage() {
             <p className="text-sm text-muted-foreground mb-3">
               Optional add-on: 15-minute calls. Subscribe or pay once, then book on Calendly.
             </p>
-            <Button type="button" size="sm" variant="outline" asChild>
-              <Link href="/coach">Open coaching</Link>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled
+              className="pointer-events-none opacity-50"
+            >
+              Open coaching
             </Button>
           </div>
         </Card>
@@ -502,15 +523,24 @@ export default function SettingsPage() {
 
             {!planLoading && planKey === 'monthly' ? (
               <div className="space-y-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-foreground">Monthly Pro</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatPriceCents(monthlyCents, monthlyCurrency)}/month
+                  </p>
+                  <p className="text-xs text-muted-foreground">Prices shown in USD.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Billed monthly. Cancel anytime.
+                  </p>
+                </div>
                 <p className="text-sm text-muted-foreground">
-                  Current plan: Pro Monthly ($9.99/month)
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Next billing date: {nextBill ?? 'Pending sync'} · Amount: $9.99
+                  Next billing date: {nextBill ?? 'Pending sync'} · Amount:{' '}
+                  {formatPriceCents(monthlyCents, monthlyCurrency)}
                 </p>
                 <div className="rounded-md border border-accent/30 bg-accent/10 p-3 text-sm">
                   <p className="text-foreground">
-                    Switch to annual and save $59.89/year →
+                    Switch to annual (Save 48%) — save about{' '}
+                    {formatPriceCents(saveYearlyVsMonthlyCents, annualCurrency)}/year vs monthly →
                   </p>
                   <Button
                     type="button"
@@ -545,14 +575,23 @@ export default function SettingsPage() {
 
             {!planLoading && planKey === 'annual' ? (
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Current plan: Pro Annual ($59.99/year)
-                </p>
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-foreground">Annual Pro (Save 48%)</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatPriceCents(annualCents, annualCurrency)}/year
+                  </p>
+                  <p className="text-xs text-muted-foreground">Prices shown in USD.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Billed yearly. Cancel anytime. Equivalent to{' '}
+                    {formatPriceCents(annualPerMonthCents, annualCurrency)}/month.
+                  </p>
+                </div>
                 <p className="text-sm text-muted-foreground">
                   Renewal date: {nextBill ?? 'Pending sync'}
                 </p>
                 <span className="inline-flex rounded bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
-                  Great choice — you&apos;re saving $59.89 vs monthly
+                  About {formatPriceCents(saveYearlyVsMonthlyCents, annualCurrency)}/year less than 12
+                  monthly renewals
                 </span>
                 <details className="rounded-md border border-destructive/40 p-3 text-xs text-muted-foreground">
                   <summary className="cursor-pointer text-destructive">

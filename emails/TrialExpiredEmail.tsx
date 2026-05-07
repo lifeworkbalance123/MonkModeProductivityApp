@@ -36,7 +36,7 @@ export function TrialExpiredEmail({
       </P>
       <ul style={{ margin: '0 0 14px 18px', padding: 0, color: '#FFFFFF' }}>
         <li style={{ marginBottom: 8, fontSize: 14, lineHeight: '22px' }}>
-          Pro Monthly: $9.99/mo → <span style={{ color: '#9CA3AF' }}>Upgrade now</span>
+          Pro Monthly: $7.99/mo → <span style={{ color: '#9CA3AF' }}>Upgrade now</span>
         </li>
         <li style={{ marginBottom: 0, fontSize: 14, lineHeight: '22px' }}>
           Lifetime: $149 → <span style={{ color: '#9CA3AF' }}>Own it forever</span>

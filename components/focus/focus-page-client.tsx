@@ -5,21 +5,25 @@ import { DeepWorkModeCard } from '@/components/focus/deep-work-mode-card'
 import { DeepWorkStatsStrip } from '@/components/focus/deep-work-stats-strip'
 import { PomodoroTimerCard } from '@/components/focus/pomodoro-timer-card'
 import { Card } from '@/components/ui/card'
+import { HoverTooltip } from '@/components/ui/HoverTooltip'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { useDataServiceContext } from '@/hooks/use-data-service-context'
 import { usePlan } from '@/hooks/usePlan'
 import { useTimerAlarmSettings } from '@/hooks/useTimerAlarmSettings'
 import { listDeepWorkSessions, shouldSyncToCloud } from '@/lib/dataService'
+import { fetchDeepWorkMinutesToday } from '@/lib/deep-work-minutes-today-db'
 import {
   loadDeepWorkSessionsLocal,
   type DeepWorkSession,
 } from '@/lib/deep-work-sessions'
+import { supabase } from '@/lib/supabase'
 
 export function FocusPageClient() {
   const ctx = useDataServiceContext()
   const { isLoading: planLoading } = usePlan()
   const [sessions, setSessions] = useState<DeepWorkSession[]>([])
+  const [serverTodayMinutes, setServerTodayMinutes] = useState<number | null>(null)
   const alarm = useTimerAlarmSettings()
 
   useEffect(() => {
@@ -28,8 +32,14 @@ export function FocusPageClient() {
       void listDeepWorkSessions(ctx).then(setSessions)
     } else {
       setSessions(loadDeepWorkSessionsLocal())
+      setServerTodayMinutes(null)
     }
   }, [planLoading, ctx.userId, ctx.isPro])
+
+  useEffect(() => {
+    if (planLoading || !shouldSyncToCloud(ctx)) return
+    void fetchDeepWorkMinutesToday(supabase).then(setServerTodayMinutes)
+  }, [planLoading, ctx.userId, ctx.isPro, sessions])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -44,15 +54,17 @@ export function FocusPageClient() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-xl space-y-8 px-4 py-8 pt-4 md:pt-2">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Focus & Deep Work
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Pomodoro at the top; Deep Work Mode (90-minute sprints) below—scroll
-            after the timer.
-          </p>
-        </div>
+        <HoverTooltip text="Start a Pomodoro (25 min) or a deep work block (50\u201190 min). No phone. No interruptions. Just focus.">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Focus & Deep Work
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Pomodoro at the top; Deep Work Mode (90-minute sprints) below—scroll
+              after the timer.
+            </p>
+          </div>
+        </HoverTooltip>
 
         <Card className="border-border p-4">
           <p className="mb-3 text-sm font-medium text-foreground">Timer alerts</p>
@@ -94,7 +106,7 @@ export function FocusPageClient() {
           alarmSoundRef={alarm.soundRef}
           alarmNotifyRef={alarm.notifyRef}
         />
-        <DeepWorkStatsStrip sessions={sessions} />
+        <DeepWorkStatsStrip sessions={sessions} serverTodayMinutes={serverTodayMinutes} />
       </div>
     </div>
   )

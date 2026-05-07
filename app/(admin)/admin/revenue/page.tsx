@@ -1,20 +1,25 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import {
+  indicativeSubscriptionRates,
+  type PricingConfigRow,
+} from '@/lib/pricingDisplay'
 
 export default function AdminRevenuePage() {
   const [monthly, setMonthly] = useState<number | null>(null)
   const [annual, setAnnual] = useState<number | null>(null)
   const [lifetime, setLifetime] = useState<number | null>(null)
+  const [pricingRows, setPricingRows] = useState<PricingConfigRow[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
     void (async () => {
       try {
-        const [m, a, l] = await Promise.all([
+        const [m, a, l, pc] = await Promise.all([
           supabase
             .from('users')
             .select('*', { count: 'exact', head: true })
@@ -27,11 +32,15 @@ export default function AdminRevenuePage() {
             .from('users')
             .select('*', { count: 'exact', head: true })
             .eq('plan', 'lifetime'),
+          supabase.from('pricing_config').select('*'),
         ])
         if (cancelled) return
         setMonthly(m.count ?? 0)
         setAnnual(a.count ?? 0)
         setLifetime(l.count ?? 0)
+        if (!pc.error && Array.isArray(pc.data)) {
+          setPricingRows(pc.data as PricingConfigRow[])
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -41,8 +50,12 @@ export default function AdminRevenuePage() {
     }
   }, [])
 
-  const mrr = (monthly ?? 0) * 9.99 + ((annual ?? 0) * 59.99) / 12
-  const lifetimeRev = (lifetime ?? 0) * 149
+  const rates = useMemo(() => indicativeSubscriptionRates(pricingRows), [pricingRows])
+
+  const mrr =
+    (monthly ?? 0) * rates.monthlyPerSeatDollars +
+    ((annual ?? 0) * rates.annualPerSeatDollars) / 12
+  const lifetimeRev = (lifetime ?? 0) * rates.lifetimePerSeatDollars
 
   return (
     <div>
@@ -62,17 +75,17 @@ export default function AdminRevenuePage() {
           <Stat
             label="Monthly subscribers"
             value={String(monthly ?? 0)}
-            hint="$9.99/mo each (indicative)"
+            hint={rates.monthlyHint}
           />
           <Stat
             label="Annual subscribers"
             value={String(annual ?? 0)}
-            hint="$59.99/yr each (indicative)"
+            hint={rates.annualHint}
           />
           <Stat
             label="Lifetime"
             value={String(lifetime ?? 0)}
-            hint="$149 each (one-time, indicative)"
+            hint={rates.lifetimeHint}
           />
           <Stat
             label="Est. MRR (monthly + annual spread)"

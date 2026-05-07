@@ -1,9 +1,18 @@
+/** Fixes common typos like `http:///localhost:3000` (extra slash after scheme). */
+export function normalizePublicOriginUrl(raw: string): string {
+  const t = raw.trim().replace(/\/$/, '')
+  if (!t) return ''
+  // Collapse `http:////host` / `http:///host` → `http://host`
+  const fixed = t.replace(/^(https?:)\/+/, (_, scheme: string) => `${scheme}//`)
+  return fixed
+}
+
 /**
  * Public site origin for Stripe return URLs (portal, checkout).
  */
 export function getAppOrigin(request: Request): string {
-  const env = process.env.NEXT_PUBLIC_APP_URL?.trim()
-  if (env) return env.replace(/\/$/, '')
+  const env = normalizePublicOriginUrl(process.env.NEXT_PUBLIC_APP_URL ?? '')
+  if (env) return env
   const host =
     request.headers.get('x-forwarded-host') || request.headers.get('host')
   const proto = request.headers.get('x-forwarded-proto') || 'http'
@@ -20,11 +29,11 @@ export function getAppOrigin(request: Request): string {
  */
 export function getAuthCallbackBaseUrl(): string {
   if (typeof window !== 'undefined' && window.location?.origin) {
-    return window.location.origin.replace(/\/$/, '')
+    return normalizePublicOriginUrl(window.location.origin)
   }
   const site =
-    process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '') ||
-    process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, '')
+    normalizePublicOriginUrl(process.env.NEXT_PUBLIC_SITE_URL ?? '') ||
+    normalizePublicOriginUrl(process.env.NEXT_PUBLIC_APP_URL ?? '')
   if (site) return site
   return 'http://localhost:3000'
 }

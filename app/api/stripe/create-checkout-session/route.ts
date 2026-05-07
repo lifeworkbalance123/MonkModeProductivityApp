@@ -1,64 +1,81 @@
 import { NextResponse } from 'next/server'
-import Stripe from 'stripe'
 import { createServiceRoleClient } from '@/lib/supabase-service'
 import { getAppOrigin } from '@/lib/app-origin'
+import { getStripeClient } from '@/lib/stripe'
+import { STRIPE_PRICES, isSubscriptionPrice } from '@/lib/stripePrices'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 export type CheckoutPriceKind = 'monthly' | 'annual' | 'lifetime'
+export type CheckoutMode = 'subscription' | 'payment'
 
 /**
  * Creates a Stripe Checkout Session.
- * - V2 program: POST JSON `{ "plan": "v2_program" }` — one-time payment (price from STRIPE_V2_PROGRAM_PRICE_ID).
+ * - Program: POST JSON `{ "plan": "monk_mode" | "sprint" | "transform" | "v2_program" }` — one-time payment.
  * - Pro / Lifetime: POST JSON `{ "priceKind": "monthly" | "annual" | "lifetime" }`.
- * Authorization: Bearer <Supabase access_token>
+ * Authorization: Optional Bearer <Supabase access_token> for logged-in attribution.
  */
 export async function POST(request: Request) {
-  const secret = process.env.STRIPE_SECRET_KEY?.trim()
-  if (!secret) {
+  if (!process.env.STRIPE_SECRET_KEY?.trim()) {
     return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 })
   }
 
-  let admin
-  try {
-    admin = createServiceRoleClient()
-  } catch {
-    return NextResponse.json({ error: 'Server misconfigured' }, { status: 503 })
+  let body: {
+    priceKind?: string
+    plan?: string
+    priceId?: string
+    userId?: string
+    userEmail?: string
+    mode?: CheckoutMode
   }
-
-  const authHeader = request.headers.get('authorization')
-  const token = authHeader?.replace(/^Bearer\s+/i, '').trim()
-  if (!token) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  const {
-    data: { user },
-    error: authError,
-  } = await admin.auth.getUser(token)
-
-  if (authError || !user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  let body: { priceKind?: string; plan?: string }
   try {
     body = (await request.json()) as { priceKind?: string; plan?: string }
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const origin = getAppOrigin(request)
-  const stripe = new Stripe(secret)
+  const authHeader = request.headers.get('authorization')
+  const token = authHeader?.replace(/^Bearer\s+/i, '').trim() ?? ''
+  let user: { id: string; email?: string | null } | null = null
 
-  if ((body.plan ?? '').toLowerCase() === 'v2_program') {
+  if (token) {
+    let admin
+    try {
+      admin = createServiceRoleClient()
+    } catch {
+      return NextResponse.json({ error: 'Server misconfigured' }, { status: 503 })
+    }
+    const {
+      data: { user: authedUser },
+      error: authError,
+    } = await admin.auth.getUser(token)
+    if (authError || !authedUser?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    user = authedUser
+  }
+
+  const origin = getAppOrigin(request)
+  const stripe = getStripeClient()
+
+  const requestedPlan = (body.plan ?? '').toLowerCase()
+  if (
+    requestedPlan === 'v2_program' ||
+    requestedPlan === 'monk_mode' ||
+    requestedPlan === 'sprint' ||
+    requestedPlan === 'transform'
+  ) {
+    const programPlan = requestedPlan === 'v2_program' ? 'monk_mode' : requestedPlan
     const priceId =
-      process.env.STRIPE_V2_PROGRAM_PRICE_ID?.trim() ||
-      process.env.NEXT_PUBLIC_V2_PROGRAM_PRICE_ID?.trim()
+      programPlan === 'sprint'
+        ? STRIPE_PRICES.SPRINT
+        : programPlan === 'transform'
+          ? STRIPE_PRICES.TRANSFORM
+          : STRIPE_PRICES.MONK_MODE
     if (!priceId) {
       return NextResponse.json(
-        { error: 'V2 program price not configured (STRIPE_V2_PROGRAM_PRICE_ID)' },
+        { error: `Program price not configured for ${programPlan}` },
         { status: 503 },
       )
     }
@@ -67,25 +84,63 @@ export async function POST(request: Request) {
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
         line_items: [{ price: priceId, quantity: 1 }],
-        success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&plan=v2_program`,
+        success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&plan=${encodeURIComponent(programPlan)}`,
         cancel_url: `${origin}/join`,
         allow_promotion_codes: true,
         billing_address_collection: 'auto',
-        customer_email: user.email ?? undefined,
-        client_reference_id: user.id,
+        customer_email: user?.email ?? undefined,
+        client_reference_id: user?.id ?? undefined,
         metadata: {
-          supabase_user_id: user.id,
-          plan: 'v2_program',
+          plan: programPlan,
+          ...(user?.id ? { supabase_user_id: user.id } : {}),
         },
       })
 
       if (!session.url) {
-        return NextResponse.json(
-          { error: 'Checkout session missing URL' },
-          { status: 500 },
-        )
+        return NextResponse.json({ error: 'Checkout session missing URL' }, { status: 500 })
       }
       return NextResponse.json({ url: session.url })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Checkout failed'
+      return NextResponse.json({ error: msg }, { status: 500 })
+    }
+  }
+
+  // Optional direct price checkout (for Stripe.js / Checkout Session ID flows).
+  if (body.priceId?.trim()) {
+    const suppliedUserId = body.userId?.trim()
+    if (suppliedUserId && (!user || suppliedUserId !== user.id)) {
+      return NextResponse.json({ error: 'Invalid userId for authenticated user' }, { status: 403 })
+    }
+
+    const priceId = body.priceId.trim()
+    const explicitMode = body.mode
+    const mode: CheckoutMode =
+      explicitMode === 'payment' || explicitMode === 'subscription'
+        ? explicitMode
+        : isSubscriptionPrice(priceId)
+          ? 'subscription'
+          : 'payment'
+
+    try {
+      const session = await stripe.checkout.sessions.create({
+        mode,
+        line_items: [{ price: priceId, quantity: 1 }],
+        success_url: `${origin}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/pricing`,
+        customer_email: body.userEmail?.trim() || user?.email || undefined,
+        client_reference_id: user?.id,
+        metadata: {
+          ...(user?.id
+            ? {
+                supabase_user_id: user.id,
+                user_id: user.id,
+              }
+            : {}),
+        },
+      })
+
+      return NextResponse.json({ sessionId: session.id, url: session.url })
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Checkout failed'
       return NextResponse.json({ error: msg }, { status: 500 })
@@ -97,15 +152,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid priceKind' }, { status: 400 })
   }
 
-  const monthlyId =
-    process.env.STRIPE_PRO_MONTHLY_PRICE_ID?.trim() ||
-    process.env.STRIPE_PRICE_PRO_MONTHLY?.trim()
-  const annualId =
-    process.env.STRIPE_PRO_ANNUAL_PRICE_ID?.trim() ||
-    process.env.STRIPE_PRICE_PRO_ANNUAL?.trim()
-  const lifetimeId =
-    process.env.STRIPE_LIFETIME_PRICE_ID?.trim() ||
-    process.env.STRIPE_PRICE_LIFETIME?.trim()
+  const monthlyId = STRIPE_PRICES.APP_MONTHLY
+  const annualId = STRIPE_PRICES.APP_ANNUAL
+  const lifetimeId = STRIPE_PRICES.LIFETIME
 
   const priceId =
     kind === 'monthly'
@@ -121,35 +170,36 @@ export async function POST(request: Request) {
     )
   }
 
-  const isLifetime = kind === 'lifetime'
-
   try {
     const session = await stripe.checkout.sessions.create({
-      mode: isLifetime ? 'payment' : 'subscription',
+      mode: isSubscriptionPrice(priceId) ? 'subscription' : 'payment',
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/upgrade?canceled=1`,
       allow_promotion_codes: true,
       billing_address_collection: 'auto',
       customer_update: { address: 'auto' },
-      payment_method_types: isLifetime ? undefined : ['card'],
-      customer_email: user.email ?? undefined,
-      client_reference_id: user.id,
+      payment_method_types: kind === 'lifetime' ? undefined : ['card'],
+      customer_email: user?.email ?? undefined,
+      client_reference_id: user?.id,
       metadata: {
-        supabase_user_id: user.id,
-        plan: isLifetime ? 'lifetime' : kind,
+        ...(user?.id ? { supabase_user_id: user.id } : {}),
+        plan: kind === 'lifetime' ? 'lifetime' : kind,
         ...(kind === 'annual'
           ? { billing_cycle: 'yearly', success_message: 'annual_checkout' }
           : {}),
       },
-      subscription_data: isLifetime
+      subscription_data: kind === 'lifetime'
         ? undefined
         : {
-            trial_period_days: 0,
-            metadata: {
-              supabase_user_id: user.id,
-              plan: kind,
-            },
+            // Do not set trial_period_days to 0 — Stripe requires ≥1 if present.
+            // App-managed Pro trial lives in Supabase; subscription charges after checkout.
+            metadata: user?.id
+              ? {
+                  supabase_user_id: user.id,
+                  plan: kind,
+                }
+              : { plan: kind },
           },
     })
 

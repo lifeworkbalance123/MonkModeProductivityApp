@@ -13,9 +13,45 @@ export type DailyLesson = {
   tip?: string
   media_type?: string | null
   media_url?: string | null
+  /** Shown after main media when the main item is YouTube or MP4 (e.g. bonus video + bonus MP3). */
+  secondary_audio_url?: string | null
   companion_media_type?: string | null
   companion_media_url?: string | null
   isBonus?: boolean
+  /** Inline bonus track (program CMS primary row) — shown below main lesson when any of these is set. */
+  bonus_label?: string | null
+  bonus_title?: string | null
+  bonus_body?: string | null
+  bonus_audio_url?: string | null
+  bonus_video_url?: string | null
+}
+
+/**
+ * Whether inline bonus UI should appear for these CMS fields.
+ * Matches `daily_lessons` primary-row semantics: title/body/media always count; a custom section label
+ * counts only if it is not the default placeholder `"Bonus"` (migration default / empty heading).
+ */
+export function inlineBonusTrackHasContent(fields: {
+  bonus_label?: string | null
+  bonus_title?: string | null
+  bonus_body?: string | null
+  bonus_audio_url?: string | null
+  bonus_video_url?: string | null
+}): boolean {
+  if (
+    fields.bonus_title?.trim() ||
+    fields.bonus_body?.trim() ||
+    fields.bonus_audio_url?.trim() ||
+    fields.bonus_video_url?.trim()
+  ) {
+    return true
+  }
+  const raw = fields.bonus_label?.trim()
+  return !!(raw && raw !== 'Bonus')
+}
+
+export function lessonHasInlineBonusTrack(lesson: DailyLesson): boolean {
+  return inlineBonusTrackHasContent(lesson)
 }
 
 function parsePhase(raw: string | null | undefined): LessonPhase {

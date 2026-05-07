@@ -2,10 +2,12 @@
 
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
+import { BonusBadge } from '@/components/bonus-badge'
 import { ProBadge } from '@/components/pro-badge'
 import { useUpgradeOffer } from '@/context/UpgradeOfferContext'
 import { usePlan } from '@/hooks/usePlan'
 import { Cloud } from 'lucide-react'
+import { Tooltip } from '@/components/ui/first-visit-tooltip'
 
 export default function CloudSyncPage() {
   const { openUpgrade } = useUpgradeOffer()
@@ -14,12 +16,17 @@ export default function CloudSyncPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Cloud sync</h1>
-          <p className="text-sm text-muted-foreground">
-            Back up and sync monkcubed data across your devices.
-          </p>
-        </div>
+        <Tooltip
+          id="tooltip_sync"
+          text="Your progress saves automatically. Connect Google Calendar to block focus time without conflicts."
+        >
+          <div>
+            <h1 className="text-2xl font-semibold">Cloud sync</h1>
+            <p className="text-sm text-muted-foreground">
+              Back up and sync monkcubed data across your devices.
+            </p>
+          </div>
+        </Tooltip>
 
         <div className="relative">
           <Card className="p-8 border-border opacity-40 pointer-events-none">
@@ -40,9 +47,9 @@ export default function CloudSyncPage() {
                 })
               }
             >
-              <ProBadge className="scale-110" />
+              <BonusBadge className="scale-110" />
               <p className="text-sm text-muted-foreground max-w-xs text-center">
-                Cloud sync is Pro — keep habits and goals backed up everywhere.
+                Cloud sync is a Bonus feature (included with Pro) — provided as-is, best effort.
               </p>
               <span className="text-xs font-medium text-accent">Tap to upgrade</span>
             </button>

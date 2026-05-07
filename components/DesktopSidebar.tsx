@@ -3,18 +3,21 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ChevronDown } from 'lucide-react'
+import { BonusBadge } from '@/components/bonus-badge'
 import { ProBadge } from '@/components/pro-badge'
 import { MonkCubedLogo } from '@/components/brand/MonkCubedLogo'
 import { PwaInstallButton } from '@/components/marketing/PwaInstallButton'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useColorTheme } from '@/context/ColorThemeContext'
 import { useSidebarNavCollapse } from '@/hooks/useSidebarNavCollapse'
+import { SidebarLogoutButton } from '@/components/SidebarLogoutButton'
 import { sidebarNavSections, type NavItem } from '@/lib/nav-config'
 import { cn } from '@/lib/utils'
 
 type Props = {
   showProGate: (item: NavItem) => boolean
   onProLocked: (description: string) => void
+  programButtonText?: string
 }
 
 function ItemLink({
@@ -22,15 +25,22 @@ function ItemLink({
   active,
   showProGate,
   onProLocked,
+  programButtonText,
 }: {
   item: NavItem
   active: boolean
   showProGate: (item: NavItem) => boolean
   onProLocked: (description: string) => void
+  programButtonText?: string
 }) {
   const Icon = item.icon
+  const displayLabel =
+    item.href === '/today' && programButtonText?.trim()
+      ? programButtonText
+      : item.label
   const locked = showProGate(item)
   if (locked) {
+    const Badge = item.paywallBadge === 'bonus' ? BonusBadge : ProBadge
     return (
       <button
         type="button"
@@ -45,14 +55,15 @@ function ItemLink({
         )}
       >
         <Icon className="h-4 w-4 shrink-0 opacity-80" />
-        <span className="flex-1 truncate">{item.label}</span>
-        <ProBadge className="shrink-0" />
+        <span className="flex-1 truncate">{displayLabel}</span>
+        <Badge className="shrink-0" />
       </button>
     )
   }
   return (
     <Link
       href={item.href}
+      prefetch={false}
       className={cn(
         'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors',
         active
@@ -61,19 +72,19 @@ function ItemLink({
       )}
     >
       <Icon className="h-4 w-4 shrink-0" />
-      <span className="truncate">{item.label}</span>
+      <span className="truncate">{displayLabel}</span>
     </Link>
   )
 }
 
-export function DesktopSidebar({ showProGate, onProLocked }: Props) {
+export function DesktopSidebar({ showProGate, onProLocked, programButtonText }: Props) {
   const pathname = usePathname()
   const { themeId } = useColorTheme()
   const { isActive, isGroupOpen, setGroupOpen } = useSidebarNavCollapse(pathname)
 
   return (
     <aside
-      className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-border bg-background/95 backdrop-blur-xl md:flex"
+      className="fixed left-0 top-0 z-[55] hidden h-screen w-64 flex-col border-r border-border bg-background/95 backdrop-blur-xl md:flex"
       aria-label="Main navigation"
     >
       <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border px-4">
@@ -130,8 +141,10 @@ export function DesktopSidebar({ showProGate, onProLocked }: Props) {
                       active={isActive(item.href)}
                       showProGate={showProGate}
                       onProLocked={onProLocked}
+                      programButtonText={programButtonText}
                     />
                   ))}
+                  {group.id === 'system' ? <SidebarLogoutButton /> : null}
                 </div>
               </CollapsibleContent>
             </Collapsible>

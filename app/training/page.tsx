@@ -10,6 +10,7 @@ import { AppPageChrome } from '@/components/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Tooltip } from '@/components/ui/first-visit-tooltip'
 import {
   Dialog,
   DialogContent,
@@ -523,16 +524,22 @@ export default function TrainingPage() {
           </div>
         ) : null}
         <section className="space-y-8">
-          <div className="text-center space-y-1 max-w-2xl mx-auto">
-            <h1 className="text-2xl sm:text-3xl font-semibold">monkcubed training</h1>
-            <p className="text-sm text-muted-foreground">Curated by the monkcubed team</p>
-            <p className="text-xs text-muted-foreground">
-              <Link href="/videos" className="text-accent underline-offset-4 hover:underline">
-                Video library
-              </Link>{' '}
-              — team catalog you can update from the admin panel.
-            </p>
-          </div>
+          <Tooltip
+            id="tooltip_training"
+            text="Your daily lesson. Read or listen. Each day builds a new discipline skill."
+            className="mx-auto w-full max-w-2xl"
+          >
+            <div className="text-center space-y-1 max-w-2xl mx-auto">
+              <h1 className="text-2xl sm:text-3xl font-semibold">monkcubed training</h1>
+              <p className="text-sm text-muted-foreground">Curated by the monkcubed team</p>
+              <p className="text-xs text-muted-foreground">
+                <Link href="/videos" className="text-accent underline-offset-4 hover:underline">
+                  Video library
+                </Link>{' '}
+                — team catalog you can update from the admin panel.
+              </p>
+            </div>
+          </Tooltip>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {adminModules.map((m) => (

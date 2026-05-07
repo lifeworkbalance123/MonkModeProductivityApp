@@ -11,8 +11,10 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { BonusBadge } from '@/components/bonus-badge'
 import { ProBadge } from '@/components/pro-badge'
 import { useSidebarNavCollapse } from '@/hooks/useSidebarNavCollapse'
+import { SidebarLogoutButton } from '@/components/SidebarLogoutButton'
 import { sidebarNavSections, type NavItem } from '@/lib/nav-config'
 import { cn } from '@/lib/utils'
 
@@ -82,6 +84,7 @@ export function MobileDrawer({
                       const Icon = item.icon
                       const locked = showProGate(item)
                       if (locked) {
+                        const Badge = item.paywallBadge === 'bonus' ? BonusBadge : ProBadge
                         return (
                           <li key={item.href}>
                             <button
@@ -97,7 +100,7 @@ export function MobileDrawer({
                             >
                               <Icon className="h-4 w-4 shrink-0" />
                               <span className="flex-1">{item.label}</span>
-                              <ProBadge />
+                              <Badge />
                             </button>
                           </li>
                         )
@@ -120,6 +123,14 @@ export function MobileDrawer({
                         </li>
                       )
                     })}
+                    {group.id === 'system' ? (
+                      <li>
+                        <SidebarLogoutButton
+                          className="min-h-11 gap-3"
+                          onAfterClick={() => onOpenChange(false)}
+                        />
+                      </li>
+                    ) : null}
                   </ul>
                 </CollapsibleContent>
               </Collapsible>

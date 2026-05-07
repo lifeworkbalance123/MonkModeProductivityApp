@@ -1,7 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import {
+  DEFAULT_ANNUAL_CENTS,
+  DEFAULT_LIFETIME_CENTS,
+  DEFAULT_MONTHLY_CENTS,
+  findPricingRow,
+  formatPriceCents,
+  indicativeSubscriptionRates,
+  type PricingConfigRow,
+} from '@/lib/pricingDisplay'
 
 type AdminStats = {
   totalUsers: number
@@ -29,23 +38,29 @@ export default function AdminOverviewPage() {
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [recentUsers, setRecentUsers] = useState<UserRow[]>([])
+  const [pricingRows, setPricingRows] = useState<PricingConfigRow[]>([])
 
   useEffect(() => {
     let cancelled = false
 
     async function loadStats() {
       try {
-        const { data: users, error } = await supabase
-          .from('users')
-          .select(
-            'id, email, plan, created_at, trial_end_date, is_pro',
-          )
-          .order('created_at', { ascending: false })
+        const [{ data: users, error }, { data: pricingData, error: pricingError }] =
+          await Promise.all([
+            supabase
+              .from('users')
+              .select('id, email, plan, created_at, trial_end_date, is_pro')
+              .order('created_at', { ascending: false }),
+            supabase.from('pricing_config').select('*'),
+          ])
 
         if (cancelled) return
         if (error) {
           console.error(error)
           return
+        }
+        if (!pricingError && Array.isArray(pricingData)) {
+          setPricingRows(pricingData as PricingConfigRow[])
         }
 
         const list = (users ?? []) as UserRow[]
@@ -59,6 +74,9 @@ export default function AdminOverviewPage() {
 
         const monthlyCount = list.filter((u) => u.plan === 'monthly').length
         const annualCount = list.filter((u) => u.plan === 'annual').length
+        const rates = indicativeSubscriptionRates(
+          (pricingData as PricingConfigRow[] | null) ?? [],
+        )
 
         const calculatedStats: AdminStats = {
           totalUsers: list.length,
@@ -79,7 +97,9 @@ export default function AdminOverviewPage() {
             return new Date(u.created_at) >= weekStart
           }).length,
           waitlistCount: 0,
-          estimatedMRR: monthlyCount * 9.99 + (annualCount * 59.99) / 12,
+          estimatedMRR:
+            monthlyCount * rates.monthlyPerSeatDollars +
+            (annualCount * rates.annualPerSeatDollars) / 12,
         }
 
         const { count } = await supabase
@@ -105,6 +125,37 @@ export default function AdminOverviewPage() {
       cancelled = true
     }
   }, [])
+
+  const planBreakdown = useMemo(() => {
+    const m = findPricingRow(pricingRows, 'app_monthly')
+    const a = findPricingRow(pricingRows, 'app_annual')
+    const l = findPricingRow(pricingRows, 'lifetime')
+    const mc = m?.current_price ?? DEFAULT_MONTHLY_CENTS
+    const ac = a?.current_price ?? DEFAULT_ANNUAL_CENTS
+    const lc = l?.current_price ?? DEFAULT_LIFETIME_CENTS
+    const mCur = m?.currency ?? 'AUD'
+    const aCur = a?.currency ?? 'AUD'
+    const lCur = l?.currency ?? 'AUD'
+    return [
+      { label: 'Trial (14-day free)', count: stats?.trialUsers ?? 0, color: '#3B82F6' },
+      {
+        label: `Pro Monthly (${formatPriceCents(mc, mCur)}/mo)`,
+        count: stats?.monthlyUsers ?? 0,
+        color: '#10B981',
+      },
+      {
+        label: `Pro Annual (${formatPriceCents(ac, aCur)}/yr)`,
+        count: stats?.annualUsers ?? 0,
+        color: '#8B5CF6',
+      },
+      {
+        label: `Lifetime (${formatPriceCents(lc, lCur)} one-time)`,
+        count: stats?.lifetimeUsers ?? 0,
+        color: 'var(--accent)',
+      },
+      { label: 'Free', count: stats?.freeUsers ?? 0, color: 'var(--muted-foreground)' },
+    ]
+  }, [pricingRows, stats])
 
   if (loading) {
     return <div className="text-muted-foreground">Loading dashboard…</div>
@@ -166,25 +217,7 @@ export default function AdminOverviewPage() {
 
       <div className="mb-8 rounded-xl border border-border bg-card p-6">
         <h2 className="mb-4 text-base font-medium text-foreground">Plan breakdown</h2>
-        {[
-          { label: 'Trial (14-day free)', count: stats?.trialUsers ?? 0, color: '#3B82F6' },
-          {
-            label: 'Pro Monthly ($9.99/mo)',
-            count: stats?.monthlyUsers ?? 0,
-            color: '#10B981',
-          },
-          {
-            label: 'Pro Annual ($59.99/yr)',
-            count: stats?.annualUsers ?? 0,
-            color: '#8B5CF6',
-          },
-          {
-            label: 'Lifetime ($149)',
-            count: stats?.lifetimeUsers ?? 0,
-            color: 'var(--accent)',
-          },
-          { label: 'Free', count: stats?.freeUsers ?? 0, color: 'var(--muted-foreground)' },
-        ].map((row) => (
+        {planBreakdown.map((row) => (
           <div
             key={row.label}
             className="flex items-center justify-between border-b border-border py-2.5 last:border-0"

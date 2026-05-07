@@ -28,30 +28,56 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/context/ToastContext'
 import type { OnboardingStepKind, OnboardingStepRow } from '@/lib/onboardingSteps'
+import {
+  OnboardingProgramSelectionCard,
+  type AdminOnboardingSettingsPayload,
+} from '@/components/admin/OnboardingProgramSelectionCard'
+import { ProgramTracksEditor } from '@/components/admin/ProgramTracksEditor'
+import type { SelectedProgram } from '@/lib/onboardingProgramFlow'
+import {
+  ADMIN_STEP_PROGRAM_TABS,
+  type ProgramTrackConfig,
+} from '@/lib/onboardingProgramFlow'
+import { cn } from '@/lib/utils'
 
-const KINDS: OnboardingStepKind[] = ['welcome', 'why', 'commitment', 'wake', 'ready', 'content']
+const KINDS: OnboardingStepKind[] = [
+  'welcome',
+  'why',
+  'commitment',
+  'wake',
+  'ready',
+  'content',
+  'goal',
+  'sleep',
+  'accountability',
+  'payment',
+]
 
 const emptyForm = {
   title: '',
   description: '',
   video_url: '',
+  image_url: '',
   action_label: 'Next',
   step_kind: 'content' as OnboardingStepKind,
   step_order: '0',
 }
 
 type CreateBody = {
+  program_type: SelectedProgram
   title: string
   description: string | null
   video_url: string | null
+  image_url: string | null
   action_label: string
   step_kind: OnboardingStepKind
 }
 
-/** Supabase/PostgREST when `onboarding_steps` was never migrated to this project. */
+/** Supabase/PostgREST when onboarding tables were never migrated to this project. */
 function looksLikeMissingOnboardingStepsTable(message: string): boolean {
   const m = message.toLowerCase()
   return (
+    m.includes('onboarding_step_templates') ||
     m.includes('onboarding_steps') ||
     (m.includes('could not find') && m.includes('schema cache'))
   )
@@ -59,8 +85,11 @@ function looksLikeMissingOnboardingStepsTable(message: string): boolean {
 
 export default function AdminOnboardingPage() {
   const { showToast } = useToast()
+  const [programTab, setProgramTab] = useState<SelectedProgram>('sprint_standard')
+  const [isLoading, setIsLoading] = useState(true)
+  const [settings, setSettings] = useState<AdminOnboardingSettingsPayload | null>(null)
+  const [tracks, setTracks] = useState<ProgramTrackConfig[] | null>(null)
   const [steps, setSteps] = useState<OnboardingStepRow[]>([])
-  const [loading, setLoading] = useState(true)
   const [catalogError, setCatalogError] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -77,29 +106,85 @@ export default function AdminOnboardingPage() {
     return { Authorization: `Bearer ${token}` } as Record<string, string>
   }, [])
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const loadAll = useCallback(async (opts?: { suppressGlobalSpinner?: boolean }) => {
+    const quiet = opts?.suppressGlobalSpinner === true
+    if (!quiet) setIsLoading(true)
     setCatalogError(null)
     try {
-      const res = await fetch('/api/onboarding/steps')
-      const json = (await res.json()) as { steps?: OnboardingStepRow[]; error?: string }
-      if (!res.ok) {
-        setCatalogError(json.error ?? 'Failed to load steps')
-        setSteps([])
-        return
+      const headers = await authHeader()
+      const stepsRes = fetch(
+        `/api/onboarding/steps?programType=${encodeURIComponent(programTab)}`,
+        { cache: 'no-store' },
+      )
+      const settingsP = headers
+        ? fetch('/api/admin/onboarding/settings', { headers, cache: 'no-store' })
+        : Promise.resolve(
+            new Response(JSON.stringify({ settings: null, error: 'Unauthorized' }), {
+              status: 401,
+              headers: { 'Content-Type': 'application/json' },
+            }),
+          )
+      const tracksP = headers
+        ? fetch('/api/admin/program-tracks', { headers, cache: 'no-store' })
+        : Promise.resolve(
+            new Response(JSON.stringify({ tracks: [], error: 'Unauthorized' }), {
+              status: 401,
+              headers: { 'Content-Type': 'application/json' },
+            }),
+          )
+
+      const [settingsRes, tracksRes, stepsResponse] = await Promise.all([
+        settingsP,
+        tracksP,
+        stepsRes,
+      ])
+
+      const settingsJson = (await settingsRes.json()) as {
+        settings?: AdminOnboardingSettingsPayload | null
+        error?: string
       }
-      setSteps(json.steps ?? [])
+      const tracksJson = (await tracksRes.json()) as { tracks?: ProgramTrackConfig[]; error?: string }
+      const stepsJson = (await stepsResponse.json()) as {
+        steps?: OnboardingStepRow[]
+        error?: string
+      }
+
+      if (settingsRes.ok) {
+        setSettings(settingsJson.settings ?? null)
+      } else {
+        setSettings(null)
+      }
+
+      if (tracksRes.ok && Array.isArray(tracksJson.tracks) && tracksJson.tracks.length > 0) {
+        setTracks(tracksJson.tracks)
+      } else {
+        setTracks(null)
+      }
+
+      if (!stepsResponse.ok) {
+        setCatalogError(stepsJson.error ?? 'Failed to load steps')
+        setSteps([])
+      } else {
+        setSteps(stepsJson.steps ?? [])
+      }
     } catch {
       setCatalogError('Could not reach the server')
       setSteps([])
+      setSettings(null)
+      setTracks(null)
     } finally {
-      setLoading(false)
+      if (!quiet) setIsLoading(false)
     }
-  }, [])
+  }, [authHeader, programTab])
 
   useEffect(() => {
-    void load()
-  }, [load])
+    void loadAll()
+  }, [loadAll])
+
+  function cancelEdit() {
+    setEditingId(null)
+    setForm(emptyForm)
+  }
 
   function startEdit(s: OnboardingStepRow) {
     setEditingId(s.id)
@@ -107,6 +192,7 @@ export default function AdminOnboardingPage() {
       title: s.title,
       description: s.description ?? '',
       video_url: s.video_url ?? '',
+      image_url: s.image_url ?? '',
       action_label: s.action_label,
       step_kind: s.step_kind,
       step_order: String(s.step_order),
@@ -114,10 +200,10 @@ export default function AdminOnboardingPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  function cancelEdit() {
-    setEditingId(null)
-    setForm(emptyForm)
-  }
+  useEffect(() => {
+    cancelEdit()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset form when switching program track
+  }, [programTab])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -131,6 +217,7 @@ export default function AdminOnboardingPage() {
     const action_label = form.action_label.trim() || 'Next'
     const description = form.description.trim() || null
     const video_url = form.video_url.trim() || null
+    const image_url = form.image_url.trim() || null
     const step_order = Number.parseInt(form.step_order, 10)
     if (!title) {
       showToast('Title is required', 'error')
@@ -145,9 +232,11 @@ export default function AdminOnboardingPage() {
     try {
       const isEdit = !!editingId
       const createPayload: CreateBody = {
+        program_type: programTab,
         title,
         description,
         video_url,
+        image_url,
         action_label,
         step_kind: form.step_kind,
       }
@@ -161,6 +250,7 @@ export default function AdminOnboardingPage() {
                 title,
                 description,
                 video_url,
+                image_url,
                 action_label,
                 step_kind: form.step_kind,
                 step_order,
@@ -177,7 +267,7 @@ export default function AdminOnboardingPage() {
       }
       showToast(isEdit ? 'Step updated' : 'Step created', 'success')
       cancelEdit()
-      await load()
+      await loadAll({ suppressGlobalSpinner: true })
     } finally {
       setSaving(false)
     }
@@ -200,7 +290,7 @@ export default function AdminOnboardingPage() {
     const res = await fetch('/api/admin/onboarding-steps', {
       method: 'PATCH',
       headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ordered_ids }),
+      body: JSON.stringify({ program_type: programTab, ordered_ids }),
     })
     const json = (await res.json()) as { error?: string }
     if (!res.ok) {
@@ -210,7 +300,7 @@ export default function AdminOnboardingPage() {
       return
     }
     showToast('Order saved', 'success')
-    await load()
+    await loadAll({ suppressGlobalSpinner: true })
   }
 
   async function confirmDelete() {
@@ -237,25 +327,67 @@ export default function AdminOnboardingPage() {
       showToast('Step deleted', 'success')
       if (editingId === deleteId) cancelEdit()
       setDeleteId(null)
-      await load()
+      await loadAll({ suppressGlobalSpinner: true })
     } finally {
       setDeleting(false)
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="mx-auto max-w-3xl p-6" aria-busy="true" aria-label="Loading onboarding admin">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 max-w-[33%] rounded-md bg-muted" />
+          <div className="h-32 rounded-md bg-muted" />
+          <div className="h-64 rounded-md bg-muted" />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Onboarding steps</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Controls the{' '}
-          <Link href="/onboarding" className="text-accent underline hover:opacity-90">
-            /onboarding
-          </Link>{' '}
-          wizard. Use <code className="text-foreground">step_kind</code> for special layouts; use{' '}
-          <code className="text-foreground">content</code> for a simple title + body + button.
-        </p>
-      </div>
+      <>
+        <OnboardingProgramSelectionCard serverSnapshot={settings} />
+
+          <div>
+            <h1 className="text-xl font-semibold text-foreground">Onboarding steps</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Controls the{' '}
+              <Link href="/onboarding" className="text-accent underline hover:opacity-90">
+                /onboarding
+              </Link>{' '}
+              wizard. Pick a program below; the list and new steps use{' '}
+              <code className="text-foreground">program_type</code> on each template row. Use{' '}
+              <code className="text-foreground">step_kind</code> for special layouts; use{' '}
+              <code className="text-foreground">content</code> for a simple title + body + button.
+            </p>
+            <div className="mt-6 border-b border-border">
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Wizard steps by program
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {ADMIN_STEP_PROGRAM_TABS.map((prog) => (
+                  <button
+                    key={prog.value}
+                    type="button"
+                    onClick={() => setProgramTab(prog.value)}
+                    className={cn(
+                      'rounded-t-md px-4 py-2 text-sm transition-colors',
+                      programTab === prog.value
+                        ? 'border-b-2 border-primary font-semibold text-foreground'
+                        : 'border-b-2 border-transparent text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    <span className="mr-1.5" aria-hidden>
+                      {prog.icon}
+                    </span>
+                    {prog.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
 
       {catalogError ? (
         <Card
@@ -267,16 +399,17 @@ export default function AdminOnboardingPage() {
         >
           <p className="font-medium text-white">
             {looksLikeMissingOnboardingStepsTable(catalogError)
-              ? 'Database: onboarding_steps is missing on this Supabase project'
+              ? 'Database: onboarding_step_templates is missing on this Supabase project'
               : 'Could not load onboarding steps'}
           </p>
           <p className="mt-2 opacity-90">{catalogError}</p>
           {looksLikeMissingOnboardingStepsTable(catalogError) ? (
             <p className="mt-3 text-xs opacity-80">
-              Run the migration{' '}
-              <code className="rounded bg-black/30 px-1">supabase/migrations/20260419120000_onboarding_steps.sql</code>{' '}
-              on production (SQL Editor or <code className="rounded bg-black/30 px-1">supabase db push</code>), then
-              retry. Creates and edits will fail until the table exists.
+              Apply migrations including{' '}
+              <code className="rounded bg-black/30 px-1">
+                supabase/migrations/20260424201000_onboarding_step_templates.sql
+              </code>{' '}
+              (SQL Editor or <code className="rounded bg-black/30 px-1">supabase db push</code>), then retry.
             </p>
           ) : null}
           <div className="mt-4">
@@ -284,10 +417,10 @@ export default function AdminOnboardingPage() {
               type="button"
               variant="outline"
               className="border-border text-muted-foreground hover:bg-muted"
-              disabled={loading}
-              onClick={() => void load()}
+              disabled={isLoading}
+              onClick={() => void loadAll()}
             >
-              {loading ? (
+              {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
                   Retrying…
@@ -316,9 +449,20 @@ export default function AdminOnboardingPage() {
         </ul>
       </Card>
 
-      <Card className="border-border bg-card p-6">
-        <h2 className="mb-4 text-sm font-medium text-foreground">{editingId ? 'Edit step' : 'Add step'}</h2>
-        <form className="space-y-4" onSubmit={(e) => void submit(e)}>
+        <div className="program-cards-container">
+          <ProgramTracksEditor serverSnapshot={tracks} />
+        </div>
+
+          <Card className="border-border bg-card p-6">
+            <h2 className="text-sm font-medium text-foreground">{editingId ? 'Edit step' : 'Add step'}</h2>
+            <p className="mb-4 mt-1 text-xs text-muted-foreground">
+              New and edited rows use{' '}
+              <span className="font-medium text-foreground">
+                {ADMIN_STEP_PROGRAM_TABS.find((p) => p.value === programTab)?.label ?? programTab}
+              </span>{' '}
+              (<code className="text-foreground/90">{programTab}</code>).
+            </p>
+            <form className="space-y-4" onSubmit={(e) => void submit(e)}>
           <div className="space-y-2">
             <Label className="text-muted-foreground">Step kind</Label>
             <Select
@@ -369,6 +513,18 @@ export default function AdminOnboardingPage() {
               id="ob-v"
               value={form.video_url}
               onChange={(e) => setForm((f) => ({ ...f, video_url: e.target.value }))}
+              className="border-border bg-background text-foreground"
+              placeholder="https://…"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="ob-img" className="text-muted-foreground">
+              Image URL (optional)
+            </Label>
+            <Input
+              id="ob-img"
+              value={form.image_url}
+              onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
               className="border-border bg-background text-foreground"
               placeholder="https://…"
             />
@@ -434,108 +590,106 @@ export default function AdminOnboardingPage() {
         </form>
       </Card>
 
-      <div>
-        <h2 className="mb-3 text-sm font-medium text-foreground">Steps ({steps.length})</h2>
-        {loading ? (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            Loading…
-          </p>
-        ) : steps.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {catalogError
-              ? looksLikeMissingOnboardingStepsTable(catalogError)
-                ? 'Fix the database issue above, then retry.'
-                : 'See the alert above, then retry.'
-              : 'No rows. Run the migration seed or add a step above.'}
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {steps.map((s, idx) => (
-              <li
-                key={s.id}
-                className="flex flex-col gap-3 rounded-lg border border-border bg-card/80 p-4 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground">
-                    #{s.step_order} · {s.step_kind}
-                  </p>
-                  <p className="font-medium text-foreground">{s.title}</p>
-                  <p className="line-clamp-2 text-xs text-muted-foreground">{s.description?.slice(0, 120) ?? '—'}</p>
-                </div>
-                <div className="flex shrink-0 flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    className="border-border"
-                    disabled={idx === 0}
-                    onClick={() => void moveStep(s.id, -1)}
-                    aria-label="Move up"
+          <div className="steps-container">
+            <h2 className="mb-3 text-sm font-medium text-foreground">Steps ({steps.length})</h2>
+            {steps.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {catalogError
+                  ? looksLikeMissingOnboardingStepsTable(catalogError)
+                    ? 'Fix the database issue above, then retry.'
+                    : 'See the alert above, then retry.'
+                  : 'No rows. Run the migration seed or add a step above.'}
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {steps.map((s, idx) => (
+                  <li
+                    key={s.id}
+                    className="flex flex-col gap-3 rounded-lg border border-border bg-card/80 p-4 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <ArrowUp className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    className="border-border"
-                    disabled={idx === steps.length - 1}
-                    onClick={() => void moveStep(s.id, 1)}
-                    aria-label="Move down"
-                  >
-                    <ArrowDown className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="border-border"
-                    onClick={() => startEdit(s)}
-                  >
-                    <Pencil className="mr-1 h-3.5 w-3.5" aria-hidden />
-                    Edit
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="destructive"
-                    className="bg-red-900/40 hover:bg-red-900/70"
-                    onClick={() => setDeleteId(s.id)}
-                  >
-                    <Trash2 className="mr-1 h-3.5 w-3.5" aria-hidden />
-                    Delete
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">
+                        #{s.step_order} · {s.step_kind}
+                      </p>
+                      <p className="font-medium text-foreground">{s.title}</p>
+                      <p className="line-clamp-2 text-xs text-muted-foreground">
+                        {s.description?.slice(0, 120) ?? '—'}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="border-border"
+                        disabled={idx === 0}
+                        onClick={() => void moveStep(s.id, -1)}
+                        aria-label="Move up"
+                      >
+                        <ArrowUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="border-border"
+                        disabled={idx === steps.length - 1}
+                        onClick={() => void moveStep(s.id, 1)}
+                        aria-label="Move down"
+                      >
+                        <ArrowDown className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="border-border"
+                        onClick={() => startEdit(s)}
+                      >
+                        <Pencil className="mr-1 h-3.5 w-3.5" aria-hidden />
+                        Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        className="bg-red-900/40 hover:bg-red-900/70"
+                        onClick={() => setDeleteId(s.id)}
+                      >
+                        <Trash2 className="mr-1 h-3.5 w-3.5" aria-hidden />
+                        Delete
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
-      <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <AlertDialogContent className="border-border bg-card text-foreground">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this step?</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground">
-              Users on /onboarding will no longer see it. This cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="border-border bg-transparent">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-600 text-white hover:bg-red-500"
-              disabled={deleting}
-              onClick={(e) => {
-                e.preventDefault()
-                void confirmDelete()
-              }}
-            >
-              {deleting ? 'Deleting…' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+            <AlertDialogContent className="border-border bg-card text-foreground">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this step?</AlertDialogTitle>
+                <AlertDialogDescription className="text-muted-foreground">
+                  Users on /onboarding will no longer see it. This cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="border-border bg-transparent">Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-red-600 text-white hover:bg-red-500"
+                  disabled={deleting}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    void confirmDelete()
+                  }}
+                >
+                  {deleting ? 'Deleting…' : 'Delete'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+      </>
     </div>
   )
 }

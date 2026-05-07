@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { PU } from '@/lib/program-ui-tokens'
+import { getUserIdSafe } from '@/lib/supabaseAuthSafe'
 
 export const REVIEW_DAYS = [7, 14, 21, 28, 35, 42, 49, 56] as const
 
@@ -27,15 +28,13 @@ export default function WeeklyReview({ dayNumber }: { dayNumber: number }) {
   const loadReview = useCallback(async () => {
     setLoading(true)
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
+      const userId = await getUserIdSafe()
+      if (!userId) return
 
       const { data, error } = await supabase
         .from('weekly_reviews')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('week_number', weekNumber)
         .maybeSingle()
 
@@ -67,14 +66,12 @@ export default function WeeklyReview({ dayNumber }: { dayNumber: number }) {
 
     setSaving(true)
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
+      const userId = await getUserIdSafe()
+      if (!userId) return
 
       const { error } = await supabase.from('weekly_reviews').upsert(
         {
-          user_id: user.id,
+          user_id: userId,
           week_number: weekNumber,
           day_number: dayNumber,
           what_worked: w,

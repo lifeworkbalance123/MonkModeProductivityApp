@@ -1,15 +1,14 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createServiceRoleClient } from '@/lib/supabase-service'
+import { STRIPE_PRICES } from '@/lib/stripePrices'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   const stripeKey = process.env.STRIPE_SECRET_KEY?.trim()
-  const annualPriceId =
-    process.env.STRIPE_PRO_ANNUAL_PRICE_ID?.trim() ||
-    process.env.STRIPE_PRICE_PRO_ANNUAL?.trim()
+  const annualPriceId = STRIPE_PRICES.APP_ANNUAL
   if (!stripeKey || !annualPriceId) {
     return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 })
   }

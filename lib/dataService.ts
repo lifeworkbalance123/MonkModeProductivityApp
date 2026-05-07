@@ -24,6 +24,13 @@ import {
   type ScheduleTemplate,
   type TemplateBlock,
 } from '@/lib/scheduleTemplate'
+import {
+  enqueueLogHabit,
+  readOfflineQueue,
+  saveOfflineQueue,
+  type LogHabitPayload,
+  type OfflineAction,
+} from '@/lib/offline-action-queue'
 
 export type DataServiceContext = {
   userId: string | null
@@ -1020,7 +1027,69 @@ export async function updateStreak(
 }
 
 /**
+ * Sync one habit cell to `habit_completions` only. Returns true if no error (or nothing to sync).
+ */
+export async function syncHabitCompletionToCloud(
+  ctx: DataServiceContext,
+  habitId: string,
+  dateKey: string,
+  completed: boolean,
+): Promise<boolean> {
+  if (!shouldSyncToCloud(ctx) || !ctx.userId || !isUuid(habitId)) return true
+  if (completed) {
+    const { error } = await supabase.from('habit_completions').upsert(
+      {
+        user_id: ctx.userId,
+        habit_id: habitId,
+        date: dateKey,
+        completed: true,
+      },
+      { onConflict: 'user_id,habit_id,date' },
+    )
+    if (error) {
+      console.error('habit_completions upsert', error)
+      return false
+    }
+    return true
+  }
+  const { error } = await supabase
+    .from('habit_completions')
+    .delete()
+    .eq('user_id', ctx.userId)
+    .eq('habit_id', habitId)
+    .eq('date', dateKey)
+  if (error) {
+    console.error('habit_completions delete', error)
+    return false
+  }
+  return true
+}
+
+/** Replay queued habit syncs after reconnect. Returns number successfully pushed. */
+export async function replayOfflineHabitQueue(
+  ctx: DataServiceContext,
+): Promise<number> {
+  const queue = readOfflineQueue()
+  if (queue.length === 0) return 0
+  const remaining: OfflineAction[] = []
+  let replayed = 0
+  for (const action of queue) {
+    if (action.type !== 'LOG_HABIT') {
+      remaining.push(action)
+      continue
+    }
+    const d = action.data as LogHabitPayload
+    const ok = await syncHabitCompletionToCloud(ctx, d.habitId, d.dateKey, d.completed)
+    if (ok) replayed += 1
+    else remaining.push(action)
+  }
+  saveOfflineQueue(remaining)
+  return replayed
+}
+
+/**
  * Sync one habit completion cell to Supabase (Pro). React state / debounced persist own localStorage.
+ * On cloud failure, queues `LOG_HABIT` in localStorage for {@link replayOfflineHabitQueue}.
  */
 export async function setHabitCompletion(
   ctx: DataServiceContext,
@@ -1029,25 +1098,14 @@ export async function setHabitCompletion(
   completed: boolean,
   nextHabitLog: HabitLog,
 ): Promise<void> {
-  if (shouldSyncToCloud(ctx) && ctx.userId && isUuid(habitId)) {
-    if (completed) {
-      await supabase.from('habit_completions').upsert(
-        {
-          user_id: ctx.userId,
-          habit_id: habitId,
-          date: dateKey,
-          completed: true,
-        },
-        { onConflict: 'user_id,habit_id,date' },
-      )
-    } else {
-      await supabase
-        .from('habit_completions')
-        .delete()
-        .eq('user_id', ctx.userId)
-        .eq('habit_id', habitId)
-        .eq('date', dateKey)
-    }
+  const cloudOk = await syncHabitCompletionToCloud(ctx, habitId, dateKey, completed)
+  if (
+    !cloudOk &&
+    shouldSyncToCloud(ctx) &&
+    ctx.userId &&
+    isUuid(habitId)
+  ) {
+    enqueueLogHabit({ habitId, dateKey, completed })
   }
 
   await updateStreak(ctx, nextHabitLog)

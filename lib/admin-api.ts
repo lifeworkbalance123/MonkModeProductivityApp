@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-service'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { isAdminEmail } from '@/lib/admin'
 
 export type AdminContext = {
   admin: SupabaseClient
@@ -43,14 +44,18 @@ export async function requireAdmin(request: Request): Promise<
     .eq('id', user.id)
     .maybeSingle()
 
-  if (rowErr || !(row as { is_admin?: boolean } | null)?.is_admin) {
+  const rowObj = (row as { is_admin?: boolean; email?: string | null } | null) ?? null
+  const isDbAdmin = rowObj?.is_admin === true
+  const isEmailAdmin = isAdminEmail(rowObj?.email ?? user.email ?? null)
+
+  if (rowErr || (!isDbAdmin && !isEmailAdmin)) {
     return { response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
   }
 
   return {
     admin,
     adminUserId: user.id,
-    adminEmail: (row as { email?: string | null }).email ?? user.email ?? null,
+    adminEmail: rowObj?.email ?? user.email ?? null,
   }
 }
 

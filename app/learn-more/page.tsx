@@ -24,7 +24,7 @@ function Section({
 
 export default function LearnMorePage() {
   return (
-    <AppPageChrome>
+    <AppPageChrome forceMarketingNav>
       <div className="min-h-screen bg-background">
         <main className="max-w-2xl mx-auto px-4 sm:px-6 pt-4 pb-20 md:pt-2">
         <p className="text-sm text-muted-foreground mb-10">

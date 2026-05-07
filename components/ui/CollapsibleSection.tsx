@@ -1,58 +1,104 @@
 'use client'
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { ChevronDown } from 'lucide-react'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { useCallback, useEffect, useId, useState, type ReactNode } from 'react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import {
+  COLLAPSE_ALL_EVENT,
+  EXPAND_ALL_EVENT,
+} from '@/components/ui/ExpandAllButton'
 
-type Props = {
+export interface CollapsibleSectionProps {
   title: string
-  storageKey?: string
-  defaultOpen?: boolean
   children: ReactNode
+  defaultExpanded?: boolean
+  storageKey?: string
+  icon?: ReactNode
+  className?: string
+  /** When false, does not listen for global expand/collapse-all (default true). */
+  respondToDashboardExpandAll?: boolean
 }
 
-export function CollapsibleSection({ title, storageKey, defaultOpen = true, children }: Props) {
-  const [open, setOpen] = useState(defaultOpen)
-
-  const key = useMemo(() => (storageKey ? `collapsible:${storageKey}` : null), [storageKey])
-
-  useEffect(() => {
-    if (!key) return
-    try {
-      const raw = localStorage.getItem(key)
-      if (raw === '0') setOpen(false)
-      if (raw === '1') setOpen(true)
-    } catch {
-      // ignore
-    }
-  }, [key])
+export function CollapsibleSection({
+  title,
+  children,
+  defaultExpanded = false,
+  storageKey,
+  icon,
+  className,
+  respondToDashboardExpandAll = true,
+}: CollapsibleSectionProps) {
+  const panelId = useId()
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
   useEffect(() => {
-    if (!key) return
-    try {
-      localStorage.setItem(key, open ? '1' : '0')
-    } catch {
-      // ignore
+    if (!respondToDashboardExpandAll) return
+    const handleExpandAll = () => setIsExpanded(true)
+    const handleCollapseAll = () => setIsExpanded(false)
+
+    window.addEventListener(EXPAND_ALL_EVENT, handleExpandAll)
+    window.addEventListener(COLLAPSE_ALL_EVENT, handleCollapseAll)
+
+    return () => {
+      window.removeEventListener(EXPAND_ALL_EVENT, handleExpandAll)
+      window.removeEventListener(COLLAPSE_ALL_EVENT, handleCollapseAll)
     }
-  }, [key, open])
+  }, [])
+
+  useEffect(() => {
+    if (!storageKey) return
+    try {
+      const saved = localStorage.getItem(storageKey)
+      if (saved !== null) {
+        setIsExpanded(saved === 'true')
+      }
+    } catch {
+      /* private mode */
+    }
+  }, [storageKey])
+
+  const toggle = useCallback(() => {
+    setIsExpanded((prev) => {
+      const next = !prev
+      if (storageKey) {
+        try {
+          localStorage.setItem(storageKey, String(next))
+        } catch {
+          /* ignore */
+        }
+      }
+      return next
+    })
+  }, [storageKey])
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-            aria-label={open ? 'Collapse section' : 'Expand section'}
-          >
-            <ChevronDown className={open ? 'h-4 w-4 rotate-180 transition-transform' : 'h-4 w-4 transition-transform'} />
-            {open ? 'Hide' : 'Show'}
-          </button>
-        </CollapsibleTrigger>
-      </div>
-      <CollapsibleContent>{children}</CollapsibleContent>
-    </Collapsible>
+    <div
+      className={cn(
+        'mb-4 overflow-hidden rounded-lg border border-border bg-card',
+        className,
+      )}
+    >
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={isExpanded}
+        aria-controls={panelId}
+        className="flex w-full items-center justify-between gap-2 bg-muted/40 px-4 py-3 text-left transition-colors hover:bg-muted/60"
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          {icon ? <span className="shrink-0 text-muted-foreground">{icon}</span> : null}
+          <span className="truncate font-medium text-foreground">{title}</span>
+        </div>
+        <span className="shrink-0 text-muted-foreground" aria-hidden>
+          {isExpanded ? <ChevronDown className="size-5" /> : <ChevronRight className="size-5" />}
+        </span>
+      </button>
+
+      {isExpanded ? (
+        <div id={panelId} className="border-t border-border p-4">
+          {children}
+        </div>
+      ) : null}
+    </div>
   )
 }
-

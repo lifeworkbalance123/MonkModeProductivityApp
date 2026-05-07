@@ -29,6 +29,7 @@ type Props = {
   menuOpen: boolean
   showMenuHint: boolean
   onDismissMenuHint: () => void
+  programButtonText?: string
 }
 
 export function MobileBottomNav({
@@ -36,6 +37,7 @@ export function MobileBottomNav({
   menuOpen,
   showMenuHint,
   onDismissMenuHint,
+  programButtonText,
 }: Props) {
   const pathname = usePathname()
 
@@ -60,6 +62,10 @@ export function MobileBottomNav({
       <div className="mx-auto flex max-w-lg items-stretch justify-around gap-0 px-1 pt-1">
         {bottomTabItems.map(({ href, label, icon: Icon }) => {
           const active = tabActive(href)
+          const displayLabel =
+            href === '/today' && programButtonText?.trim()
+              ? programButtonText
+              : label
           return (
             <Link
               key={href}
@@ -72,7 +78,7 @@ export function MobileBottomNav({
               )}
             >
               <Icon className={cn('h-5 w-5 shrink-0', active && 'text-accent')} />
-              <span className="truncate">{label}</span>
+              <span className="truncate">{displayLabel}</span>
             </Link>
           )
         })}

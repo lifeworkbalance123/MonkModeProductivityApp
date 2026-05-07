@@ -28,7 +28,7 @@ const FAQ_ITEMS = [
   {
     group: 'ACCOUNT & DATA',
     q: 'Can I use monkcubed on multiple devices?',
-    a: 'Cloud sync across devices is a Pro feature. On the Free plan, your data stays on the device you used to create it.',
+    a: 'Cloud sync across devices is a Bonus feature included with Pro (provided as-is, best effort). On the Free plan, your data stays on the device you used to create it.',
   },
   {
     group: 'ACCOUNT & DATA',
@@ -38,7 +38,7 @@ const FAQ_ITEMS = [
   {
     group: 'ACCOUNT & DATA',
     q: 'Can I export my data?',
-    a: 'Data export (PDF and CSV) is available on the Pro plan from Settings → Export data.',
+    a: 'Data export (PDF and CSV) is a Bonus feature included with Pro (provided as-is, format may change). Find it in Settings → Export data.',
   },
   {
     group: 'BILLING & SUBSCRIPTIONS',
@@ -78,7 +78,7 @@ const FAQ_ITEMS = [
   {
     group: 'TECHNICAL',
     q: 'Can I use monkcubed offline?',
-    a: 'Yes. The Free plan works fully offline (data saves to your device). Pro cloud sync requires an internet connection, but the app remains usable offline and syncs when you reconnect.',
+    a: 'Yes. The Free plan works fully offline (data saves to your device). Bonus cloud sync (included with Pro) requires an internet connection, but the app remains usable offline and syncs when you reconnect.',
   },
 ]
 
@@ -95,7 +95,7 @@ export default function SupportPage() {
   }, [query])
 
   return (
-    <AppPageChrome>
+    <AppPageChrome forceMarketingNav>
       <div className="min-h-screen bg-background text-foreground">
         <div className="mx-auto max-w-6xl px-4 pb-16 pt-4 md:pt-2">
         <div className="mx-auto max-w-2xl text-center">

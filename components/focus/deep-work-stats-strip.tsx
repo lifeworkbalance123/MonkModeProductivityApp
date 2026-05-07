@@ -11,11 +11,14 @@ import {
 
 type Props = {
   sessions: DeepWorkSession[]
+  /** After cloud load: DB sum for today. `null` = not loaded yet (use session-derived minutes). */
+  serverTodayMinutes?: number | null
 }
 
-export function DeepWorkStatsStrip({ sessions }: Props) {
+export function DeepWorkStatsStrip({ sessions, serverTodayMinutes }: Props) {
   const today = format(new Date(), 'yyyy-MM-dd')
-  const todayMin = minutesDeepWorkForDate(sessions, today)
+  const fromSessions = minutesDeepWorkForDate(sessions, today)
+  const todayMin = serverTodayMinutes != null ? serverTodayMinutes : fromSessions
   const weekMin = minutesDeepWorkThisWeek(sessions, new Date())
   const best = bestDeepWorkDayLabel(sessions)
 

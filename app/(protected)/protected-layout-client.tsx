@@ -1,12 +1,14 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { AnnouncementBanner } from '@/components/AnnouncementBanner'
 import { AppPageChrome } from '@/components/navigation'
 import OfflineBanner from '@/components/OfflineBanner'
 import { useAuth } from '@/context/AuthContext'
+import { withAuthStorageLockRetry } from '@/lib/authStorageLock'
+import { supabase } from '@/lib/supabase'
 
 export default function ProtectedLayoutClient({
   children,
@@ -15,11 +17,36 @@ export default function ProtectedLayoutClient({
 }) {
   const { session, isLoading } = useAuth()
   const router = useRouter()
+  const redirectInFlightRef = useRef(false)
 
   useEffect(() => {
     if (isLoading) return
-    if (!session) {
-      router.replace('/auth')
+    if (session) {
+      redirectInFlightRef.current = false
+      return
+    }
+    if (redirectInFlightRef.current) return
+
+    redirectInFlightRef.current = true
+
+    // Avoid auth/dashboard bounce caused by transient null session during hydration.
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        const {
+          data: { session: latestSession },
+        } = await withAuthStorageLockRetry(() => supabase.auth.getSession())
+
+        if (latestSession) {
+          redirectInFlightRef.current = false
+          return
+        }
+
+        router.replace('/auth')
+      })()
+    }, 300)
+
+    return () => {
+      window.clearTimeout(timer)
     }
   }, [isLoading, session, router])
 

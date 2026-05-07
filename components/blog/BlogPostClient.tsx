@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { incrementViewCount, type BlogPost } from '@/lib/blog'
 import { publicSiteOrigin } from '@/lib/site-contact'
 import { findPricingRow, formatPriceCents, usePricing } from '@/hooks/usePricing'
+import { PROGRAM_FALLBACK_CENTS, PROGRAM_FALLBACK_CURRENCY } from '@/lib/programCatalog'
 
 type Props = {
   post: BlogPost
@@ -15,8 +16,8 @@ export default function BlogPostClient({ post, related }: Props) {
   const { prices } = usePricing()
   const monkJoinLabel = useMemo(() => {
     const row = findPricingRow(prices, 'monk_mode')
-    const cents = row?.current_price ?? 1900
-    const cur = row?.currency ?? 'AUD'
+    const cents = row?.current_price ?? PROGRAM_FALLBACK_CENTS.monk_mode
+    const cur = row?.currency ?? PROGRAM_FALLBACK_CURRENCY
     return `Join — ${formatPriceCents(cents, cur)} →`
   }, [prices])
 

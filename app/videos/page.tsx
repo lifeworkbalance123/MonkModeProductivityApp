@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/card'
 import { getYouTubeThumbnail } from '@/lib/trainingContent'
 import type { TrainingVideo } from '@/lib/trainingVideos'
 import { cn } from '@/lib/utils'
+import { Tooltip } from '@/components/ui/first-visit-tooltip'
 
 export default function VideosPage() {
   const [videos, setVideos] = useState<TrainingVideo[]>([])
@@ -43,19 +44,25 @@ export default function VideosPage() {
   }, [load])
 
   return (
-    <AppPageChrome>
+    <AppPageChrome forceMarketingNav>
       <div className="min-h-screen bg-background">
         <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-        <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-semibold sm:text-3xl">Video library</h1>
-          <p className="text-sm text-muted-foreground">
-            Curated clips from the monkcubed team.{' '}
-            <Link href="/training" className="text-accent underline-offset-4 hover:underline">
-              Training hub
-            </Link>{' '}
-            also includes your personal saves.
-          </p>
-        </div>
+        <Tooltip
+          id="tooltip_videos"
+          text="Short videos on deep work, Stoicism, cold exposure, and more. Watch when you need a boost."
+          className="mx-auto w-full max-w-2xl"
+        >
+          <div className="space-y-2 text-center">
+            <h1 className="text-2xl font-semibold sm:text-3xl">Video library</h1>
+            <p className="text-sm text-muted-foreground">
+              Curated clips from the monkcubed team.{' '}
+              <Link href="/training" className="text-accent underline-offset-4 hover:underline">
+                Training hub
+              </Link>{' '}
+              also includes your personal saves.
+            </p>
+          </div>
+        </Tooltip>
 
         {error ? (
           <p className="text-center text-sm text-destructive">{error}</p>

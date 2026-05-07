@@ -89,6 +89,42 @@ export function playTimerAlarm(preset: TimerAlarmPreset) {
   }, ms)
 }
 
+/** Very quiet tick for last seconds of focus (respect user mute by caller). */
+export function playSoftTimerTick(secondsRemaining: number) {
+  let ctx: AudioContext
+  try {
+    ctx = new AudioContext()
+  } catch {
+    return
+  }
+  void ctx.resume()
+  const freq = 520 + Math.min(10 - secondsRemaining, 9) * 18
+  scheduleBeep(ctx, 0.04, freq, 0.05, 0.07)
+  window.setTimeout(() => {
+    void ctx.close().catch(() => {})
+  }, 200)
+}
+
+/** Subtle affirming blip when starting or resuming focus. */
+export function playFocusTransitionCue(kind: 'start' | 'pause') {
+  let ctx: AudioContext
+  try {
+    ctx = new AudioContext()
+  } catch {
+    return
+  }
+  void ctx.resume()
+  if (kind === 'start') {
+    scheduleBeep(ctx, 0.05, 660, 0.06, 0.08)
+    scheduleBeep(ctx, 0.14, 880, 0.07, 0.09)
+  } else {
+    scheduleBeep(ctx, 0.05, 440, 0.08, 0.07)
+  }
+  window.setTimeout(() => {
+    void ctx.close().catch(() => {})
+  }, 400)
+}
+
 export function showTimerNotification(title: string, body: string, tag = 'monkcubed-timer') {
   if (typeof window === 'undefined' || !('Notification' in window)) return
   if (Notification.permission !== 'granted') return

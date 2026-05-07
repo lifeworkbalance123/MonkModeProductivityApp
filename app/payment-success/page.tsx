@@ -10,7 +10,18 @@ import { captureEvent } from '@/lib/analytics'
 function PaymentSuccessBody() {
   const searchParams = useSearchParams()
   const plan = searchParams.get('plan')
-  const isV2Program = plan === 'v2_program'
+  const normalizedPlan = (plan ?? '').toLowerCase()
+  const isProgramPurchase =
+    normalizedPlan === 'v2_program' ||
+    normalizedPlan === 'monk_mode' ||
+    normalizedPlan === 'sprint' ||
+    normalizedPlan === 'transform'
+  const programLabel =
+    normalizedPlan === 'sprint'
+      ? 'Sprint'
+      : normalizedPlan === 'transform'
+        ? 'Transform'
+        : 'Monk Mode'
 
   useEffect(() => {
     const amountRaw = searchParams.get('amount')
@@ -24,10 +35,12 @@ function PaymentSuccessBody() {
   return (
     <div className="mx-auto max-w-lg px-4 pb-16 pt-8 text-center md:pt-4">
       <h1 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
-        {isV2Program ? "You're in the Monk Mode program." : "You're now on monkcubed Pro."}
+        {isProgramPurchase
+          ? `You're in the ${programLabel} program.`
+          : "You're now on monkcubed Pro."}
       </h1>
       <p className="mt-3 text-muted-foreground">
-        {isV2Program
+        {isProgramPurchase
           ? 'Your enrollment is active. Open Today to start Day 1 when you are ready.'
           : 'Welcome to the next level.'}
       </p>
@@ -35,8 +48,8 @@ function PaymentSuccessBody() {
         asChild
         className="mt-8 bg-accent font-semibold text-accent-foreground hover:bg-accent/90"
       >
-        <Link href={isV2Program ? '/onboarding' : '/dashboard'}>
-          {isV2Program ? 'Continue setup' : 'Go to dashboard'}
+        <Link href={isProgramPurchase ? '/onboarding' : '/dashboard'}>
+          {isProgramPurchase ? 'Continue setup' : 'Go to dashboard'}
         </Link>
       </Button>
     </div>
@@ -45,7 +58,7 @@ function PaymentSuccessBody() {
 
 export default function PaymentSuccessPage() {
   return (
-    <AppPageChrome>
+    <AppPageChrome forceMarketingNav>
       <div className="min-h-screen bg-background text-foreground">
         <Suspense
           fallback={

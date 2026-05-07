@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createServiceRoleClient } from '@/lib/supabase-service'
+import { STRIPE_PRICES } from '@/lib/stripePrices'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -66,15 +67,9 @@ async function hasPaidLifetimeForPrice(
  */
 export async function POST(request: Request) {
   const secret = process.env.STRIPE_SECRET_KEY?.trim()
-  const monthlyPriceId =
-    process.env.STRIPE_PRO_MONTHLY_PRICE_ID?.trim() ||
-    process.env.STRIPE_PRICE_PRO_MONTHLY?.trim()
-  const annualPriceId =
-    process.env.STRIPE_PRO_ANNUAL_PRICE_ID?.trim() ||
-    process.env.STRIPE_PRICE_PRO_ANNUAL?.trim()
-  const lifetimePriceId =
-    process.env.STRIPE_LIFETIME_PRICE_ID?.trim() ||
-    process.env.STRIPE_PRICE_LIFETIME?.trim()
+  const monthlyPriceId = STRIPE_PRICES.APP_MONTHLY
+  const annualPriceId = STRIPE_PRICES.APP_ANNUAL
+  const lifetimePriceId = STRIPE_PRICES.LIFETIME
 
   if (!secret || !monthlyPriceId || !lifetimePriceId) {
     return NextResponse.json(

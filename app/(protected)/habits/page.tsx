@@ -49,6 +49,7 @@ import {
   suggestHabitIconFromName,
 } from '@/lib/habit-icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tooltip } from '@/components/ui/first-visit-tooltip'
 
 export default function HabitsPage() {
   const { openUpgrade } = useUpgradeOffer()
@@ -62,7 +63,7 @@ export default function HabitsPage() {
     loadError,
     reload,
   } = useMonkData()
-  const { isPro, isLoading: planLoading } = usePlan()
+  const { isPro, isLoading: planLoading, trialExpired } = usePlan()
   const [draft, setDraft] = useState('')
   const [draftIcon, setDraftIcon] = useState('')
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
@@ -75,13 +76,19 @@ export default function HabitsPage() {
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
-  const atHabitLimit =
-    !planLoading && !isPro && data.habits.length >= FREE_HABIT_LIMIT
+  const freeHabitCap = !planLoading && !isPro && trialExpired ? 1 : FREE_HABIT_LIMIT
+  const atHabitLimit = !planLoading && !isPro && data.habits.length >= freeHabitCap
 
   async function addHabit() {
     const name = draft.trim()
     if (!name) return
-    if (!planLoading && !isPro && data.habits.length >= FREE_HABIT_LIMIT) return
+    if (!planLoading && !isPro && data.habits.length >= freeHabitCap) {
+      openUpgrade({
+        featureContext:
+          'Free plan (after trial) includes 1 active habit. Upgrade for unlimited habits.',
+      })
+      return
+    }
     const icon =
       draftIcon.trim() || suggestHabitIconFromName(name) || ''
     const habit = { id: newHabitClientId(dataContext), name, icon }
@@ -100,6 +107,13 @@ export default function HabitsPage() {
   }
 
   function addDefaultHabits() {
+    if (!planLoading && !isPro && data.habits.length >= freeHabitCap) {
+      openUpgrade({
+        featureContext:
+          'Free plan (after trial) includes 1 active habit. Upgrade for unlimited habits.',
+      })
+      return
+    }
     const next = DEFAULT_STARTER_HABIT_NAMES.map((name, i) => ({
       id: newHabitClientId(dataContext),
       name,
@@ -108,12 +122,12 @@ export default function HabitsPage() {
         HABIT_ICON_PICKER_LIBRARY[i % HABIT_ICON_PICKER_LIBRARY.length] ??
         '',
     }))
-    setData({
-      ...data,
-      habits: [...data.habits, ...next],
-    })
+    const room = Math.max(0, freeHabitCap - data.habits.length)
+    const picked = !planLoading && !isPro ? next.slice(0, room) : next
+    if (picked.length === 0) return
+    setData({ ...data, habits: [...data.habits, ...picked] })
     void Promise.all(
-      next.map((h) =>
+      picked.map((h) =>
         saveHabit(dataContext, h).then((r) => {
           if (r.error) {
             showToast("Couldn't save changes. Please try again.", 'error')
@@ -217,12 +231,16 @@ export default function HabitsPage() {
       ) : null}
       {ready ? (
       <div className="max-w-xl mx-auto px-4 py-8 pt-24 space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Habits</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage the habits shown on your dashboard and weekly planner.
-          </p>
-          {atHabitLimit ? (
+        <Tooltip
+          id="tooltip_habits"
+          text="Track your daily anchors – lemon water, phone away, cold exposure. Consistency > intensity."
+        >
+          <div>
+            <h1 className="text-2xl font-semibold">Habits</h1>
+            <p className="text-sm text-muted-foreground">
+              Manage the habits shown on your dashboard and weekly planner.
+            </p>
+            {atHabitLimit ? (
             <div
               role="status"
               className="mt-3 rounded-lg border border-border bg-secondary/40 px-3 py-2 text-sm text-muted-foreground"
@@ -243,7 +261,8 @@ export default function HabitsPage() {
               </button>
             </div>
           ) : null}
-        </div>
+          </div>
+        </Tooltip>
         <Card className="p-4 space-y-3">
           {data.habits.length === 0 ? (
             <EmptyState

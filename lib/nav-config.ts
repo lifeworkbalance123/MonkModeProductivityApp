@@ -21,6 +21,8 @@ export type NavItem = {
   icon: LucideIcon
   proOnly?: boolean
   proDescription?: string
+  /** When `proOnly` is true, controls the chip shown on locked nav items. */
+  paywallBadge?: 'pro' | 'bonus'
 }
 
 /** All primary app links (single list — used for legacy / marketing). */
@@ -55,6 +57,7 @@ export const allNavItems: NavItem[] = [
     label: 'Cloud sync',
     icon: Cloud,
     proOnly: true,
+    paywallBadge: 'bonus',
     proDescription:
       'Keep your monkcubed data backed up and in sync across devices with cloud storage.',
   },

@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -32,6 +33,9 @@ export function ColorThemeProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: authLoading } = useAuth()
   const [themeId, setThemeIdState] = useState<ColorThemeId>(DEFAULT_COLOR_THEME)
   const [ready, setReady] = useState(false)
+  // If the user changes theme before the DB preference loads, do not clobber it
+  // when the async load finishes (this causes a “revert after ~N seconds”).
+  const userOverrideRef = useRef(false)
 
   useEffect(() => {
     applyColorThemeToDocument(themeId)
@@ -54,6 +58,18 @@ export function ColorThemeProvider({ children }: { children: ReactNode }) {
         return
       }
 
+      // Apply localStorage immediately for signed-in users too (fast + consistent),
+      // then reconcile with DB preference once loaded.
+      const localRaw =
+        typeof window !== 'undefined'
+          ? localStorage.getItem(COLOR_THEME_STORAGE_KEY)
+          : null
+      const localNext = normalizeColorThemeId(localRaw)
+      if (!cancelled && localNext && localNext !== themeId) {
+        setThemeIdState(localNext)
+        applyColorThemeToDocument(localNext)
+      }
+
       const { data, error } = await supabase
         .from('users')
         .select('theme_preference')
@@ -63,13 +79,35 @@ export function ColorThemeProvider({ children }: { children: ReactNode }) {
       if (cancelled) return
 
       const pref = (data as { theme_preference?: string } | null)?.theme_preference
-      const next = normalizeColorThemeId(pref)
+      const dbNext = normalizeColorThemeId(pref)
+
+      // If the user has already changed the theme in this session, keep their choice.
+      if (userOverrideRef.current) {
+        if (error) console.warn('ColorThemeProvider: theme_preference', error)
+        setReady(true)
+        return
+      }
+
+      // If the DB has no preference yet, prefer the local value (and try to persist it).
+      const next =
+        !pref || dbNext === DEFAULT_COLOR_THEME
+          ? localNext
+          : dbNext
+
       setThemeIdState(next)
       applyColorThemeToDocument(next)
       try {
         localStorage.setItem(COLOR_THEME_STORAGE_KEY, next)
       } catch {
         /* ignore */
+      }
+      // If DB preference is missing, best-effort persist from local choice.
+      if (!pref && next && next !== dbNext) {
+        try {
+          await supabase.from('users').update({ theme_preference: next }).eq('id', user.id)
+        } catch {
+          /* ignore */
+        }
       }
       if (error) console.warn('ColorThemeProvider: theme_preference', error)
       setReady(true)
@@ -83,6 +121,7 @@ export function ColorThemeProvider({ children }: { children: ReactNode }) {
 
   const setThemeId = useCallback(
     async (id: ColorThemeId) => {
+      userOverrideRef.current = true
       setThemeIdState(id)
       applyColorThemeToDocument(id)
       try {
