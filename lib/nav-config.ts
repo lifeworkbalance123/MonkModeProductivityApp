@@ -13,6 +13,7 @@ import {
   Sunrise,
   Clapperboard,
   LayoutGrid,
+  Wrench,
 } from 'lucide-react'
 
 export type NavItem = {
@@ -51,6 +52,7 @@ export const allNavItems: NavItem[] = [
   },
   { href: '/training', label: 'Training', icon: PlayCircle },
   { href: '/videos', label: 'Video library', icon: Clapperboard },
+  { href: '/tools', label: 'Tools', icon: Wrench },
   { href: '/focus', label: 'Focus & Deep Work', icon: Timer },
   {
     href: '/sync',
@@ -94,6 +96,7 @@ export const drawerNavGroups: NavGroup[] = [
     items: [
       allNavItems.find((i) => i.href === '/training')!,
       allNavItems.find((i) => i.href === '/videos')!,
+      allNavItems.find((i) => i.href === '/tools')!,
     ],
   },
   {

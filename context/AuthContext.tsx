@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!mounted) return
 
         if (sessErr && isInvalidRefreshTokenError(sessErr)) {
-          await supabase.auth.signOut()
+          await supabase.auth.signOut({ scope: 'local' })
           if (mounted) setSession(null)
           return
         }
@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (sessData.session) {
           const { error: userErr } = await supabase.auth.getUser()
           if (userErr && isInvalidRefreshTokenError(userErr)) {
-            await supabase.auth.signOut()
+            await supabase.auth.signOut({ scope: 'local' })
             if (mounted) setSession(null)
             return
           }
@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         if (isInvalidRefreshTokenError(err)) {
           try {
-            await supabase.auth.signOut()
+            await supabase.auth.signOut({ scope: 'local' })
           } catch {
             /* ignore */
           }
@@ -77,6 +77,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     })()
 
+    const onRefreshRejection = (event: PromiseRejectionEvent) => {
+      if (!isInvalidRefreshTokenError(event.reason)) return
+      event.preventDefault()
+      void (async () => {
+        try {
+          await supabase.auth.signOut({ scope: 'local' })
+        } catch {
+          /* ignore */
+        }
+        if (mounted) setSession(null)
+      })()
+    }
+    window.addEventListener('unhandledrejection', onRefreshRejection)
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
@@ -86,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false
+      window.removeEventListener('unhandledrejection', onRefreshRejection)
       subscription.unsubscribe()
     }
   }, [])

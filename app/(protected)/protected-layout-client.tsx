@@ -8,6 +8,7 @@ import { AppPageChrome } from '@/components/navigation'
 import OfflineBanner from '@/components/OfflineBanner'
 import { useAuth } from '@/context/AuthContext'
 import { withAuthStorageLockRetry } from '@/lib/authStorageLock'
+import { isInvalidRefreshTokenError } from '@/lib/supabase-auth-errors'
 import { supabase } from '@/lib/supabase'
 
 export default function ProtectedLayoutClient({
@@ -34,7 +35,14 @@ export default function ProtectedLayoutClient({
       void (async () => {
         const {
           data: { session: latestSession },
+          error: sessionErr,
         } = await withAuthStorageLockRetry(() => supabase.auth.getSession())
+
+        if (sessionErr && isInvalidRefreshTokenError(sessionErr)) {
+          await supabase.auth.signOut({ scope: 'local' })
+          router.replace('/auth')
+          return
+        }
 
         if (latestSession) {
           redirectInFlightRef.current = false
