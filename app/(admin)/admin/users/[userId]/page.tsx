@@ -39,10 +39,18 @@ export default function AdminUserDetailPage() {
   const [email, setEmail] = useState<string | null>(null)
   const [loadingMeta, setLoadingMeta] = useState(true)
   const [guidedRows, setGuidedRows] = useState<GuidedProgramRow[]>([])
+  /** Set when the user_programs API fails (distinct from “no rows yet”). */
+  const [programsLoadError, setProgramsLoadError] = useState<string | null>(null)
+  const [logsLoadError, setLogsLoadError] = useState<string | null>(null)
 
   const loadMeta = useCallback(async () => {
-    if (!userId) return
+    if (!userId) {
+      setLoadingMeta(false)
+      return
+    }
     setLoadingMeta(true)
+    setProgramsLoadError(null)
+    setLogsLoadError(null)
     const {
       data: { session },
     } = await supabase.auth.getSession()
@@ -64,26 +72,39 @@ export default function AdminUserDetailPage() {
         cache: 'no-store',
       }),
     ])
-    const logsJson = (await logsRes.json()) as { email?: string | null }
+    const logsJson = (await logsRes.json().catch(() => ({}))) as {
+      email?: string | null
+      error?: string
+    }
     if (logsRes.ok) {
       setEmail(logsJson.email ?? null)
+      setLogsLoadError(null)
     } else {
       setEmail(null)
+      setLogsLoadError(logsJson.error ?? `HTTP ${logsRes.status}`)
     }
 
-    const programsJson = (await programsRes.json()) as {
+    const programsJson = (await programsRes.json().catch(() => ({}))) as {
       rows?: GuidedProgramRow[]
       error?: string
     }
-    const rows = programsRes.ok && Array.isArray(programsJson.rows) ? programsJson.rows : []
-    setGuidedRows(rows)
+    if (!programsRes.ok) {
+      setGuidedRows([])
+      setProgramsLoadError(
+        programsJson.error ?? `Could not load user_programs (HTTP ${programsRes.status})`,
+      )
+    } else {
+      setProgramsLoadError(null)
+      const rows = Array.isArray(programsJson.rows) ? programsJson.rows : []
+      setGuidedRows(rows)
 
-    const preferred =
-      rows.find((r) => r.status === 'active' && r.program_type && isSelectedProgram(r.program_type))
-        ?.program_type ??
-      rows.find((r) => r.program_type && isSelectedProgram(r.program_type))?.program_type
-    if (preferred && isSelectedProgram(preferred)) {
-      setSelectedProgram(preferred)
+      const preferred =
+        rows.find((r) => r.status === 'active' && r.program_type && isSelectedProgram(r.program_type))
+          ?.program_type ??
+        rows.find((r) => r.program_type && isSelectedProgram(r.program_type))?.program_type
+      if (preferred && isSelectedProgram(preferred)) {
+        setSelectedProgram(preferred)
+      }
     }
 
     setLoadingMeta(false)
@@ -154,7 +175,19 @@ export default function AdminUserDetailPage() {
           </Button>
         </div>
 
-        {!loadingMeta && guidedRows.length === 0 ? (
+        {!loadingMeta && logsLoadError ? (
+          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            Could not load user email / logs: {logsLoadError}
+          </p>
+        ) : null}
+
+        {!loadingMeta && programsLoadError ? (
+          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            Could not load guided program rows: {programsLoadError}
+          </p>
+        ) : null}
+
+        {!loadingMeta && !programsLoadError && guidedRows.length === 0 ? (
           <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100">
             No <code className="text-xs">user_programs</code> row for this user. Extend trial only updates
             that table — complete onboarding or create enrollment first. Use the Users table{' '}
@@ -162,7 +195,7 @@ export default function AdminUserDetailPage() {
           </p>
         ) : null}
 
-        {!loadingMeta && guidedRows.length > 0 ? (
+        {!loadingMeta && !programsLoadError && guidedRows.length > 0 ? (
           <p className="text-xs text-muted-foreground">
             user_programs:{' '}
             {guidedRows
@@ -204,7 +237,21 @@ export default function AdminUserDetailPage() {
           />
         </div>
 
-        <Button type="button" onClick={() => void handleExtendTrial()} disabled={extending || !userId}>
+        <Button
+          type="button"
+          onClick={() => void handleExtendTrial()}
+          disabled={
+            extending ||
+            !userId ||
+            !!programsLoadError ||
+            guidedRows.length === 0
+          }
+          title={
+            guidedRows.length === 0 && !programsLoadError
+              ? 'Create a user_programs enrollment before extending trial'
+              : undefined
+          }
+        >
           {extending ? 'Extending…' : 'Extend Trial'}
         </Button>
       </div>

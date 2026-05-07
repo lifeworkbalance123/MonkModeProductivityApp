@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, type ReactNode } from 'react'
-import { ChevronDown, ChevronUp, X } from 'lucide-react'
+import { ChevronDown, Lightbulb, X } from 'lucide-react'
 import { useTooltip } from '@/hooks/useTooltip'
 import { cn } from '@/lib/utils'
 
@@ -99,8 +99,14 @@ export function FeatureIntroTooltip({
             aria-expanded={false}
             aria-label="Expand feature tip"
           >
-            <ChevronUp size={14} className="shrink-0 opacity-80" aria-hidden />
-            <span>Tip</span>
+            <span className="flex items-center gap-1">
+              <Lightbulb
+                size={14}
+                className="shrink-0 text-amber-500"
+                aria-label="Tip"
+              />
+              <span aria-hidden="true">Tip</span>
+            </span>
           </button>
         </div>
       )}
