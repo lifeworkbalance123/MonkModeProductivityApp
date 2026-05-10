@@ -166,7 +166,10 @@ export default function SchedulePage() {
           <div className="mb-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h1 className="text-2xl font-semibold tracking-tight">Time Schedule</h1>
+                <div className="label-machine">System</div>
+                <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground">
+                  Time schedule
+                </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Plan your day in blocks. Edits are saved with your dashboard data.
                 </p>

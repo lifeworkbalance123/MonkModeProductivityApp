@@ -69,7 +69,9 @@ export function playTimerAlarm(preset: TimerAlarmPreset) {
   } catch {
     return
   }
-  void ctx.resume()
+  void ctx.resume().catch(() => {
+    /* autoplay / suspended context — beeps may be silent */
+  })
   const base = 0.06
   if (preset === 'pomodoro-work') {
     scheduleBeep(ctx, base, 880, 0.14)
@@ -97,7 +99,7 @@ export function playSoftTimerTick(secondsRemaining: number) {
   } catch {
     return
   }
-  void ctx.resume()
+  void ctx.resume().catch(() => {})
   const freq = 520 + Math.min(10 - secondsRemaining, 9) * 18
   scheduleBeep(ctx, 0.04, freq, 0.05, 0.07)
   window.setTimeout(() => {
@@ -113,7 +115,7 @@ export function playFocusTransitionCue(kind: 'start' | 'pause') {
   } catch {
     return
   }
-  void ctx.resume()
+  void ctx.resume().catch(() => {})
   if (kind === 'start') {
     scheduleBeep(ctx, 0.05, 660, 0.06, 0.08)
     scheduleBeep(ctx, 0.14, 880, 0.07, 0.09)

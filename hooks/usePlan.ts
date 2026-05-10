@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useAuth } from '@/context/AuthContext'
+import { withAuthStorageLockRetry } from '@/lib/authStorageLock'
 import { supabase } from '@/lib/supabase'
 
 const ENTITLEMENT_REFRESH = 'monkmode-entitlement-refresh'
@@ -132,7 +133,7 @@ async function fetchEntitlementShared(
     try {
       const {
         data: { session },
-      } = await supabase.auth.getSession()
+      } = await withAuthStorageLockRetry(() => supabase.auth.getSession())
       const token = session?.access_token
       if (!token) return defaultSnapshot()
 

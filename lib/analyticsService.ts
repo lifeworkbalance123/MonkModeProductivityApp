@@ -25,6 +25,7 @@ import {
   shouldSyncToCloud,
   type DataServiceContext,
 } from '@/lib/dataService'
+import { filterGoalsWithNonEmptyText } from '@/lib/goals-utils'
 import { readGoalDailySnapshots } from '@/lib/goal-daily-snapshots'
 
 export type HabitCompletionDay = {
@@ -158,7 +159,8 @@ export function getGoalCompletionData(
   const { start, end } = windowBounds(days, monk.habitLog)
   const todayKey = format(startOfDay(new Date()), 'yyyy-MM-dd')
   const snaps = readGoalDailySnapshots()
-  const gt = monk.goals.length
+  const goalsWithText = filterGoalsWithNonEmptyText(monk.goals)
+  const gt = goalsWithText.length
   const out: GoalCompletionDay[] = []
 
   for (const d of eachDayOfInterval({ start, end })) {
@@ -175,7 +177,7 @@ export function getGoalCompletionData(
       continue
     }
     if (key === todayKey && gt > 0) {
-      const completed = monk.goals.filter((g) => g.completed).length
+      const completed = goalsWithText.filter((g) => g.completed).length
       out.push({
         date: key,
         completed,
@@ -402,8 +404,9 @@ export async function getCurrentStats(
 
   const monthStart = startOfMonth(now)
   const monthEnd = endOfMonth(now)
-  const goalsHitThisMonth = monk.goals.filter((g) => g.completed).length
-  const goalsTotalThisMonth = monk.goals.length
+  const goalsWithTextAll = filterGoalsWithNonEmptyText(monk.goals)
+  const goalsHitThisMonth = goalsWithTextAll.filter((g) => g.completed).length
+  const goalsTotalThisMonth = goalsWithTextAll.length
 
   void monthStart
   void monthEnd

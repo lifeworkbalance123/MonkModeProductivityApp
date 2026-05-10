@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/context/ToastContext'
+import { copyTextToClipboard } from '@/lib/copy-to-clipboard'
 import { supabase } from '@/lib/supabase'
 import { publicSiteOrigin } from '@/lib/site-contact'
 
@@ -82,7 +83,11 @@ export function BuddyShareModal({
 
   async function copy(text: string, label: string, type: 'witness' | 'referral') {
     if (!text) return
-    await navigator.clipboard.writeText(text)
+    const ok = await copyTextToClipboard(text)
+    if (!ok) {
+      showToast('Could not copy — focus this tab and try again.', 'error')
+      return
+    }
     setCopied(type)
     showToast(`${label} copied.`, 'success')
     window.setTimeout(() => setCopied(null), 1500)

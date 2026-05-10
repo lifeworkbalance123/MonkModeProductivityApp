@@ -1,4 +1,6 @@
 import type { MonkData } from '@/lib/monk-types'
+import { filterGoalsWithNonEmptyText } from '@/lib/goals-utils'
+import { sanitizeMonkDuplicates } from '@/lib/monk-dedupe'
 
 export const MONK_STORAGE_KEY = 'monk-mode-mvp-v1'
 
@@ -11,13 +13,7 @@ export const defaultMonkData: MonkData = {
     { id: 'h5', name: 'Meditate' },
     { id: 'h6', name: 'Read 30 mins' },
   ],
-  goals: [
-    { id: 'g1', text: '', completed: false },
-    { id: 'g2', text: '', completed: false },
-    { id: 'g3', text: '', completed: false },
-    { id: 'g4', text: '', completed: false },
-    { id: 'g5', text: '', completed: false },
-  ],
+  goals: [],
   gratitude: [
     'My health and energy today',
     'Supportive family',
@@ -36,17 +32,10 @@ export const defaultMonkData: MonkData = {
 
 /**
  * Used after Settings → “Reset all data”: empty slate, not the demo copy in {@link defaultMonkData}.
- * Five goal rows with blank text so the dashboard still shows five checkboxes to fill in.
  */
 export const emptyMonkDataAfterReset: MonkData = {
   habits: [],
-  goals: [
-    { id: 'g1', text: '', completed: false },
-    { id: 'g2', text: '', completed: false },
-    { id: 'g3', text: '', completed: false },
-    { id: 'g4', text: '', completed: false },
-    { id: 'g5', text: '', completed: false },
-  ],
+  goals: [],
   gratitude: ['', '', ''],
   achievements: ['', '', ''],
   morningVideoUrl: '',
@@ -57,13 +46,13 @@ export const emptyMonkDataAfterReset: MonkData = {
 
 function mergeLoaded(raw: string): MonkData {
   const parsed = JSON.parse(raw) as Partial<MonkData>
-  return {
-    habits:
-      Array.isArray(parsed.habits) ? parsed.habits : defaultMonkData.habits,
-    goals:
-      Array.isArray(parsed.goals) && parsed.goals.length > 0
-        ? parsed.goals
-        : defaultMonkData.goals,
+  const merged: MonkData = {
+    habits: Array.isArray(parsed.habits)
+      ? parsed.habits
+      : defaultMonkData.habits,
+    goals: Array.isArray(parsed.goals)
+      ? (parsed.goals as MonkData['goals'])
+      : [],
     gratitude:
       Array.isArray(parsed.gratitude) && parsed.gratitude.length === 3
         ? parsed.gratitude
@@ -87,6 +76,10 @@ function mergeLoaded(raw: string): MonkData {
         ? parsed.habitLog
         : {},
   }
+  return sanitizeMonkDuplicates({
+    ...merged,
+    goals: filterGoalsWithNonEmptyText(merged.goals),
+  })
 }
 
 export function loadMonk(): MonkData {

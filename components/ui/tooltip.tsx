@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import * as TooltipPrimitive from '@radix-ui/react-tooltip'
+import { Lightbulb } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
@@ -153,12 +154,19 @@ export function Tooltip({
         <div
           role="tooltip"
           className={cn(
-            'absolute z-50 max-w-xs whitespace-normal rounded-md px-2 py-1.5 text-xs shadow-lg',
+            'absolute z-50 max-w-xs whitespace-normal rounded-md px-3 py-2 text-xs shadow-lg',
             'bg-foreground text-background',
             positionClasses[position],
           )}
         >
-          {content}
+          <span className="flex items-start gap-2">
+            <Lightbulb
+              size={14}
+              className="mt-0.5 shrink-0 text-amber-400"
+              aria-hidden
+            />
+            <span className="min-w-0 leading-snug">{content}</span>
+          </span>
           <div
             className={cn('absolute size-2 rotate-45 bg-foreground', arrowClasses)}
             aria-hidden

@@ -7,6 +7,13 @@ import { addDays, format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { computeStreak } from '@/lib/monk-streak'
 import type { Goal, Habit, HabitLog, MonkData, TimeSlot } from '@/lib/monk-types'
+import { filterGoalsWithNonEmptyText } from '@/lib/goals-utils'
+import {
+  dedupeGoalsById,
+  dedupeGoalsByNormalizedText,
+  dedupeHabitsById,
+  sanitizeMonkDuplicates,
+} from '@/lib/monk-dedupe'
 import { defaultMonkData, emptyMonkDataAfterReset, loadMonk, saveMonk } from '@/lib/monk-storage'
 import type {
   PersonalTrainingCategory,
@@ -72,27 +79,47 @@ function isUuid(s: string): boolean {
 
 /** Remap non-UUID ids so Supabase uuid columns accept inserts. */
 export function normalizeMonkDataForPro(data: MonkData): MonkData {
+  const sanitized = sanitizeMonkDuplicates(data)
+  const habitsIn = dedupeHabitsById(sanitized.habits)
+  const goalsIn = dedupeGoalsById(sanitized.goals)
+
   const idMap = new Map<string, string>()
-  const habits = data.habits.map((h) => {
+  const habits = habitsIn.map((h) => {
     if (isUuid(h.id)) return { ...h, icon: h.icon ?? '' }
-    const nu = crypto.randomUUID()
-    idMap.set(h.id, nu)
+    let nu = idMap.get(h.id)
+    if (!nu) {
+      nu = crypto.randomUUID()
+      idMap.set(h.id, nu)
+    }
     return { ...h, id: nu, icon: h.icon ?? '' }
   })
-  const habitLog: HabitLog = { ...data.habitLog }
+  const habitLog: HabitLog = { ...sanitized.habitLog }
   for (const [oldId, newId] of idMap) {
     if (habitLog[oldId]) {
       habitLog[newId] = habitLog[oldId]
       delete habitLog[oldId]
     }
   }
-  const goals = data.goals.map((g) =>
-    isUuid(g.id) ? g : { ...g, id: crypto.randomUUID() },
-  )
-  const timeSlots = data.timeSlots.map((t) =>
+  const goalIdMap = new Map<string, string>()
+  const goals = filterGoalsWithNonEmptyText(goalsIn).map((g) => {
+    if (isUuid(g.id)) return g
+    let nu = goalIdMap.get(g.id)
+    if (!nu) {
+      nu = crypto.randomUUID()
+      goalIdMap.set(g.id, nu)
+    }
+    return { ...g, id: nu }
+  })
+  const timeSlots = sanitized.timeSlots.map((t) =>
     isUuid(t.id) ? t : { ...t, id: crypto.randomUUID() },
   )
-  return { ...data, habits, habitLog, goals, timeSlots }
+  return {
+    ...sanitized,
+    habits,
+    habitLog,
+    goals,
+    timeSlots,
+  }
 }
 
 function mergeVideoFields(base: MonkData): MonkData {
@@ -253,19 +280,25 @@ export async function loadFullMonkData(
     }
   }
 
-  const habits: Habit[] = (habitsRes.data ?? []).map((r) => ({
-    id: r.id,
-    name: r.name,
-    icon: r.icon ?? '',
-  }))
+  const habits: Habit[] = dedupeHabitsById(
+    (habitsRes.data ?? []).map((r) => ({
+      id: r.id,
+      name: r.name,
+      icon: r.icon ?? '',
+    })),
+  )
 
   const habitLog = completionsToHabitLog(compRes.data ?? [])
 
-  const goals: Goal[] = (goalsRes.data ?? []).map((r) => ({
-    id: r.id,
-    text: r.title,
-    completed: r.completed,
-  }))
+  const goals: Goal[] = filterGoalsWithNonEmptyText(
+    dedupeGoalsByNormalizedText(
+      (goalsRes.data ?? []).map((r) => ({
+        id: r.id,
+        text: r.title ?? '',
+        completed: r.completed,
+      })),
+    ),
+  )
 
   let timeSlots: TimeSlot[]
   const tplRow = templateRes.data
@@ -314,7 +347,7 @@ export async function loadFullMonkData(
     habitLog,
   }
 
-  return { data: base, error: null }
+  return { data: sanitizeMonkDuplicates(base), error: null }
 }
 
 export async function persistFullMonkData(
@@ -548,11 +581,15 @@ export async function getGoals(ctx: DataServiceContext): Promise<Goal[]> {
       console.error(error)
       return loadMonk().goals
     }
-    return (data ?? []).map((r) => ({
-      id: r.id,
-      text: r.title,
-      completed: r.completed,
-    }))
+    return filterGoalsWithNonEmptyText(
+      dedupeGoalsByNormalizedText(
+        (data ?? []).map((r) => ({
+          id: r.id,
+          text: r.title,
+          completed: r.completed,
+        })),
+      ),
+    )
   }
   return loadMonk().goals
 }
@@ -1192,7 +1229,12 @@ export async function listDeepWorkSessions(
     .order('created_at', { ascending: false })
     .limit(500)
   if (error) {
-    console.error(error)
+    // PostgrestError often serializes as "{}" in overlays; log explicit fields. Non-fatal — we fall back to [].
+    console.warn(
+      'listDeepWorkSessions:',
+      [error.message, error.details, error.code].filter(Boolean).join(' · ') ||
+        JSON.stringify(error),
+    )
     return []
   }
   return (data ?? []).map((row) => {

@@ -4,7 +4,7 @@ import { Analytics } from '@vercel/analytics/next'
 import Script from 'next/script'
 import { Providers } from './providers'
 import './globals.css'
-import { AUTH_ROOT_LANDING_BRIDGE_SCRIPT } from '@/lib/authRootLandingBridge'
+import { AUTH_ROOT_LANDING_BRIDGE_SCRIPT_SRC } from '@/lib/authRootLandingBridge'
 import { publicSiteOrigin } from '@/lib/site-contact'
 import { RegisterServiceWorker } from '@/components/pwa/RegisterServiceWorker'
 
@@ -65,8 +65,8 @@ export default function RootLayout({
       <body className="font-sans antialiased min-h-screen bg-background text-foreground text-[15px] leading-normal">
         <Script
           id="auth-root-landing-bridge"
+          src={AUTH_ROOT_LANDING_BRIDGE_SCRIPT_SRC}
           strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{ __html: AUTH_ROOT_LANDING_BRIDGE_SCRIPT }}
         />
         <Providers>{children}</Providers>
         <RegisterServiceWorker />

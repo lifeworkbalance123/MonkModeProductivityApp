@@ -14,7 +14,7 @@ export interface ExpandAllButtonProps {
 }
 
 export function ExpandAllButton({ className }: ExpandAllButtonProps) {
-  const [allExpanded, setAllExpanded] = useState(true)
+  const [allExpanded, setAllExpanded] = useState(false)
 
   const toggleAll = () => {
     const newState = !allExpanded

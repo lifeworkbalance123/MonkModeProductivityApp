@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
+import { copyTextToClipboard } from '@/lib/copy-to-clipboard'
 import { supabase } from '@/lib/supabase'
 import { publicSiteOrigin } from '@/lib/site-contact'
 
@@ -118,8 +119,13 @@ export default function SharePage() {
               variant="secondary"
               className="w-full"
               onClick={async () => {
-                await navigator.clipboard.writeText(referralLink)
-                showToast('Link copied! Share it to earn free Pro time.', 'success')
+                const ok = await copyTextToClipboard(referralLink)
+                showToast(
+                  ok
+                    ? 'Link copied! Share it to earn free Pro time.'
+                    : 'Could not copy — focus this tab and try again.',
+                  ok ? 'success' : 'error',
+                )
               }}
             >
               Copy referral link

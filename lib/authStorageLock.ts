@@ -19,9 +19,12 @@ export function isAuthStorageLockError(error: unknown): boolean {
   ).toLowerCase()
 
   if (name === 'AbortError' && (msg.includes('lock') || msg.includes('steal'))) return true
+  if (name === 'NavigatorLockAcquireTimeoutError') return true
   if (!msg) return false
 
   if (msg.includes('another request') && msg.includes('steal')) return true
+  if (msg.includes('5000ms') && msg.includes('lock')) return true
+  if (msg.includes('orphaned lock')) return true
   if (msg.includes('lock') && (msg.includes('steal') || msg.includes('stole') || msg.includes('released'))) {
     return true
   }

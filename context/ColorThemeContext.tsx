@@ -131,7 +131,15 @@ export function ColorThemeProvider({ children }: { children: ReactNode }) {
       }
       if (user) {
         const { error } = await supabase.from('users').update({ theme_preference: id }).eq('id', user.id)
-        if (error) console.error('ColorThemeProvider: save theme', error)
+        // Avoid triggering Next.js "Console Error" overlay for a non-fatal preference save.
+        // Some Supabase errors serialize to `{}` in devtools, so prefer a readable message.
+        if (error) {
+          const msg =
+            typeof (error as unknown as { message?: unknown }).message === 'string'
+              ? (error as unknown as { message: string }).message
+              : 'unknown error'
+          console.warn('ColorThemeProvider: save theme', msg)
+        }
       }
     },
     [user],

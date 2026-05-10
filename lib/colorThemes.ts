@@ -37,7 +37,7 @@ export const DEFAULT_COLOR_THEME: ColorThemeId = 'stoic'
 
 /** Accent swatch for settings cards (representative CTA hue per palette). */
 export const THEME_ACCENT_SWATCH: Record<ColorThemeId, string> = {
-  stoic: '#D4AF37',
+  stoic: '#F5C518',
   zen: '#8B8B8B',
   nomad: '#D4A373',
   forge: '#E85D04',

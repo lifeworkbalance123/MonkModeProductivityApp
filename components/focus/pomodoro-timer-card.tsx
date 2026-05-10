@@ -28,8 +28,10 @@ import {
 import { loadFocusLocalStats, recordPomodoroWorkCompletion } from '@/lib/focus-gamification'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
+import { CircularProgressRing } from '@/components/ui/circular-progress-ring'
 import { isEditableOrTypingTarget } from '@/lib/keyboard-shortcut-guards'
 import { playFocusEndChime } from '@/lib/focus-end-chime'
+import { getUserIdSafe } from '@/lib/supabaseAuthSafe'
 import {
   playFocusTransitionCue,
   playSoftTimerTick,
@@ -107,15 +109,13 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user?.id || cancelled) return
+      const userId = await getUserIdSafe()
+      if (!userId || cancelled) return
       const logDate = format(new Date(), 'yyyy-MM-dd')
       const { data, error } = await supabase
         .from('daily_logs')
         .select('micro_journal_text')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('log_date', logDate)
         .maybeSingle()
       if (cancelled || error) return
@@ -446,7 +446,10 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
   }, [])
 
   return (
-    <Card className="border-border p-6">
+    <Card
+      id="pomodoro-focus"
+      className="scroll-mt-24 rounded-2xl border-2 border-border bg-card p-6 shadow-none md:scroll-mt-28"
+    >
       <Confetti trigger={confettiTick} />
       <SessionSummary
         open={showSummary}
@@ -454,10 +457,11 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
         workMinutes={workMinutes}
         sessionsToday={sessionsToday}
       />
-      <div className="mb-2 flex items-center gap-2">
-        <Timer className="h-5 w-5 text-accent" />
-        <h2 className="text-lg font-semibold">Pomodoro</h2>
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <Timer className="h-5 w-5 text-primary" />
+        <div className="label-machine text-foreground">Round timer</div>
+        <h2 className="text-xl font-bold tracking-tight text-foreground">Pomodoro</h2>
+        <span className="rounded-full border border-border bg-secondary px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           {mode === 'work' ? 'Focus' : 'Break'}
         </span>
       </div>
@@ -468,20 +472,18 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
       </p>
 
       <div className="mb-4">
-        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Session length
-        </p>
+        <p className="label-machine mb-2">Session length</p>
         <div className="preset-buttons flex flex-wrap gap-2">
           <button
             type="button"
             disabled={status !== 'idle'}
             onClick={() => setDuration(25 * 60)}
             className={cn(
-              'rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors',
+              'rounded-full border px-5 py-2.5 text-sm font-semibold transition-colors',
               status !== 'idle' && 'cursor-not-allowed opacity-50',
               presetId === 'p25'
-                ? 'border-accent bg-accent/15 text-foreground'
-                : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border bg-secondary text-muted-foreground hover:brightness-110 hover:text-foreground',
             )}
           >
             25 min
@@ -491,11 +493,11 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
             disabled={status !== 'idle'}
             onClick={() => setDuration(50 * 60)}
             className={cn(
-              'rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors',
+              'rounded-full border px-5 py-2.5 text-sm font-semibold transition-colors',
               status !== 'idle' && 'cursor-not-allowed opacity-50',
               presetId === 'p50'
-                ? 'border-accent bg-accent/15 text-foreground'
-                : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border bg-secondary text-muted-foreground hover:brightness-110 hover:text-foreground',
             )}
           >
             50 min
@@ -505,11 +507,11 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
             disabled={status !== 'idle'}
             onClick={() => setDuration(90 * 60)}
             className={cn(
-              'rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors',
+              'rounded-full border px-5 py-2.5 text-sm font-semibold transition-colors',
               status !== 'idle' && 'cursor-not-allowed opacity-50',
               presetId === 'p90'
-                ? 'border-accent bg-accent/15 text-foreground'
-                : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border bg-secondary text-muted-foreground hover:brightness-110 hover:text-foreground',
             )}
           >
             90 min
@@ -518,20 +520,18 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
       </div>
 
       <div className="mb-4 space-y-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Background audio (optional)
-        </p>
+        <p className="label-machine">Background audio (optional)</p>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
             disabled={status !== 'idle'}
             onClick={() => setSelectedTrack(null)}
             className={cn(
-              'rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+              'rounded-full border px-4 py-2 text-sm font-semibold transition-colors',
               status !== 'idle' && 'cursor-not-allowed opacity-50',
               selectedTrack == null
-                ? 'border-accent bg-accent/15 text-foreground'
-                : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border bg-secondary text-muted-foreground hover:brightness-110 hover:text-foreground',
             )}
           >
             None
@@ -548,11 +548,11 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
                 title={t.label}
                 onClick={() => setSelectedTrack({ url: u, label: t.label })}
                 className={cn(
-                  'rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
+                  'rounded-full border px-4 py-2 text-sm font-semibold transition-colors',
                   status !== 'idle' && 'cursor-not-allowed opacity-50',
                   active
-                    ? 'border-accent bg-accent/15 text-foreground'
-                    : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border bg-secondary text-muted-foreground hover:brightness-110 hover:text-foreground',
                 )}
               >
                 {t.label}
@@ -579,7 +579,7 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
           rows={2}
           maxLength={280}
           disabled={intentLocked || status === 'running' || status === 'paused'}
-          className="resize-none bg-background/60 text-sm"
+          className="resize-none bg-background text-sm"
         />
         {status === 'idle' && !intentValid ? (
           <p className="text-xs text-amber-600/90 dark:text-amber-400/90">
@@ -588,17 +588,26 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
         ) : null}
       </div>
 
-      <div className="text-center">
-        <p
-          className={cn(
-            'timer-digit tabular-nums tracking-[0.1em]',
-            status === 'running' && 'running',
-            status === 'paused' && 'paused',
-            status === 'running' && mode === 'work' && secLeft <= 10 && secLeft >= 1 && 'urgent',
-          )}
-        >
-          {mm}:{ss}
-        </p>
+      <div className="flex flex-col items-center text-center">
+        <div className="relative flex items-center justify-center">
+          <CircularProgressRing remaining={secLeft} total={total} size={240} />
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <p
+              className={cn(
+                'timer-digit !text-[clamp(2.5rem,12vw,4rem)]',
+                status === 'running' && 'running',
+                status === 'paused' && 'paused',
+                status === 'running' &&
+                  mode === 'work' &&
+                  secLeft <= 10 &&
+                  secLeft >= 1 &&
+                  'urgent',
+              )}
+            >
+              {mm}:{ss}
+            </p>
+          </div>
+        </div>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           {status === 'idle' ? (
             <Button

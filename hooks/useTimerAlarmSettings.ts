@@ -50,12 +50,19 @@ export function useTimerAlarmSettings() {
       }
       if (Notification.permission === 'default') {
         void (async () => {
-          const p = await requestTimerNotificationPermission()
-          setNotifyPermission(p)
-          const granted = p === 'granted'
-          setNotifyOnState(granted)
-          setTimerAlarmNotifyEnabled(granted)
-          notifyRef.current = granted
+          try {
+            const p = await requestTimerNotificationPermission()
+            setNotifyPermission(p)
+            const granted = p === 'granted'
+            setNotifyOnState(granted)
+            setTimerAlarmNotifyEnabled(granted)
+            notifyRef.current = granted
+          } catch {
+            setNotifyPermission('denied')
+            setNotifyOnState(false)
+            setTimerAlarmNotifyEnabled(false)
+            notifyRef.current = false
+          }
         })()
         return
       }

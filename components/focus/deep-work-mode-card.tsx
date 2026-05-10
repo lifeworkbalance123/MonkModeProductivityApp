@@ -71,8 +71,7 @@ import {
 import { ProBadge } from '@/components/pro-badge'
 import { cn } from '@/lib/utils'
 import { Expand, Minimize2, Brain } from 'lucide-react'
-
-const RING_R = 140
+import { CircularProgressRing } from '@/components/ui/circular-progress-ring'
 
 type BuiltinAmbient = 'silence' | 'rain' | 'ocean' | 'white'
 type AmbientId = BuiltinAmbient | DeepWorkMp3Slot
@@ -87,50 +86,6 @@ function formatMmSs(sec: number) {
   const m = Math.floor(sec / 60)
   const s = sec % 60
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-}
-
-function RingTimer(props: {
-  remaining: number
-  total: number
-  className?: string
-  size?: number
-}) {
-  const size = props.size ?? 320
-  const r = (RING_R / 320) * size
-  const c = 2 * Math.PI * r
-  const frac = props.total > 0 ? props.remaining / props.total : 0
-  const offset = c * (1 - frac)
-  const stroke = Math.max(8, (12 / 320) * size)
-  const half = size / 2
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox={`0 0 ${size} ${size}`}
-      className={cn('shrink-0', props.className)}
-    >
-      <circle
-        cx={half}
-        cy={half}
-        r={r}
-        fill="none"
-        stroke="var(--muted)"
-        strokeWidth={stroke}
-      />
-      <circle
-        cx={half}
-        cy={half}
-        r={r}
-        fill="none"
-        stroke="var(--accent)"
-        strokeWidth={stroke}
-        strokeLinecap="round"
-        strokeDasharray={c}
-        strokeDashoffset={offset}
-        transform={`rotate(-90 ${half} ${half})`}
-      />
-    </svg>
-  )
 }
 
 export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }: Props) {
@@ -481,14 +436,14 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
       <Confetti trigger={celebrateTick} />
       <Card
         id="deep-work"
-        className="relative scroll-mt-24 overflow-hidden border-border p-6 md:scroll-mt-28"
+        className="relative scroll-mt-24 overflow-hidden rounded-2xl border-2 border-border bg-card p-6 shadow-none md:scroll-mt-28"
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <Brain className="h-5 w-5 text-accent" />
               <h2 className="text-lg font-semibold">Deep Work Mode</h2>
-              <span className="rounded-md bg-accent/20 px-2 py-0.5 text-xs font-semibold text-accent">
+              <span className="rounded-md border border-primary/50 bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                 PRO
               </span>
             </div>
@@ -521,14 +476,14 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
               onChange={(e) => setTask(e.target.value)}
               placeholder="What will you work on this sprint?"
               disabled={locked}
-              className="bg-background/60"
+              className="bg-background"
             />
           </div>
         ) : null}
 
         <div className="relative mx-auto flex max-w-sm flex-col items-center">
           <div className="relative">
-            <RingTimer
+            <CircularProgressRing
               remaining={secondsRemaining}
               total={totalForRing}
               size={280}
@@ -552,7 +507,7 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
               <p className="mt-1 text-sm text-muted-foreground">{centerLabel}</p>
             </div>
             {locked ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center rounded-full bg-background/70 backdrop-blur-[2px]">
+              <div className="absolute inset-0 flex flex-col items-center justify-center rounded-full bg-background/90">
                 <ProBadge className="mb-2" />
                 <p className="mb-3 text-xs text-muted-foreground">Pro feature</p>
                 <Button
@@ -742,7 +697,7 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
           </div>
           <div className="flex flex-1 flex-col items-center justify-center px-4">
             <div className="relative">
-              <RingTimer
+              <CircularProgressRing
                 remaining={secondsRemaining}
                 total={totalForRing}
                 size={300}

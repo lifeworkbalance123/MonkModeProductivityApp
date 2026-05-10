@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Lightbulb } from 'lucide-react'
 
 interface HoverTooltipProps {
   text: string
@@ -68,7 +69,7 @@ export function HoverTooltip({
 
       {visible ? (
         <div
-          className={`absolute z-50 max-w-xs break-words rounded-md bg-gray-900 px-2 py-1 text-xs text-white shadow-lg animate-in fade-in zoom-in duration-150 ${
+          className={`absolute z-50 max-w-xs break-words rounded-lg border border-border/80 bg-popover px-3 py-2 text-xs text-popover-foreground shadow-lg animate-in fade-in zoom-in duration-150 ${
             tooltipPosition === 'bottom'
               ? 'left-1/2 top-full mt-1 -translate-x-1/2'
               : 'bottom-full left-1/2 mb-1 -translate-x-1/2'
@@ -77,13 +78,21 @@ export function HoverTooltip({
           role="tooltip"
         >
           <div
-            className={`absolute h-2 w-2 rotate-45 bg-gray-900 ${
+            className={`absolute h-2 w-2 rotate-45 bg-popover ${
               tooltipPosition === 'bottom'
                 ? '-top-1 left-1/2 -translate-x-1/2'
                 : '-bottom-1 left-1/2 -translate-x-1/2'
             }`}
+            aria-hidden
           />
-          {text}
+          <span className="flex gap-2 text-left">
+            <Lightbulb
+              size={14}
+              className="mt-0.5 shrink-0 text-amber-500"
+              aria-hidden
+            />
+            <span className="min-w-0 leading-snug">{text}</span>
+          </span>
         </div>
       ) : null}
     </div>

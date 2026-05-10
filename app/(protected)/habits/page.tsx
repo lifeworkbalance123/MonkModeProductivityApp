@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
+import { format, startOfWeek } from 'date-fns'
 import { useUpgradeOffer } from '@/context/UpgradeOfferContext'
 import { useToast } from '@/context/ToastContext'
 import { Button } from '@/components/ui/button'
@@ -50,6 +51,10 @@ import {
 } from '@/lib/habit-icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip } from '@/components/ui/first-visit-tooltip'
+import { cn } from '@/lib/utils'
+import { habitWeekDayCompletion } from '@/lib/monk-streak'
+
+const DAYS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
 
 export default function HabitsPage() {
   const { openUpgrade } = useUpgradeOffer()
@@ -78,6 +83,7 @@ export default function HabitsPage() {
 
   const freeHabitCap = !planLoading && !isPro && trialExpired ? 1 : FREE_HABIT_LIMIT
   const atHabitLimit = !planLoading && !isPro && data.habits.length >= freeHabitCap
+  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 })
 
   async function addHabit() {
     const name = draft.trim()
@@ -114,7 +120,13 @@ export default function HabitsPage() {
       })
       return
     }
-    const next = DEFAULT_STARTER_HABIT_NAMES.map((name, i) => ({
+    const existingNames = new Set(
+      data.habits.map((h) => h.name.trim().toLowerCase()),
+    )
+    const starterNames = DEFAULT_STARTER_HABIT_NAMES.filter(
+      (name) => !existingNames.has(name.trim().toLowerCase()),
+    )
+    const next = starterNames.map((name, i) => ({
       id: newHabitClientId(dataContext),
       name,
       icon:
@@ -124,7 +136,10 @@ export default function HabitsPage() {
     }))
     const room = Math.max(0, freeHabitCap - data.habits.length)
     const picked = !planLoading && !isPro ? next.slice(0, room) : next
-    if (picked.length === 0) return
+    if (picked.length === 0) {
+      showToast('Those starter habits are already in your list.', 'info')
+      return
+    }
     setData({ ...data, habits: [...data.habits, ...picked] })
     void Promise.all(
       picked.map((h) =>
@@ -236,14 +251,15 @@ export default function HabitsPage() {
           text="Track your daily anchors – lemon water, phone away, cold exposure. Consistency > intensity."
         >
           <div>
-            <h1 className="text-2xl font-semibold">Habits</h1>
-            <p className="text-sm text-muted-foreground">
+            <div className="label-machine">System</div>
+            <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground">Habits</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
               Manage the habits shown on your dashboard and weekly planner.
             </p>
             {atHabitLimit ? (
             <div
               role="status"
-              className="mt-3 rounded-lg border border-border bg-secondary/40 px-3 py-2 text-sm text-muted-foreground"
+              className="mt-3 rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground shadow-none"
             >
               You&apos;ve reached the Free limit of {FREE_HABIT_LIMIT} habits.
               Upgrade to Pro for unlimited habits.{' '}
@@ -361,24 +377,49 @@ export default function HabitsPage() {
             <ul className="space-y-2">
               {data.habits.map((h, index) => {
                 const displayIcon = getHabitDisplayIcon(h)
+                const dots = habitWeekDayCompletion(data.habitLog, h.id, weekStart)
+                const completedCount = dots.filter(Boolean).length
                 return (
                 <li key={h.id}>
                   <ContextMenu>
                     <ContextMenuTrigger asChild>
-                      <div className="flex items-center gap-2 border border-border rounded-lg p-2 select-none">
-                        <span
-                          className="flex h-8 w-8 shrink-0 items-center justify-center text-lg leading-none"
-                          aria-hidden
-                        >
+                      <div className="flex items-center gap-3 border border-border rounded-md p-3 select-none bg-card">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center text-lg leading-none bg-secondary rounded-md" aria-hidden>
                           {displayIcon ? (
                             displayIcon
                           ) : (
                             <Smile className="h-5 w-5 text-muted-foreground opacity-60" />
                           )}
                         </span>
-                        <span className="flex-1 text-sm truncate px-1">
-                          {h.name}
-                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <span className="text-sm font-medium truncate">
+                              {h.name}
+                            </span>
+                            <span className="text-xs tabular-nums text-muted-foreground shrink-0">
+                              {completedCount}/7
+                            </span>
+                          </div>
+                          <div
+                            className="mt-2 flex gap-1.5"
+                            role="list"
+                            aria-label={`${h.name} completions this week`}
+                          >
+                            {dots.map((done, i) => (
+                              <span
+                                key={i}
+                                role="listitem"
+                                title={`${DAYS_SHORT[i]}: ${done ? 'done' : 'not done'}`}
+                                className={cn(
+                                  'size-3 shrink-0 rounded-full border-2',
+                                  done
+                                    ? 'border-[#F5C518] bg-[#F5C518]'
+                                    : 'border-muted-foreground/50 bg-background',
+                                )}
+                              />
+                            ))}
+                          </div>
+                        </div>
                         <Button
                           type="button"
                           variant="ghost"

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { copyTextToClipboard } from '@/lib/copy-to-clipboard'
 import { supabase } from '@/lib/supabase'
 import { publicSiteOrigin, SALES_EMAIL } from '@/lib/site-contact'
 
@@ -42,9 +43,7 @@ function WaitlistForm({
           </Link>
           <button
             type="button"
-            onClick={() =>
-              navigator.clipboard.writeText(`${publicSiteOrigin()}/waitlist`)
-            }
+            onClick={() => void copyTextToClipboard(`${publicSiteOrigin()}/waitlist`)}
             className="text-sm text-accent hover:underline"
           >
             Share the waitlist →

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useToast } from '@/context/ToastContext'
+import { copyTextToClipboard } from '@/lib/copy-to-clipboard'
 
 interface PostProgressButtonProps {
   programName: string
@@ -63,7 +64,11 @@ export function PostProgressButton({ programName, currentDay, totalDays, streakD
   )
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(postText)
+    const ok = await copyTextToClipboard(postText)
+    if (!ok) {
+      showToast('Could not copy — focus this tab and try again.', 'error')
+      return
+    }
     setCopied(true)
     showToast('Post copied.', 'success')
     window.setTimeout(() => setCopied(false), 2000)

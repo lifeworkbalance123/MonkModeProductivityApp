@@ -52,11 +52,7 @@ const DashboardContent = memo(function DashboardContent({
         </div>
       </div>
 
-      <CollapsibleSection
-        title="Today & programs"
-        storageKey="dashboard:section:today"
-        defaultExpanded
-      >
+      <CollapsibleSection title="Today & programs">
         {serverActiveProgramType ? (
           <div className="space-y-4">
             <TodayChecklist programType={serverActiveProgramType} />
@@ -65,7 +61,7 @@ const DashboardContent = memo(function DashboardContent({
               title="Other programs"
               subtitle="Switch or start another track"
               storageKey="dashboard:block:other-programs"
-              defaultExpanded
+              defaultExpanded={false}
             >
               <ProgramCards hideActiveProgramSummary />
             </CollapsibleTimeBlock>

@@ -43,8 +43,9 @@ export function FocusPageClient() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (window.location.hash !== '#deep-work') return
-    const el = document.getElementById('deep-work')
+    const id = window.location.hash.replace(/^#/, '')
+    if (!id) return
+    const el = document.getElementById(id)
     if (!el) return
     requestAnimationFrame(() => {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -53,21 +54,63 @@ export function FocusPageClient() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-xl space-y-8 px-4 py-8 pt-4 md:pt-2">
+      <div className="mx-auto max-w-4xl space-y-8 px-4 py-8 pt-4 md:pt-2">
         <HoverTooltip text="Start a Pomodoro (25 min) or a deep work block (50\u201190 min). No phone. No interruptions. Just focus.">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Focus & Deep Work
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Pomodoro at the top; Deep Work Mode (90-minute sprints) below—scroll
-              after the timer.
-            </p>
-          </div>
+          <section className="rounded-2xl border border-border bg-card p-6 shadow-none md:p-8">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
+              <div className="min-w-0 flex-1">
+                <div className="label-machine">Focus machine</div>
+                <h1 className="mt-2 text-4xl font-bold tracking-tight text-foreground md:text-5xl">
+                  Focus Machine
+                </h1>
+                <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
+                  High-contrast timers, deep-work sprints, and strip stats—built like a control panel,
+                  not a wellness app.
+                </p>
+                <nav
+                  className="mt-5 flex flex-wrap gap-2"
+                  aria-label="Focus sections"
+                >
+                  <a
+                    href="#pomodoro-focus"
+                    className="inline-flex items-center rounded-full border border-primary bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:brightness-110"
+                  >
+                    Pomodoro
+                  </a>
+                  <a
+                    href="#deep-work"
+                    className="inline-flex items-center rounded-full border border-border bg-secondary px-4 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Deep work
+                  </a>
+                  <a
+                    href="#focus-stats"
+                    className="inline-flex items-center rounded-full border border-border bg-secondary px-4 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    Stats
+                  </a>
+                </nav>
+              </div>
+              <div className="lg:max-w-xs lg:shrink-0">
+                <p className="label-machine mb-2 lg:text-right">Signal key</p>
+                <ul className="space-y-1.5 text-xs text-muted-foreground lg:text-right">
+                  <li>
+                    <span className="font-semibold text-primary">Gold</span> — primary actions & timer
+                  </li>
+                  <li>
+                    <span className="font-semibold text-[#4CAF50]">Green</span> — success / on track
+                  </li>
+                  <li>
+                    <span className="font-semibold text-[#EF4444]">Red</span> — stop / danger
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </section>
         </HoverTooltip>
 
-        <Card className="border-border p-4">
-          <p className="mb-3 text-sm font-medium text-foreground">Timer alerts</p>
+        <Card className="rounded-2xl border border-border p-4 shadow-none md:p-5">
+          <div className="label-machine mb-3">Timer alerts</div>
           <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-8">
             <div className="flex items-center gap-2">
               <Switch

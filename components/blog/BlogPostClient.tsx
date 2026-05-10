@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import { copyTextToClipboard } from '@/lib/copy-to-clipboard'
 import { incrementViewCount, type BlogPost } from '@/lib/blog'
 import { publicSiteOrigin } from '@/lib/site-contact'
 import { findPricingRow, formatPriceCents, usePricing } from '@/hooks/usePricing'
@@ -34,10 +35,9 @@ export default function BlogPostClient({ post, related }: Props) {
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank', 'noopener,noreferrer')
   }
 
-  function copyLink() {
-    void navigator.clipboard.writeText(postUrl).then(() => {
-      alert('Link copied!')
-    })
+  async function copyLink() {
+    const ok = await copyTextToClipboard(postUrl)
+    alert(ok ? 'Link copied!' : 'Could not copy — focus this page and try again.')
   }
 
   return (

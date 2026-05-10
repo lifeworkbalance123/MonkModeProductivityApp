@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { withAuthStorageLockRetry } from '@/lib/authStorageLock'
 import { supabase } from '@/lib/supabase'
 import type { ProgramType } from '@/lib/programStatus'
 
@@ -61,7 +62,7 @@ export function useProgramStatus(enabled = true): UseProgramStatusResult {
       setLoading(true)
       setError(null)
 
-      const { data } = await supabase.auth.getSession()
+      const { data } = await withAuthStorageLockRetry(() => supabase.auth.getSession())
       const token = data.session?.access_token
 
       const res = await fetch('/api/programs/status', {

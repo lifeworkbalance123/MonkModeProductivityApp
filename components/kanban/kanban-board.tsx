@@ -169,7 +169,9 @@ export function KanbanBoard({ data, setData }: Props) {
     if (!getGoalSyncEnabled()) return
     void (async () => {
       const k = await getCards(ctx)
-      const incomplete = data.goals.filter((g) => !g.completed)
+      const incomplete = data.goals.filter(
+        (g) => !g.completed && String(g.text ?? '').trim().length > 0,
+      )
       let added = 0
       for (const g of incomplete) {
         if (k.some((c) => c.goalId === g.id)) continue
@@ -767,6 +769,16 @@ export function KanbanBoard({ data, setData }: Props) {
             <AlertDialogTitle>Clear all cards?</AlertDialogTitle>
             <AlertDialogDescription>
               This removes every card in this column permanently.
+              {clearColId === TODO_ID && goalSync ? (
+                <>
+                  {' '}
+                  <span className="mt-2 block font-medium text-foreground">
+                    Goal sync is on: incomplete Top 5 goals will show up again in To Do
+                    right after. Turn off &quot;Sync today&apos;s goals to To Do&quot; if
+                    you want this column to stay empty.
+                  </span>
+                </>
+              ) : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

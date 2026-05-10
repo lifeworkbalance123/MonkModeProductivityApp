@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { getUserIdSafe } from '@/lib/supabaseAuthSafe'
 import { cn } from '@/lib/utils'
 
 function trialDaysRemaining(trialEndIso: string): number {
@@ -44,14 +45,12 @@ export function ProgramTrialBanner() {
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
+      const userId = await getUserIdSafe()
+      if (!userId) return
       const { data } = await supabase
         .from('user_programs')
         .select('trial_end, payment_status')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('status', 'active')
         .maybeSingle()
       if (cancelled || !data) return

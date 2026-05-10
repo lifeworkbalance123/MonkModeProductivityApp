@@ -1,5 +1,17 @@
 import type { HabitLog } from '@/lib/monk-types'
-import { format, subDays } from 'date-fns'
+import { addDays, format, subDays } from 'date-fns'
+
+/** Mon=index 0 … Sun=6 for the given week (weekStartsOn Monday). */
+export function habitWeekDayCompletion(
+  habitLog: HabitLog,
+  habitId: string,
+  weekStartMonday: Date,
+): boolean[] {
+  return Array.from({ length: 7 }, (_, i) => {
+    const key = format(addDays(weekStartMonday, i), 'yyyy-MM-dd')
+    return !!habitLog[habitId]?.[key]
+  })
+}
 
 /** Consecutive days (ending today) where at least one habit was completed. */
 export function computeStreak(habitLog: HabitLog): number {

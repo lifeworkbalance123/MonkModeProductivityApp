@@ -65,9 +65,9 @@ function ItemLink({
       href={item.href}
       prefetch={false}
       className={cn(
-        'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors',
+        'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
         active
-          ? 'bg-accent/15 text-accent font-medium'
+          ? 'bg-primary text-primary-foreground'
           : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
       )}
     >
@@ -84,7 +84,7 @@ export function DesktopSidebar({ showProGate, onProLocked, programButtonText }: 
 
   return (
     <aside
-      className="fixed left-0 top-0 z-[55] hidden h-screen w-64 flex-col border-r border-border bg-background/95 backdrop-blur-xl md:flex"
+      className="fixed left-0 top-0 z-[55] hidden h-screen w-64 flex-col border-r border-border bg-card md:flex"
       aria-label="Main navigation"
     >
       <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border px-4">
@@ -116,9 +116,8 @@ export function DesktopSidebar({ showProGate, onProLocked, programButtonText }: 
                   aria-controls={panelId}
                   onMouseEnter={() => setGroupOpen(group.id, true)}
                   className={cn(
-                    'flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-left',
-                    'text-[10px] font-semibold uppercase tracking-wider text-muted-foreground',
-                    'outline-none transition-colors hover:bg-secondary/60 hover:text-foreground',
+                    'label-machine flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-left !text-[10px]',
+                    'outline-none transition-colors hover:bg-secondary hover:text-foreground',
                     'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                   )}
                 >

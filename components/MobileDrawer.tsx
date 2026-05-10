@@ -63,9 +63,8 @@ export function MobileDrawer({
                     type="button"
                     aria-controls={panelId}
                     className={cn(
-                      'flex w-full items-center gap-1 rounded-md px-2 py-2 text-left',
-                      'text-[10px] font-semibold uppercase tracking-wider text-muted-foreground',
-                      'outline-none transition-colors hover:bg-secondary/60 hover:text-foreground',
+                      'label-machine flex w-full items-center gap-1 rounded-md px-2 py-2 text-left !text-[10px]',
+                      'outline-none transition-colors hover:bg-secondary hover:text-foreground',
                     )}
                   >
                     <ChevronDown
@@ -110,9 +109,9 @@ export function MobileDrawer({
                           <Link
                             href={item.href}
                             className={cn(
-                              'flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                              'flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                               isActive(item.href)
-                                ? 'bg-accent/15 font-medium text-accent'
+                                ? 'bg-primary text-primary-foreground'
                                 : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
                             )}
                             onClick={() => onOpenChange(false)}

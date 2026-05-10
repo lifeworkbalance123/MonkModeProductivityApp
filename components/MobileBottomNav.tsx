@@ -56,7 +56,7 @@ export function MobileBottomNav({
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-xl md:hidden"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card pb-[env(safe-area-inset-bottom,0px)] md:hidden"
       aria-label="Primary"
     >
       <div className="mx-auto flex max-w-lg items-stretch justify-around gap-0 px-1 pt-1">
@@ -71,14 +71,23 @@ export function MobileBottomNav({
               key={href}
               href={href}
               className={cn(
-                'flex min-h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1 text-[10px] font-medium transition-colors',
+                'flex min-h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0 px-1 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors',
                 active
-                  ? 'text-accent'
+                  ? 'text-primary'
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              <Icon className={cn('h-5 w-5 shrink-0', active && 'text-accent')} />
-              <span className="truncate">{displayLabel}</span>
+              <Icon className={cn('h-5 w-5 shrink-0', active && 'text-primary')} />
+              <span
+                className={cn(
+                  'mt-0.5 h-1 w-1 shrink-0 rounded-full',
+                  active ? 'bg-primary' : 'bg-transparent',
+                )}
+                aria-hidden
+              />
+              <span className="truncate normal-case tracking-normal mt-0.5">
+                {displayLabel}
+              </span>
             </Link>
           )
         })}
@@ -103,18 +112,25 @@ export function MobileBottomNav({
               onOpenMenu()
             }}
             className={cn(
-              'flex min-h-[52px] w-full flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1 text-[10px] font-medium transition-colors',
+              'flex min-h-[52px] w-full flex-col items-center justify-center gap-0 px-1 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors',
               menuActive
-                ? 'text-accent'
+                ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground',
             )}
             aria-label="Open menu"
             aria-expanded={menuOpen}
           >
             <Menu
-              className={cn('h-5 w-5 shrink-0', menuActive && 'text-accent')}
+              className={cn('h-5 w-5 shrink-0', menuActive && 'text-primary')}
             />
-            <span>Menu</span>
+            <span
+              className={cn(
+                'mt-0.5 h-1 w-1 shrink-0 rounded-full',
+                menuActive ? 'bg-primary' : 'bg-transparent',
+              )}
+              aria-hidden
+            />
+            <span className="normal-case tracking-normal mt-0.5">Menu</span>
           </button>
         </div>
       </div>

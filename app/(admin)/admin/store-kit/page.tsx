@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { copyTextToClipboard } from '@/lib/copy-to-clipboard'
 import { DEFAULT_PUBLIC_ORIGIN, SUPPORT_EMAIL } from '@/lib/site-contact'
 
 const APP_NAME = 'monk³ – monkcubed'
@@ -54,11 +55,11 @@ function CopyButton({ text, label }: { text: string; label: string }) {
   const [state, setState] = useState<'idle' | 'ok' | 'err'>('idle')
 
   const onCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(text)
+    const ok = await copyTextToClipboard(text)
+    if (ok) {
       setState('ok')
       setTimeout(() => setState('idle'), 2000)
-    } catch {
+    } else {
       setState('err')
       setTimeout(() => setState('idle'), 2500)
     }

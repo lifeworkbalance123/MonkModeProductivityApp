@@ -48,7 +48,7 @@ export function MainShell({
         {user ? (
           <div
             className={cn(
-              'flex min-h-0 flex-1 flex-col md:min-h-screen',
+              'flex min-h-0 flex-1 flex-col md:min-h-screen md:border-l md:border-border',
               'pointer-events-auto md:ml-64',
             )}
           >

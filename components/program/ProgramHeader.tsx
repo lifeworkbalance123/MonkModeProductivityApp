@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useProgramStatus } from '@/hooks/useProgramStatus'
-import { PU } from '@/lib/program-ui-tokens'
 import { BuddyShareModal } from '@/components/program/BuddyShareModal'
 
 export default function ProgramHeader() {
@@ -26,117 +25,90 @@ export default function ProgramHeader() {
 
   return (
     <>
-    <div
-      style={{
-        background: PU.card,
-        borderRadius: '12px',
-        padding: '16px 20px',
-        border: `1px solid color-mix(in srgb, ${programColor} 45%, ${PU.border})`,
-        marginBottom: '24px',
-      }}
-    >
       <div
+        className="mb-6 rounded-lg border bg-card p-4 shadow-none"
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: '12px',
-          flexWrap: 'wrap',
-          gap: '8px',
+          borderColor: `color-mix(in srgb, ${programColor} 45%, var(--border))`,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: '50%',
-              background: programColor,
-              flexShrink: 0,
-            }}
-            aria-hidden
-          />
-          <div>
-            <span style={{ color: programColor, fontWeight: '600', fontSize: '16px' }}>
-              {activeProgram.label}
-            </span>
-            <span style={{ color: PU.mutedFg, fontSize: '13px', marginLeft: '8px' }}>Program</span>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {isBuddy ? (
-            <button
-              type="button"
-              onClick={() => setBuddyOpen(true)}
-              style={{
-                background: `color-mix(in srgb, ${programColor} 14%, transparent)`,
-                color: programColor,
-                padding: '4px 10px',
-                borderRadius: '999px',
-                fontSize: '12px',
-                fontWeight: '700',
-                border: `1px solid color-mix(in srgb, ${programColor} 45%, ${PU.border})`,
-                cursor: 'pointer',
-              }}
-            >
-              Buddy
-            </button>
-          ) : (
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
             <span
-              style={{
-                background: PU.muted,
-                color: PU.mutedFg,
-                padding: '4px 10px',
-                borderRadius: '999px',
-                fontSize: '12px',
-                fontWeight: '700',
-                border: `1px solid ${PU.border}`,
-              }}
-              title="Individual mode selected during onboarding"
-            >
-              Individual
-            </span>
-          )}
-          <div
-            style={{
-              background: `color-mix(in srgb, ${programColor} 20%, transparent)`,
-              color: programColor,
-              padding: '4px 12px',
-              borderRadius: '20px',
-              fontSize: '13px',
-              fontWeight: '600',
-            }}
-          >
-            Day {activeProgram.currentDay} of {totalDays}
+              className="size-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: programColor }}
+              aria-hidden
+            />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span
+                  className="truncate text-base font-semibold"
+                  style={{ color: programColor }}
+                >
+                  {activeProgram.label}
+                </span>
+                <span className="label-machine">Program</span>
+              </div>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                {isBuddy ? (
+                  <button
+                    type="button"
+                    onClick={() => setBuddyOpen(true)}
+                    className="rounded-full border px-3 py-1 text-xs font-bold"
+                    style={{
+                      borderColor: `color-mix(in srgb, ${programColor} 55%, var(--border))`,
+                      backgroundColor: `color-mix(in srgb, ${programColor} 14%, transparent)`,
+                      color: programColor,
+                    }}
+                  >
+                    Buddy
+                  </button>
+                ) : (
+                  <span
+                    className="rounded-full border border-border bg-secondary px-3 py-1 text-xs font-bold text-muted-foreground"
+                    title="Individual mode selected during onboarding"
+                  >
+                    Individual
+                  </span>
+                )}
+                <span
+                  className="rounded-full border px-3 py-1 text-xs font-semibold"
+                  style={{
+                    borderColor: `color-mix(in srgb, ${programColor} 55%, var(--border))`,
+                    backgroundColor: `color-mix(in srgb, ${programColor} 18%, transparent)`,
+                    color: programColor,
+                  }}
+                >
+                  Day <span className="tabular-nums">{activeProgram.currentDay}</span> /{' '}
+                  <span className="tabular-nums">{totalDays}</span>
+                </span>
+              </div>
+            </div>
           </div>
+
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="label-machine">Progress</div>
+              <div className="text-lg font-bold tabular-nums text-foreground">
+                {progressPercent}%
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-3 h-2 w-full overflow-hidden rounded-md bg-secondary">
+          <div
+            className="h-full rounded-md transition-[width] duration-500 ease-out"
+            style={{ width: `${progressPercent}%`, backgroundColor: programColor }}
+          />
+        </div>
+
+        <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+          <span className="tabular-nums">{completedCount} days completed</span>
+          <span className="tabular-nums">{progressPercent}%</span>
         </div>
       </div>
 
-      <div
-        style={{
-          background: PU.muted,
-          borderRadius: '4px',
-          height: '6px',
-          overflow: 'hidden',
-        }}
-      >
-        <div
-          style={{
-            background: programColor,
-            height: '100%',
-            width: `${progressPercent}%`,
-            borderRadius: '4px',
-            transition: 'width 0.5s ease',
-          }}
-        />
-      </div>
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
-        <span style={{ color: PU.mutedFg, fontSize: '11px' }}>{completedCount} days completed</span>
-        <span style={{ color: PU.mutedFg, fontSize: '11px' }}>{progressPercent}%</span>
-      </div>
-    </div>
-    {isBuddy ? <BuddyShareModal open={buddyOpen} onOpenChange={setBuddyOpen} /> : null}
+      {isBuddy ? <BuddyShareModal open={buddyOpen} onOpenChange={setBuddyOpen} /> : null}
     </>
   )
 }

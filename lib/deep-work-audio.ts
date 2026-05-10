@@ -13,9 +13,9 @@ export function playChime() {
     gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2)
     oscillator.start(ctx.currentTime)
     oscillator.stop(ctx.currentTime + 2)
-    void ctx.resume()
+    void ctx.resume().catch(() => {})
     setTimeout(() => {
-      void ctx.close()
+      void ctx.close().catch(() => {})
     }, 2500)
   } catch {
     /* ignore */
@@ -46,7 +46,7 @@ export function createRainSound(): AmbientNoiseHandle {
   gain.gain.value = 0.12
   brownNoise.connect(gain)
   gain.connect(ctx.destination)
-  void ctx.resume()
+  void ctx.resume().catch(() => {})
   return { ctx, node: brownNoise, gain }
 }
 
@@ -64,7 +64,7 @@ export function createWhiteNoise(): AmbientNoiseHandle {
   gainNode.gain.value = 0.05
   whiteNoise.connect(gainNode)
   gainNode.connect(ctx.destination)
-  void ctx.resume()
+  void ctx.resume().catch(() => {})
   return { ctx, node: whiteNoise, gain: gainNode }
 }
 
@@ -89,7 +89,7 @@ export function createOceanSound(): AmbientNoiseHandle {
   gain.gain.value = 0.1
   node.connect(gain)
   gain.connect(ctx.destination)
-  void ctx.resume()
+  void ctx.resume().catch(() => {})
   return { ctx, node, gain }
 }
 
@@ -98,7 +98,7 @@ export function stopAmbient(h: AmbientNoiseHandle | null) {
   try {
     h.node.disconnect()
     h.gain?.disconnect()
-    void h.ctx.close()
+    void h.ctx.close().catch(() => {})
   } catch {
     /* ignore */
   }

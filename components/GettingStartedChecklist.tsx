@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
+import { filterGoalsWithNonEmptyText } from '@/lib/goals-utils'
 import type { MonkData } from '@/lib/monk-types'
 import { useToast } from '@/context/ToastContext'
 
@@ -50,7 +51,7 @@ export function GettingStartedChecklist({
   }, [])
 
   const hasHabit = data.habits.length > 0
-  const hasGoal = data.goals.length > 0
+  const hasGoal = filterGoalsWithNonEmptyText(data.goals).length > 0
   const hasSlot = data.timeSlots.length > 0
   const gratitudeForCheck = morningGratitudeFields ?? data.gratitude
   const hasGratitude = gratitudeForCheck.some((g) => g.trim().length > 0)
@@ -90,7 +91,7 @@ export function GettingStartedChecklist({
           'mt-[1px] inline-flex size-5 shrink-0 items-center justify-center rounded-[6px] border',
           done
             ? 'border-accent bg-accent text-accent-foreground'
-            : 'border-border bg-background/40 text-muted-foreground',
+            : 'border-border bg-background text-muted-foreground',
         ].join(' ')}
       >
         {done ? '✓' : ''}
@@ -99,19 +100,23 @@ export function GettingStartedChecklist({
   }
 
   return (
-    <Card className="mb-4 border-primary/35 bg-primary/[0.08] p-4 sm:p-5">
-      <h2 className="text-lg font-semibold text-foreground">
-        Welcome to monkcubed 🔥
-      </h2>
+    <Card className="mb-4 border border-primary/35 bg-card p-4 shadow-none sm:p-5">
+      <div className="label-machine">Getting started</div>
+      <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <h2 className="text-xl font-bold tracking-tight text-foreground">
+          Welcome to monkcubed
+        </h2>
+        <span className="text-xs font-semibold text-primary">START HERE</span>
+      </div>
       <p className="mt-1 text-sm text-muted-foreground">
-        Complete these steps to get started:
+        Complete these steps to initialize your system.
       </p>
       <ul className="mt-4 space-y-2 text-sm">
         <li className="flex items-center gap-3">
           <CheckIcon done={hasHabit} />
           <Link
             href="/habits"
-            className="min-h-11 flex items-center font-medium text-accent hover:underline md:min-h-0"
+            className="min-h-11 flex items-center font-semibold text-accent hover:underline md:min-h-0"
           >
             Add your first habit
           </Link>
@@ -120,7 +125,7 @@ export function GettingStartedChecklist({
           <CheckIcon done={hasGoal} />
           <Link
             href="/goals"
-            className="min-h-11 flex items-center font-medium text-accent hover:underline md:min-h-0"
+            className="min-h-11 flex items-center font-semibold text-accent hover:underline md:min-h-0"
           >
             Set today&apos;s goals
           </Link>
@@ -129,7 +134,7 @@ export function GettingStartedChecklist({
           <CheckIcon done={hasSlot} />
           <Link
             href="/planner"
-            className="min-h-11 flex items-center font-medium text-accent hover:underline md:min-h-0"
+            className="min-h-11 flex items-center font-semibold text-accent hover:underline md:min-h-0"
           >
             Schedule your first time block
           </Link>
@@ -138,7 +143,7 @@ export function GettingStartedChecklist({
           <CheckIcon done={hasGratitude} />
           <button
             type="button"
-            className="min-h-11 flex flex-1 items-center rounded-md py-2 text-left font-medium text-accent hover:underline md:min-h-0 md:flex-none md:py-0"
+            className="min-h-11 flex flex-1 items-center rounded-md py-2 text-left font-semibold text-accent hover:underline md:min-h-0 md:flex-none md:py-0"
             onClick={() => {
               document
                 .getElementById('dashboard-morning-gratitude')

@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { TimeScheduleCard } from '@/components/time-schedule-card'
 import TemplateSetupModal from '@/components/dashboard/TemplateSetupModal'
 import { Card } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -19,6 +18,7 @@ import {
   Target,
   CheckCircle2,
   Video,
+  Clock,
 } from 'lucide-react'
 import { addDays, addWeeks, format, getWeek, startOfWeek } from 'date-fns'
 import type { MonkData, TimeSlot } from '@/lib/monk-types'
@@ -30,7 +30,13 @@ import {
   timeSlotsFromTemplate,
   type ScheduleTemplate,
 } from '@/lib/scheduleTemplate'
-import { computeStreak, habitWeekProgress } from '@/lib/monk-streak'
+import { filterGoalsWithNonEmptyText } from '@/lib/goals-utils'
+import { cn } from '@/lib/utils'
+import {
+  computeStreak,
+  habitWeekDayCompletion,
+  habitWeekProgress,
+} from '@/lib/monk-streak'
 import { youtubeEmbedFromUrl } from '@/lib/morning-video'
 import { usePlan } from '@/hooks/usePlan'
 import { useToast } from '@/context/ToastContext'
@@ -107,6 +113,7 @@ export function DashboardApp({
   const heading = format(selectedDate, 'EEEE, MMMM d, yyyy')
   const weekNum = getWeek(selectedDate, { weekStartsOn: 1 })
   const todayKey = format(new Date(), 'yyyy-MM-dd')
+  const visibleGoals = filterGoalsWithNonEmptyText(data.goals)
 
   const [dayGratitude, setDayGratitude] = useState<string[]>(['', '', ''])
   const [dayAchievements, setDayAchievements] = useState<string[]>(['', '', ''])
@@ -409,15 +416,20 @@ export function DashboardApp({
         data={data}
         morningGratitudeFields={todayGratitudeSnapshot}
       />
-      <div className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-2xl sm:p-6">
+      <div className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-none sm:p-6">
         <HoverTooltip
           text="See your streak, badges, and weekly progress at a glance. Your transformation starts here."
         >
           <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-xl font-semibold">{heading}</h1>
-              <p className="text-sm text-muted-foreground">
-                Week {weekNum} of 52
+              <div className="label-machine">Dashboard</div>
+              <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground">
+                {heading}
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                <span className="label-machine">Week</span>{' '}
+                <span className="tabular-nums font-semibold text-foreground">{weekNum}</span>{' '}
+                <span className="text-muted-foreground">/ 52</span>
                 {weekOffset !== 0 && (
                   <button
                     type="button"
@@ -432,7 +444,7 @@ export function DashboardApp({
             <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              className="inline-flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-lg hover:bg-secondary md:h-9 md:w-9"
+              className="inline-flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-lg border border-border bg-background hover:bg-secondary md:h-9 md:w-9"
               onClick={goPrevDay}
               aria-label="Previous day"
             >
@@ -449,10 +461,10 @@ export function DashboardApp({
                   key={day}
                   type="button"
                   onClick={() => setDayIndex(idx)}
-                  className={`min-h-11 min-w-11 touch-manipulation px-2 text-xs font-medium rounded-lg transition-colors md:min-h-0 md:min-w-0 md:px-3 md:py-1.5 ${
+                  className={`min-h-11 min-w-11 touch-manipulation px-2 text-xs font-semibold uppercase tracking-wide rounded-md transition-colors md:min-h-0 md:min-w-0 md:px-3 md:py-1.5 ${
                     idx === dayIndex
-                      ? 'bg-accent text-accent-foreground'
-                      : 'text-muted-foreground hover:bg-secondary'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary text-muted-foreground hover:brightness-110'
                   }`}
                 >
                   {day}
@@ -461,7 +473,7 @@ export function DashboardApp({
             </div>
             <button
               type="button"
-              className="inline-flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-lg hover:bg-secondary md:h-9 md:w-9"
+              className="inline-flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-lg border border-border bg-background hover:bg-secondary md:h-9 md:w-9"
               onClick={goNextDay}
               aria-label="Next day"
             >
@@ -475,16 +487,12 @@ export function DashboardApp({
 
         <div className="grid min-w-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           <div className="flex max-md:contents flex-col gap-6 md:col-span-1 lg:col-span-2">
-            <Card
+            <CollapsibleSection
               id="dashboard-morning-gratitude"
-              className="max-md:order-10 scroll-mt-28 bg-secondary/50 p-4"
+              title="Morning gratitude"
+              icon={<Sun className="h-4 w-4 text-accent" />}
+              className="max-md:order-10 scroll-mt-28"
             >
-              <div className="flex items-center gap-2 mb-3">
-                <Sun className="w-4 h-4 text-accent" />
-                <span className="text-sm font-medium">
-                  Morning: 3 things I&apos;m grateful for
-                </span>
-              </div>
               <div className="space-y-2">
                 {[0, 1, 2].map((i) => (
                   <div key={i} className="pl-2">
@@ -495,51 +503,52 @@ export function DashboardApp({
                       value={dayGratitude[i] ?? ''}
                       onChange={(e) => setGratitude(i, e.target.value)}
                       onBlur={() => void saveJournalOnly(dateKey)}
-                      className="inline-flex max-w-md h-8 text-sm bg-background/60 border-border"
+                      className="inline-flex max-w-md h-8 text-sm bg-background border-border"
                       placeholder="…"
                     />
                   </div>
                 ))}
               </div>
-              <CollapsibleSection
-                title="Morning Motivation & Video"
-                storageKey="morning-section-expanded"
-                defaultExpanded={false}
-                icon={<Video className="size-4 text-accent" aria-hidden />}
-                className="mb-0 mt-4 rounded-lg border border-border/60 bg-background/30"
-              >
-                <div className="space-y-3">
-                  <p className="text-xs text-muted-foreground">
-                    Paste a YouTube link to save your morning motivation video.
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      or paste a URL below
-                    </span>
-                  </div>
-                  <Input
-                    value={data.morningVideoUrl}
-                    onChange={(e) => setMorningVideoUrl(e.target.value)}
-                    className="h-9 text-sm bg-background/60 border-border"
-                    placeholder="YouTube URL (e.g. https://www.youtube.com/watch?v=...)"
-                  />
-                  <Textarea
-                    value={data.morningVideoNote}
-                    onChange={(e) => setMorningVideoNote(e.target.value)}
-                    className="min-h-[72px] text-sm bg-background/60 border-border resize-y"
-                    placeholder="Motivation text, intention, or notes for this morning…"
-                  />
-                  {data.morningVideoUrl.trim() &&
-                  youtubeEmbedFromUrl(data.morningVideoUrl) ? (
-                    <div className="space-y-2">
-                      <a
-                        href={data.morningVideoUrl.trim()}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex text-xs font-medium text-accent hover:underline"
-                      >
-                        Watch on YouTube
-                      </a>
+            </CollapsibleSection>
+
+            <CollapsibleSection
+              title="Morning Motivation & Video"
+              defaultExpanded={false}
+              icon={<Video className="size-4 text-accent" aria-hidden />}
+              className="max-md:order-10"
+            >
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Paste a YouTube link to save your morning motivation video.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    or paste a URL below
+                  </span>
+                </div>
+                <Input
+                  value={data.morningVideoUrl}
+                  onChange={(e) => setMorningVideoUrl(e.target.value)}
+                  className="h-9 text-sm bg-background border-border"
+                  placeholder="YouTube URL (e.g. https://www.youtube.com/watch?v=...)"
+                />
+                <Textarea
+                  value={data.morningVideoNote}
+                  onChange={(e) => setMorningVideoNote(e.target.value)}
+                  className="min-h-[72px] text-sm bg-background border-border resize-y"
+                  placeholder="Motivation text, intention, or notes for this morning…"
+                />
+                {data.morningVideoUrl.trim() &&
+                youtubeEmbedFromUrl(data.morningVideoUrl) ? (
+                  <div className="space-y-2">
+                    <a
+                      href={data.morningVideoUrl.trim()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex text-xs font-medium text-accent hover:underline"
+                    >
+                      Watch on YouTube
+                    </a>
                     <iframe
                       title="Morning video"
                       src={youtubeEmbedFromUrl(data.morningVideoUrl)!}
@@ -547,23 +556,28 @@ export function DashboardApp({
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
                     />
-                    </div>
-                  ) : null}
-                  {data.morningVideoUrl.trim() &&
-                  !youtubeEmbedFromUrl(data.morningVideoUrl) ? (
-                    <video
-                      src={data.morningVideoUrl.trim()}
-                      controls
-                      className="w-full max-w-md rounded-md border border-border"
-                    />
-                  ) : null}
-                </div>
-              </CollapsibleSection>
-            </Card>
+                  </div>
+                ) : null}
+                {data.morningVideoUrl.trim() &&
+                !youtubeEmbedFromUrl(data.morningVideoUrl) ? (
+                  <video
+                    src={data.morningVideoUrl.trim()}
+                    controls
+                    className="w-full max-w-md rounded-md border border-border"
+                  />
+                ) : null}
+              </div>
+            </CollapsibleSection>
 
-            <TimeScheduleCard
+            <CollapsibleSection
+              title="Time schedule"
+              icon={<Clock className="size-4 text-accent" />}
               className="max-md:order-30"
-              selectedDateKey={dateKey}
+            >
+              <TimeScheduleCard
+                hideScheduleTitle
+                className="border-0 bg-transparent p-0 shadow-none"
+                selectedDateKey={dateKey}
               timeSlots={dayTimeSlots}
               onTimeSlotsChange={(next) => {
                 setDayTimeSlots((prev) => {
@@ -671,14 +685,14 @@ export function DashboardApp({
                 return r
               }}
             />
+            </CollapsibleSection>
 
-            <Card className="relative max-md:order-50 overflow-hidden bg-secondary/50 p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Moon className="w-4 h-4 text-accent" />
-                <span className="text-sm font-medium">
-                  Evening: 3 things I achieved today
-                </span>
-              </div>
+            <CollapsibleSection
+              title="Evening achievements"
+              icon={<Moon className="h-4 w-4 text-accent" />}
+              className="relative max-md:order-50 overflow-hidden"
+              contentClassName="relative min-h-[120px]"
+            >
               <div
                 className={`space-y-2 ${!journalEvening ? 'pointer-events-none opacity-40' : ''}`}
               >
@@ -692,14 +706,14 @@ export function DashboardApp({
                       onChange={(e) => setAchievement(i, e.target.value)}
                       onBlur={() => void saveJournalOnly(dateKey)}
                       disabled={!journalEvening}
-                      className="inline-flex max-w-md h-8 text-sm bg-background/60 border-border"
+                      className="inline-flex max-w-md h-8 text-sm bg-background border-border"
                       placeholder="…"
                     />
                   </div>
                 ))}
               </div>
               {!journalEvening ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/75 backdrop-blur-[2px] px-4 text-center">
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/90 px-4 text-center">
                   <p className="text-xs text-muted-foreground max-w-xs">
                     Evening reflection journal is a Pro feature.
                   </p>
@@ -711,48 +725,54 @@ export function DashboardApp({
                   </Link>
                 </div>
               ) : null}
-            </Card>
+            </CollapsibleSection>
           </div>
 
           <div className="flex max-md:contents flex-col gap-6 md:col-span-1 lg:col-span-1">
-            <Card className="max-md:order-20 p-4">
-              <div className="flex items-center gap-2 mb-4">
-                <Target className="w-4 h-4 text-accent" />
-                <span className="font-medium">Top 5 Goals for the Day</span>
-              </div>
-              <div className="space-y-3">
-                {data.goals.map((goal) => (
-                  <div
-                    key={goal.id}
-                    className="checklist-item flex min-h-[44px] items-start gap-3 py-0.5 md:min-h-0 md:py-0"
-                  >
-                    <Checkbox
-                      checked={goal.completed}
-                      onCheckedChange={() => toggleGoal(goal.id)}
-                      className={checkClass}
-                    />
-                    <span
-                      className={`text-sm ${goal.completed ? 'line-through text-muted-foreground' : ''}`}
+            <CollapsibleSection
+              title="Top goals"
+              icon={<Target className="w-4 h-4 text-accent" />}
+              count={visibleGoals.length}
+              defaultExpanded={false}
+              className="max-md:order-20"
+            >
+              <div className="divide-y divide-border/70">
+                {visibleGoals.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No goals for today.{' '}
+                    <Link href="/goals" className="text-accent hover:underline">
+                      Add goals
+                    </Link>
+                  </p>
+                ) : (
+                  visibleGoals.map((goal) => (
+                    <div
+                      key={goal.id}
+                      className="checklist-item flex items-center gap-3 py-2"
                     >
-                      {goal.text}
-                    </span>
-                  </div>
-                ))}
+                      <Checkbox
+                        checked={goal.completed}
+                        onCheckedChange={() => toggleGoal(goal.id)}
+                        className={checkClass}
+                      />
+                      <span
+                        className={`min-w-0 flex-1 truncate text-sm ${goal.completed ? 'line-through text-muted-foreground' : ''}`}
+                      >
+                        {goal.text}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
-            </Card>
+            </CollapsibleSection>
 
-            <Card className="max-md:order-40 p-4">
-              <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-accent" />
-                  <span className="font-medium">Daily Habits</span>
-                </div>
-                <span className="text-xs text-accent">
-                  {data.habits.length === 0
-                    ? '—'
-                    : `${doneToday}/${data.habits.length} done`}
-                </span>
-              </div>
+            <CollapsibleSection
+              title="Daily habits"
+              icon={<CheckCircle2 className="w-4 h-4 text-accent" />}
+              count={data.habits.length}
+              defaultExpanded={false}
+              className="max-md:order-40"
+            >
               {data.habits.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No habits yet.{' '}
@@ -761,38 +781,72 @@ export function DashboardApp({
                   </Link>{' '}
                   to track them here.
                 </p>
-              ) : null}
-              <div className="space-y-4">
-                {data.habits.map((habit) => {
-                  const completed = !!data.habitLog[habit.id]?.[dateKey]
-                  const progress = habitWeekProgress(data.habitLog, habit.id)
-                  return (
-                    <div key={habit.id} className="space-y-1">
-                      <div className="flex min-h-[44px] items-center justify-between gap-2 py-0.5 md:min-h-0 md:py-0">
-                        <div className="checklist-item flex min-w-0 items-center gap-2">
-                          <Checkbox
-                            checked={completed}
-                            onCheckedChange={() => toggleHabit(habit.id)}
-                            className={checkClass}
-                          />
-                          <span
-                            className={`text-sm truncate ${completed ? 'text-muted-foreground' : ''}`}
-                          >
-                            {habit.name}
-                          </span>
-                        </div>
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          {progress}%
-                        </span>
+              ) : (
+                <>
+                  <div className="mb-4 flex justify-end">
+                    <div className="text-right">
+                      <div className="text-xl font-bold tabular-nums text-primary">
+                        {doneToday}/{data.habits.length}
                       </div>
-                      <Progress value={progress} className="h-1.5" />
+                      <div className="label-machine -mt-0.5">Done</div>
                     </div>
-                  )
-                })}
-              </div>
-            </Card>
+                  </div>
+                  <div className="divide-y divide-border/70">
+                    {data.habits.map((habit) => {
+                      const completed = !!data.habitLog[habit.id]?.[dateKey]
+                      const progress = habitWeekProgress(data.habitLog, habit.id)
+                      const weekDots = habitWeekDayCompletion(
+                        data.habitLog,
+                        habit.id,
+                        weekStart,
+                      )
+                      return (
+                        <div key={habit.id} className="py-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="checklist-item flex min-w-0 items-center gap-2">
+                              <Checkbox
+                                checked={completed}
+                                onCheckedChange={() => toggleHabit(habit.id)}
+                                className={checkClass}
+                              />
+                              <span
+                                className={`min-w-0 flex-1 truncate text-sm ${completed ? 'text-muted-foreground' : ''}`}
+                              >
+                                {habit.name}
+                              </span>
+                            </div>
+                            <span className="text-xs tabular-nums text-muted-foreground shrink-0">
+                              {progress}%
+                            </span>
+                          </div>
+                          <div
+                            className="mt-1.5 flex gap-1.5 pl-10 md:pl-8"
+                            role="list"
+                            aria-label={`${habit.name} completions this week`}
+                          >
+                            {weekDots.map((done, i) => (
+                              <span
+                                key={i}
+                                role="listitem"
+                                title={`${daysShort[i]}: ${done ? 'done' : 'not done'}`}
+                                className={cn(
+                                  'size-3 shrink-0 rounded-full border-2',
+                                  done
+                                    ? 'border-[#F5C518] bg-[#F5C518]'
+                                    : 'border-muted-foreground/50 bg-background',
+                                )}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+            </CollapsibleSection>
 
-            <Card className="relative max-md:order-60 min-h-[88px] overflow-hidden border-accent/30 bg-accent/10 p-4">
+            <Card className="relative max-md:order-60 min-h-[88px] overflow-hidden border-border bg-card p-4">
               <div
                 className={
                   analyticsAccess ? '' : 'pointer-events-none opacity-40'
@@ -800,14 +854,14 @@ export function DashboardApp({
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
-                    <Flame className="w-6 h-6 text-accent" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary">
+                    <Flame className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <div className="text-2xl font-bold">{streak} Days</div>
-                    <div className="text-sm text-muted-foreground">
-                      Current streak
+                    <div className="text-4xl font-bold tabular-nums tracking-tight text-primary">
+                      {streak}
                     </div>
+                    <div className="label-machine mt-0.5">Current streak · days</div>
                   </div>
                   </div>
                   {userId ? (
@@ -821,71 +875,32 @@ export function DashboardApp({
                   ) : null}
                 </div>
                 {weekStreak ? (
-                  <div
-                    style={{
-                      background: '#1E293B',
-                      borderRadius: '12px',
-                      padding: '16px 20px',
-                      border: '1px solid #334155',
-                      marginTop: '12px',
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginBottom: '10px',
-                      }}
-                    >
-                      <span
-                        style={{
-                          color: '#94A3B8',
-                          fontSize: '13px',
-                          fontWeight: '500',
-                        }}
-                      >
+                  <div className="mt-3 rounded-lg border border-border bg-background px-4 py-4">
+                    <div className="mb-2.5 flex items-center justify-between gap-2">
+                      <span className="text-[13px] font-medium text-muted-foreground">
                         This week
                       </span>
-                      <span
-                        style={{
-                          color: '#F59E0B',
-                          fontSize: '14px',
-                          fontWeight: '700',
-                        }}
-                      >
-                        {weekStreak.weeklyStreak > 0 ? `${weekStreak.weeklyStreak} week streak 🔥` : ''}
+                      <span className="text-sm font-bold text-primary">
+                        {weekStreak.weeklyStreak > 0
+                          ? `${weekStreak.weeklyStreak} week streak`
+                          : ''}
                       </span>
                     </div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        gap: '6px',
-                        marginBottom: '8px',
-                      }}
-                    >
+                    <div className="mb-2 flex gap-1.5">
                       {Array.from({ length: 7 }, (_, i) => {
                         const filled = i < weekStreak.currentWeekCompleted
                         const isTarget = i === 4
                         return (
                           <div
                             key={i}
-                            style={{
-                              width: '28px',
-                              height: '28px',
-                              // Prevent flexbox from stretching/shrinking into an oval on narrow layouts.
-                              flex: '0 0 28px',
-                              aspectRatio: '1 / 1',
-                              borderRadius: '50%',
-                              background: filled ? '#F59E0B' : '#0F172A',
-                              border: `2px solid ${
-                                filled ? '#F59E0B' : isTarget ? '#F59E0B44' : '#334155'
-                              }`,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '10px',
-                            }}
+                            className={cn(
+                              'flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[10px]',
+                              filled
+                                ? 'border-primary bg-primary text-primary-foreground'
+                                : isTarget
+                                  ? 'border-primary/30 bg-background text-transparent'
+                                  : 'border-border bg-background text-transparent',
+                            )}
                           >
                             {filled ? '✓' : ''}
                           </div>
@@ -895,13 +910,7 @@ export function DashboardApp({
                     {(() => {
                       const msg = getWeekProgressMessage(weekStreak.currentWeekCompleted)
                       return (
-                        <p
-                          style={{
-                            color: msg.color,
-                            fontSize: '12px',
-                            margin: 0,
-                          }}
-                        >
+                        <p className="m-0 text-xs text-muted-foreground">
                           {msg.emoji} {msg.message}
                         </p>
                       )
@@ -910,7 +919,7 @@ export function DashboardApp({
                 ) : null}
               </div>
               {!analyticsAccess ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/75 backdrop-blur-[2px] px-4 text-center">
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/90 px-4 text-center">
                   <p className="text-xs text-muted-foreground max-w-xs">
                     Progress analytics are a Pro feature — see your streak and
                     deeper insights here.

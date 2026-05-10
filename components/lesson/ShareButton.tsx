@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { Share2 } from 'lucide-react'
+import { copyTextToClipboard } from '@/lib/copy-to-clipboard'
 import { supabase } from '@/lib/supabase'
 import { withAuthStorageLockRetry } from '@/lib/authStorageLock'
 import { useToast } from '@/context/ToastContext'
@@ -39,26 +40,26 @@ export default function ShareButton({ lessonId, programType, day, className }: S
   const handleShare = useCallback(async () => {
     const url = buildShareUrl(lessonId, programType, day)
     if (!url) return
-    try {
-      await navigator.clipboard.writeText(url)
-      setShowTooltip(true)
-      setTimeout(() => setShowTooltip(false), 2000)
-
-      const {
-        data: { session },
-      } = await withAuthStorageLockRetry(() => supabase.auth.getSession())
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (session?.access_token) {
-        headers.Authorization = `Bearer ${session.access_token}`
-      }
-      void fetch('/api/lesson/share', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ lessonId }),
-      }).catch(() => {})
-    } catch {
+    const ok = await copyTextToClipboard(url)
+    if (!ok) {
       showToast('Could not copy link', 'error')
+      return
     }
+    setShowTooltip(true)
+    setTimeout(() => setShowTooltip(false), 2000)
+
+    const {
+      data: { session },
+    } = await withAuthStorageLockRetry(() => supabase.auth.getSession())
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`
+    }
+    void fetch('/api/lesson/share', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ lessonId }),
+    }).catch(() => {})
   }, [lessonId, programType, day, showToast])
 
   return (

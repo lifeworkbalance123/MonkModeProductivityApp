@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { getUserIdSafe } from '@/lib/supabaseAuthSafe'
 import { getEnrollment, type ProgramEnrollment } from '@/lib/programUtils'
 
 export function useProgram() {
@@ -12,17 +12,15 @@ export function useProgram() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const userId = await getUserIdSafe()
 
-      if (!user) {
+      if (!userId) {
         setEnrollment(null)
         setEnrolled(false)
         return
       }
 
-      const data = await getEnrollment(user.id)
+      const data = await getEnrollment(userId)
       setEnrollment(data)
       setEnrolled(!!data)
     } catch (err) {

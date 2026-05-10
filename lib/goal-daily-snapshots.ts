@@ -1,4 +1,5 @@
 import { format } from 'date-fns'
+import { filterGoalsWithNonEmptyText } from '@/lib/goals-utils'
 import type { Goal } from '@/lib/monk-types'
 
 export const GOAL_DAILY_SNAPSHOT_LS_KEY = 'monk_goal_daily_completion_v1'
@@ -42,8 +43,9 @@ export function readGoalDailySnapshots(): Record<string, GoalDaySnapshot> {
 export function recordTodayGoalSnapshot(goals: Goal[]) {
   if (typeof window === 'undefined') return
   const today = format(new Date(), 'yyyy-MM-dd')
-  const total = goals.length
-  const completed = goals.filter((g) => g.completed).length
+  const withText = filterGoalsWithNonEmptyText(goals)
+  const total = withText.length
+  const completed = withText.filter((g) => g.completed).length
   const map = readGoalDailySnapshots()
   if (total === 0) {
     delete map[today]

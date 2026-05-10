@@ -10,11 +10,15 @@ import {
   type ReactNode,
 } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
-import { withAuthStorageLockRetry } from '@/lib/authStorageLock'
-import { isInvalidRefreshTokenError } from '@/lib/supabase-auth-errors'
+import { isAuthStorageLockError, withAuthStorageLockRetry } from '@/lib/authStorageLock'
+import {
+  isInvalidRefreshTokenError,
+  isTransientAuthNetworkError,
+} from '@/lib/supabase-auth-errors'
 import { supabase } from '@/lib/supabase'
 import * as Sentry from '@sentry/nextjs'
 import { identifyAnalyticsUser, resetAnalyticsUser } from '@/lib/analytics'
+import { clearSupportFabOffsetStorage } from '@/lib/support-fab-storage'
 
 export type AuthContextValue = {
   user: User | null
@@ -49,14 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return
         }
 
-        if (sessData.session) {
-          const { error: userErr } = await supabase.auth.getUser()
-          if (userErr && isInvalidRefreshTokenError(userErr)) {
-            await supabase.auth.signOut({ scope: 'local' })
-            if (mounted) setSession(null)
-            return
-          }
-        }
+        // Do not call getUser() here: it competes for the same Web Lock as getSession and
+        // other hooks (usePlan, useProgramStatus) on first paint, causing lock timeouts in dev/Strict Mode.
+        // Session from storage is enough; onAuthStateChange and API calls validate the JWT as needed.
 
         if (!mounted) return
         setSession(sessData.session)
@@ -68,6 +67,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             /* ignore */
           }
           if (mounted) setSession(null)
+        } else if (isAuthStorageLockError(err)) {
+          try {
+            const { data: retry } = await withAuthStorageLockRetry(
+              () => supabase.auth.getSession(),
+              { maxAttempts: 8, baseDelayMs: 100 },
+            )
+            if (mounted) setSession(retry.session)
+          } catch {
+            if (mounted) setSession(null)
+          }
         } else {
           console.warn('AuthProvider getSession:', err)
           if (mounted) setSession(null)
@@ -78,7 +87,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })()
 
     const onRefreshRejection = (event: PromiseRejectionEvent) => {
-      if (!isInvalidRefreshTokenError(event.reason)) return
+      const reason = event.reason
+      if (isTransientAuthNetworkError(reason)) {
+        event.preventDefault()
+        console.warn(
+          'Supabase auth: transient network error during refresh (VPN, firewall, offline, or Supabase unreachable). Session kept locally — retry when online.',
+          reason instanceof Error ? reason.message : reason,
+        )
+        return
+      }
+      if (!isInvalidRefreshTokenError(reason)) return
       event.preventDefault()
       void (async () => {
         try {
@@ -93,7 +111,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === 'SIGNED_OUT') {
+        clearSupportFabOffsetStorage()
+      }
       setSession(nextSession)
       if (mounted) setIsLoading(false)
     })
@@ -139,6 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session?.user])
 
   const signOut = useCallback(async () => {
+    clearSupportFabOffsetStorage()
     await supabase.auth.signOut()
     Sentry.setUser(null)
     resetAnalyticsUser()

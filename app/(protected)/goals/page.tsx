@@ -147,14 +147,15 @@ export default function GoalsPage() {
           text="Set a 30, 60, or 90 day goal. Break it into weekly steps. Your program will remind you to review progress."
         >
           <div>
-            <h1 className="text-2xl font-semibold">Goals</h1>
-            <p className="text-sm text-muted-foreground">
+            <div className="label-machine">System</div>
+            <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground">Goals</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
               Daily priorities shown on the dashboard (checkbox syncs both places).
             </p>
             {atGoalLimit ? (
               <div
                 role="status"
-                className="mt-3 rounded-lg border border-border bg-secondary/40 px-3 py-2 text-sm text-muted-foreground"
+                className="mt-3 rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground shadow-none"
               >
                 You&apos;ve reached the Free limit of {freeGoalCap} goal{freeGoalCap === 1 ? '' : 's'}.
                 Upgrade to Pro for unlimited goals.{' '}

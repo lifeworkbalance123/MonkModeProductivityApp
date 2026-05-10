@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { getUserIdSafe } from '@/lib/supabaseAuthSafe'
 import { useProgram } from '@/hooks/useProgram'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -27,26 +27,22 @@ export default function ProgramControls() {
 
   useEffect(() => {
     void (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
-      setProgramType(await getProgramType(user.id))
+      const userId = await getUserIdSafe()
+      if (!userId) return
+      setProgramType(await getProgramType(userId))
     })()
   }, [])
 
   async function handlePause() {
     setActing(true)
     setMessage('')
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
+    const userId = await getUserIdSafe()
+    if (!userId) {
       setActing(false)
       return
     }
 
-    const ok = await pauseProgram(user.id)
+    const ok = await pauseProgram(userId)
     setMessage(ok ? '✓ Program paused. Your streak is frozen.' : '✗ Could not pause. Try again.')
     setActing(false)
     if (ok) router.refresh()
@@ -55,15 +51,13 @@ export default function ProgramControls() {
   async function handleResume() {
     setActing(true)
     setMessage('')
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
+    const userId = await getUserIdSafe()
+    if (!userId) {
       setActing(false)
       return
     }
 
-    const ok = await resumeProgram(user.id)
+    const ok = await resumeProgram(userId)
     setMessage(ok ? '✓ Program resumed. Keep going!' : '✗ Could not resume. Try again.')
     setActing(false)
     if (ok) router.refresh()
@@ -72,15 +66,13 @@ export default function ProgramControls() {
   async function handleRestart() {
     setActing(true)
     setMessage('')
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
+    const userId = await getUserIdSafe()
+    if (!userId) {
       setActing(false)
       return
     }
 
-    const ok = await restartProgram(user.id)
+    const ok = await restartProgram(userId)
     setMessage(ok ? '✓ Program reset to Day 1.' : '✗ Could not restart. Try again.')
     setActing(false)
     setShowRestartConfirm(false)

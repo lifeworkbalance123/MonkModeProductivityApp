@@ -185,13 +185,13 @@ const TimeScheduleSlotRow = memo(function TimeScheduleSlotRow({
   }, [draftActivity, slot.activity, slot.id, updateSlot])
 
   return (
-    <div className="rounded-lg border border-border/60 bg-secondary/20 p-1 space-y-1">
+    <div className="rounded-lg border border-border bg-muted/25 p-1 space-y-1">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-2">
         <select
           value={coerced}
           onChange={(e) => updateSlot(slot.id, { time: e.target.value })}
           aria-label="Time"
-          className="h-7 w-full shrink-0 rounded-md border border-border bg-background/60 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring md:w-[7.25rem]"
+          className="h-7 w-full shrink-0 rounded-md border border-border bg-input px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring md:w-[7.25rem]"
         >
           {!timeOptions.some((o) => o.value === slot.time) ? (
             <option value={slot.time}>{slot.time}</option>
@@ -217,7 +217,7 @@ const TimeScheduleSlotRow = memo(function TimeScheduleSlotRow({
               updateSlot(slot.id, { category: e.target.value })
             }
             aria-label="Category"
-            className="h-7 w-full min-w-0 flex-1 rounded-md border border-border bg-background/60 px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring md:max-w-[9rem] md:flex-none md:shrink-0"
+            className="h-7 w-full min-w-0 flex-1 rounded-md border border-border bg-input px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring md:max-w-[9rem] md:flex-none md:shrink-0"
           >
             {!TIME_SLOT_CATEGORY_OPTIONS.some(
               (c) => c.label === slot.category,
@@ -232,7 +232,7 @@ const TimeScheduleSlotRow = memo(function TimeScheduleSlotRow({
           </select>
         </div>
         <div
-          className="min-w-0 w-full rounded-md border border-border bg-background/60 md:flex-1 md:overflow-x-auto md:overflow-y-hidden md:[scrollbar-width:thin]"
+          className="min-w-0 w-full rounded-md border border-border bg-input md:flex-1 md:overflow-x-auto md:overflow-y-hidden md:[scrollbar-width:thin]"
           title="Scroll sideways for longer activity text (desktop)"
         >
           <Input
@@ -270,7 +270,7 @@ const TimeScheduleSlotRow = memo(function TimeScheduleSlotRow({
       </div>
 
       {onApplyTimeBlockToWeek ? (
-        <div className="flex flex-col gap-2 border-l-2 border-border/50 pl-2 md:pl-3">
+        <div className="flex flex-col gap-2 border-l-2 border-border pl-2 md:pl-3">
           <div className="flex flex-wrap items-center gap-2">
             <Switch
               id={`repeat-${slot.id}`}
@@ -291,7 +291,7 @@ const TimeScheduleSlotRow = memo(function TimeScheduleSlotRow({
                 {DAY_SHORT.map((label, i) => (
                   <label
                     key={label}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-border/80 bg-background/40 px-2 py-1 text-xs"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-border bg-input px-2 py-1 text-xs"
                   >
                     <Checkbox
                       checked={repeat.days.includes(i)}
@@ -341,6 +341,8 @@ type Props = {
   /** Called when user attempts to add while disabled. */
   onAddDisabledClick?: () => void
   className?: string
+  /** Hide the built-in “Time schedule” heading when wrapped by an outer collapsible title. */
+  hideScheduleTitle?: boolean
 }
 
 export function TimeScheduleCard({
@@ -354,6 +356,7 @@ export function TimeScheduleCard({
   addDisabled = false,
   onAddDisabledClick,
   className,
+  hideScheduleTitle = false,
 }: Props) {
   const [increment, setIncrement] = useState<TimeScheduleIncrement>(() =>
     typeof window === 'undefined' ? 30 : readStoredIncrement(),
@@ -510,8 +513,12 @@ export function TimeScheduleCard({
 
       <div className="mb-3 flex flex-col gap-2 pr-16 md:flex-row md:items-start md:justify-between">
         <div className="flex flex-wrap items-center gap-2">
-          <Clock className="w-4 h-4 text-accent shrink-0" />
-          <span className="font-medium">Time Schedule</span>
+          {!hideScheduleTitle ? (
+            <>
+              <Clock className="w-4 h-4 text-accent shrink-0" />
+              <span className="label-machine text-foreground">Time schedule</span>
+            </>
+          ) : null}
           {headerActions ? (
             <span className="flex flex-wrap items-center gap-1.5">{headerActions}</span>
           ) : null}
@@ -527,9 +534,7 @@ export function TimeScheduleCard({
       </div>
 
       <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <span className="text-xs text-muted-foreground shrink-0">
-          Time increments:
-        </span>
+        <span className="label-machine shrink-0">Time increments</span>
         <div className="flex flex-wrap gap-1.5">
           {INCREMENT_OPTIONS.map((opt) => (
             <Button

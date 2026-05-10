@@ -13,6 +13,16 @@ export function RegisterServiceWorker() {
       window.location.hostname === '127.0.0.1' ||
       window.location.hostname === '[::1]'
 
+    // Dev/localhost: service worker caching makes UI changes look “stuck”.
+    // Keep SW only for production-like environments.
+    const isDev = process.env.NODE_ENV !== 'production'
+    if (isDev || isLocalhost) {
+      void navigator.serviceWorker.getRegistrations().then((regs) => {
+        for (const r of regs) void r.unregister()
+      })
+      return
+    }
+
     // Service workers require secure contexts, except for localhost.
     if (!window.isSecureContext && !isLocalhost) return
 

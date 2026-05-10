@@ -67,6 +67,11 @@ export function FeatureIntroTooltip({
           )}
         >
           <div className="flex gap-2">
+            <Lightbulb
+              size={16}
+              className="mt-0.5 shrink-0 text-amber-500"
+              aria-hidden
+            />
             <p className="min-w-0 flex-1 pr-1 leading-snug">{text}</p>
             <div className="flex shrink-0 flex-col gap-0.5">
               <button

@@ -24,8 +24,10 @@ import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
 import { useDataServiceContext } from '@/hooks/use-data-service-context'
 import { resetAllUserData } from '@/lib/dataService'
+import { getUserIdSafe } from '@/lib/supabaseAuthSafe'
 import { supabase } from '@/lib/supabase'
 import { captureEvent } from '@/lib/analytics'
+import { copyTextToClipboard } from '@/lib/copy-to-clipboard'
 import { mailtoSupport, publicSiteOrigin, SUPPORT_EMAIL } from '@/lib/site-contact'
 import ProgramControls from '@/components/settings/ProgramControls'
 import { Tooltip } from '@/components/ui/first-visit-tooltip'
@@ -55,15 +57,13 @@ function SyncStatusCard({
     setSyncing(true)
     setSyncSuccess(null)
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not logged in')
+      const userId = await getUserIdSafe()
+      if (!userId) throw new Error('Not logged in')
 
       const { error } = await supabase
         .from('habits')
         .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
 
       if (error) throw error
 
@@ -684,8 +684,11 @@ export default function SettingsPage() {
                   className="mt-2"
                   onClick={async () => {
                     if (!referralCode) return
-                    await navigator.clipboard.writeText(referralCode)
-                    showToast('Referral code copied.', 'success')
+                    const ok = await copyTextToClipboard(referralCode)
+                    showToast(
+                      ok ? 'Referral code copied.' : 'Could not copy — tap the field and copy manually.',
+                      ok ? 'success' : 'error',
+                    )
                   }}
                 >
                   Copy code
@@ -704,10 +707,13 @@ export default function SettingsPage() {
                     variant="outline"
                     onClick={async () => {
                       if (!referralCode) return
-                      await navigator.clipboard.writeText(
+                      const ok = await copyTextToClipboard(
                         `${publicSiteOrigin()}/ref/${referralCode}`,
                       )
-                      showToast('Referral link copied.', 'success')
+                      showToast(
+                        ok ? 'Referral link copied.' : 'Could not copy — try again or copy manually.',
+                        ok ? 'success' : 'error',
+                      )
                     }}
                   >
                     Copy link
