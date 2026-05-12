@@ -14,10 +14,16 @@ const inter = Inter({
   display: 'swap',
 })
 
+/**
+ * JetBrains Mono is only used in code/stat readouts deeper in the app shell — never above the
+ * fold on marketing. `preload: false` removes it from the critical-path font preloads so it
+ * doesn't compete with Inter for early bandwidth.
+ */
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-mono-app',
   display: 'swap',
+  preload: false,
 })
 
 export const viewport: Viewport = {
@@ -63,10 +69,16 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="font-sans antialiased min-h-screen bg-background text-foreground text-[15px] leading-normal">
+        {/*
+          Bridge script handles the rare case where a Supabase recovery/magic-link lands on `/`
+          with `#access_token=…`. It only runs on `/`, and the redirect is acceptable a few hundred
+          ms after first paint — using afterInteractive instead of beforeInteractive removes the
+          render-blocking request from the critical path on every page.
+        */}
         <Script
           id="auth-root-landing-bridge"
           src={AUTH_ROOT_LANDING_BRIDGE_SCRIPT_SRC}
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
         />
         <Providers>{children}</Providers>
         <RegisterServiceWorker />

@@ -1,12 +1,17 @@
-'use client'
-
 import Link from 'next/link'
-import { Menu, X } from 'lucide-react'
-import { useState } from 'react'
 import { MonkCubedLogo } from '@/components/brand/MonkCubedLogo'
 import { PwaInstallButton } from '@/components/marketing/PwaInstallButton'
+import {
+  MarketingNavMobileMenu,
+  type MarketingNavLink,
+} from '@/components/marketing/MarketingNavMobileMenu'
 
-const links = [
+/**
+ * Server Component. Desktop renders as static HTML — no React hydration cost for the nav itself.
+ * The mobile-menu state is isolated in `MarketingNavMobileMenu` (a client island), so non-mobile
+ * users never download lucide icons or the useState handler for it.
+ */
+const links: readonly MarketingNavLink[] = [
   { href: '#features', label: 'Features' },
   { href: '#pricing', label: 'Pricing' },
   { href: '#training', label: 'Training' },
@@ -16,8 +21,6 @@ const links = [
 ]
 
 export default function MarketingNav() {
-  const [open, setOpen] = useState(false)
-
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur">
       <div className="mx-auto flex h-16 w-full max-w-[1100px] items-center justify-between gap-2 px-4">
@@ -48,37 +51,8 @@ export default function MarketingNav() {
           </Link>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="md:hidden text-muted-foreground"
-          aria-label="Toggle menu"
-        >
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        <MarketingNavMobileMenu links={links} />
       </div>
-
-      {open ? (
-        <div className="border-t border-border px-4 py-3 md:hidden">
-          <div className="mx-auto flex max-w-[1100px] flex-col gap-3">
-            {links.map((l) => (
-              <a key={l.href} href={l.href} onClick={() => setOpen(false)} className="text-muted-foreground">
-                {l.label}
-              </a>
-            ))}
-            <Link href="/auth" className="text-muted-foreground" onClick={() => setOpen(false)}>
-              Sign in
-            </Link>
-            <Link
-              href="/auth"
-              onClick={() => setOpen(false)}
-              className="rounded-md bg-accent px-4 py-2 text-center font-semibold text-accent-foreground"
-            >
-              Start free trial
-            </Link>
-          </div>
-        </div>
-      ) : null}
     </header>
   )
 }

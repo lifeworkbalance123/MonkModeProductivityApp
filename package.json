@@ -10,10 +10,20 @@
     "dev:webpack": "next dev --webpack --port 3000",
     "dev:alt": "next dev --port 3001",
     "build": "next build",
+    "build:analyze": "cross-env ANALYZE=1 next build",
     "start": "next start --port 3000",
     "lint": "tsc --noEmit",
     "verify:program-pro": "node scripts/verify-program-pro-formula.mjs"
   },
+  "browserslist": [
+    ">0.5%",
+    "not dead",
+    "not op_mini all",
+    "Firefox >= 90",
+    "Safari >= 14",
+    "Chrome >= 90",
+    "Edge >= 90"
+  ],
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^3.9.1",
@@ -89,11 +99,13 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^16.2.6",
     "@tailwindcss/postcss": "^4.2.0",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^10.1.0",
     "postcss": "^8.5",
     "supabase": "^2.92.1",
     "tailwindcss": "^4.2.0",

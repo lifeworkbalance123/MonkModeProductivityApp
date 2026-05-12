@@ -112,13 +112,15 @@ function StaticMockup() {
 }
 
 export default function HeroMedia() {
+  // Render the static mockup synchronously so it can serve as the LCP element.
+  // If admin-configured media exists in site_settings, it replaces the mockup after fetch.
   const [media, setMedia] = useState<HeroMediaData>({ mediaType: null, mediaUrl: null })
-  const [loading, setLoading] = useState(true)
   const [isMuted, setIsMuted] = useState(true)
   const [volume, setVolume] = useState(1)
   const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
+    let cancelled = false
     async function fetchHeroMedia() {
       try {
         const { data } = await supabase
@@ -127,19 +129,19 @@ export default function HeroMedia() {
           .eq('key', 'hero_media')
           .single()
 
-        if (data) {
-          setMedia({
-            mediaType: (data.media_type as HeroMediaData['mediaType']) ?? null,
-            mediaUrl: (data.media_url as string | null) ?? null,
-          })
-        }
+        if (cancelled || !data) return
+        setMedia({
+          mediaType: (data.media_type as HeroMediaData['mediaType']) ?? null,
+          mediaUrl: (data.media_url as string | null) ?? null,
+        })
       } catch {
-        // Fallback to static mockup
-      } finally {
-        setLoading(false)
+        // Keep static mockup on error
       }
     }
     void fetchHeroMedia()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
@@ -159,28 +161,6 @@ export default function HeroMedia() {
     display: 'flex',
     alignItems: 'stretch',
   } as const
-
-  if (loading) {
-    return (
-      <div style={frameStyle}>
-        <div
-          style={{
-            flex: 1,
-            background: '#1E293B',
-            borderRadius: '16px',
-            margin: '16px',
-            animation: 'pulse 2s infinite',
-          }}
-        />
-        <style>{`
-          @keyframes pulse {
-            0%, 100% { opacity: 0.5; }
-            50% { opacity: 1; }
-          }
-        `}</style>
-      </div>
-    )
-  }
 
   if (!media.mediaType || !media.mediaUrl) {
     return (

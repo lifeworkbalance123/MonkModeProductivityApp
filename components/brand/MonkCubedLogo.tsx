@@ -1,5 +1,3 @@
-'use client'
-
 type MonkCubedLogoProps = {
   /** Light mark on dark UI (default) */
   variant?: 'onDark' | 'onLight'
