@@ -2,19 +2,22 @@
 
 import { useEffect } from 'react'
 
+/**
+ * Registering the service worker contributes to main-thread work during the LCP window. We defer
+ * it to `requestIdleCallback` (with a `setTimeout` fallback) so the install/activate handshake
+ * runs only after the page has settled.
+ */
 export function RegisterServiceWorker() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (!('serviceWorker' in navigator)) return
 
-    // Avoid running in local file / unsupported contexts.
     const isLocalhost =
       window.location.hostname === 'localhost' ||
       window.location.hostname === '127.0.0.1' ||
       window.location.hostname === '[::1]'
 
-    // Dev/localhost: service worker caching makes UI changes look “stuck”.
-    // Keep SW only for production-like environments.
+    // Dev/localhost: caching makes UI changes look “stuck”. Keep SW prod-only.
     const isDev = process.env.NODE_ENV !== 'production'
     if (isDev || isLocalhost) {
       void navigator.serviceWorker.getRegistrations().then((regs) => {
@@ -23,18 +26,23 @@ export function RegisterServiceWorker() {
       return
     }
 
-    // Service workers require secure contexts, except for localhost.
-    if (!window.isSecureContext && !isLocalhost) return
+    if (!window.isSecureContext) return
 
-    const register = async () => {
-      try {
-        await navigator.serviceWorker.register('/sw.js', { scope: '/' })
-      } catch {
-        // Silent: failing to register should not break the app UI.
+    const idle = (cb: () => void) => {
+      const w = window as Window & {
+        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number
       }
+      if (typeof w.requestIdleCallback === 'function') {
+        return w.requestIdleCallback(cb, { timeout: 3000 })
+      }
+      return window.setTimeout(cb, 1500)
     }
 
-    void register()
+    idle(() => {
+      void navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {
+        // Silent: failing to register should not break the app UI.
+      })
+    })
   }, [])
 
   return null
