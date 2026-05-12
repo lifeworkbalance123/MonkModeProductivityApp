@@ -137,13 +137,38 @@ export function KanbanBoard({ data, setData }: Props) {
         getCards(ctx),
         getArchivedCount(ctx),
       ])
+
+      // Self-heal: remove blank goal-sync artifacts left over from the original
+      // version of the sync code (commit 3fabc4d) which filtered only by
+      // `!completed` and not by goal text. Empty Top-5 goal slots got synced as
+      // kanban rows with an empty title. The fingerprint below is intentionally
+      // narrow so no real user content can be lost: an empty title + empty
+      // notes + a goalId is unique to the legacy bug — manual cards can't be
+      // saved with an empty title, and goal-linked cards always have a goalId.
+      const orphans = k.filter(
+        (card) =>
+          card.title.trim() === '' &&
+          card.notes.trim() === '' &&
+          card.goalId !== null,
+      )
+      let cards = k
+      if (orphans.length > 0) {
+        await Promise.all(orphans.map((o) => deleteCard(ctx, o.id)))
+        const orphanIds = new Set(orphans.map((o) => o.id))
+        cards = k.filter((c) => !orphanIds.has(c.id))
+        showToast(
+          `Cleaned up ${orphans.length} empty goal-synced card${orphans.length === 1 ? '' : 's'}.`,
+          'success',
+        )
+      }
+
       setColumns(c.length ? c : DEFAULT_KANBAN_COLUMNS)
-      setCards(k)
+      setCards(cards)
       setArchivedCount(a)
     } finally {
       setLoading(false)
     }
-  }, [ctx])
+  }, [ctx, showToast])
 
   useEffect(() => {
     void reload()
