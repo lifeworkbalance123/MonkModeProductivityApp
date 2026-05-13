@@ -25,6 +25,39 @@ const nextConfig = {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
   },
+  async headers() {
+    const longCache = [
+      { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+    ]
+    // One rule per extension — Next.js path patterns do not accept non-capturing
+    // groups like (?:png|jpg); a leading "?" in the source string fails the parser
+    // (Vercel: "Pattern cannot start with ? at 10").
+    const exts = [
+      'png',
+      'jpg',
+      'jpeg',
+      'webp',
+      'avif',
+      'svg',
+      'ico',
+      'woff',
+      'woff2',
+      'ttf',
+    ]
+    return [
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
+      },
+      ...exts.map((ext) => ({
+        source: `/:path*.${ext}`,
+        headers: longCache,
+      })),
+    ]
+  },
 }
 
 /**
