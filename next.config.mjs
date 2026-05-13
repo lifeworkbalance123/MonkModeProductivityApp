@@ -15,6 +15,12 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // @react-pdf/renderer pulls in fontkit + restructure which use dynamic
+  // requires and native streams. Webpack can't statically bundle them, so
+  // without this flag the Vercel build silently drops the /tools and
+  // /api/tools/generate-pdf routes (and keeps serving the previous build).
+  // Mark the package as external so Next loads it from node_modules at runtime.
+  serverExternalPackages: ['@react-pdf/renderer'],
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
