@@ -1,30 +1,42 @@
 /** Palette ids — CSS in `app/globals.css` (`data-color-theme` on `<html>`). */
 
 export const THEME_IDS = [
-  'stoic',
-  'zen',
-  'nomad',
-  'forge',
-  'silent',
-  'rose',
-  'lavender',
-  'peach',
-  'sage',
+  'noir',
+  'slate',
+  'terrain',
+  'bloom',
+  'vapor',
+  'harvest',
+  'midnight',
 ] as const
 
 export type ColorThemeId = (typeof THEME_IDS)[number]
 
+/** Light palettes: `html` uses no `.dark` class (Tailwind `dark:` variants). */
+export const LIGHT_COLOR_THEME_IDS: readonly ColorThemeId[] = ['bloom', 'harvest']
+
+export function isLightColorTheme(id: string): boolean {
+  return (LIGHT_COLOR_THEME_IDS as readonly string[]).includes(id)
+}
+
+/** Map DB / localStorage values from older app versions onto current ids. */
 const LEGACY_THEME_MAP: Record<string, ColorThemeId> = {
-  forge: 'stoic',
-  sanctuary: 'nomad',
-  sage: 'silent',
+  stoic: 'noir',
+  zen: 'bloom',
+  nomad: 'slate',
+  forge: 'terrain',
+  silent: 'midnight',
+  rose: 'bloom',
+  lavender: 'midnight',
+  peach: 'harvest',
+  sage: 'terrain',
+  sanctuary: 'slate',
 }
 
 export function isColorThemeId(value: unknown): value is ColorThemeId {
   return typeof value === 'string' && (THEME_IDS as readonly string[]).includes(value)
 }
 
-/** Map DB / localStorage values from older app versions onto current ids. */
 export function normalizeColorThemeId(value: unknown): ColorThemeId {
   if (typeof value !== 'string' || !value.trim()) return DEFAULT_COLOR_THEME
   const v = value.trim()
@@ -33,26 +45,24 @@ export function normalizeColorThemeId(value: unknown): ColorThemeId {
   return mapped ?? DEFAULT_COLOR_THEME
 }
 
-export const DEFAULT_COLOR_THEME: ColorThemeId = 'stoic'
+export const DEFAULT_COLOR_THEME: ColorThemeId = 'noir'
 
-/** Accent swatch for settings cards (representative CTA hue per palette). */
+/** Accent swatch for settings / admin cards (solid; vapor uses a pink stop from its gradient). */
 export const THEME_ACCENT_SWATCH: Record<ColorThemeId, string> = {
-  stoic: '#F5C518',
-  zen: '#8B8B8B',
-  nomad: '#D4A373',
-  forge: '#E85D04',
-  silent: '#C5A059',
-  rose: '#DB2777',
-  lavender: '#7C3AED',
-  peach: '#EA580C',
-  sage: '#65A30D',
+  noir: '#00D4FF',
+  slate: '#D4AF37',
+  terrain: '#E07A5F',
+  bloom: '#FF8A7A',
+  vapor: '#FF007F',
+  harvest: '#F4D03F',
+  midnight: '#9B59B6',
 }
 
 export function applyColorThemeToDocument(theme: ColorThemeId) {
   if (typeof document === 'undefined') return
   const root = document.documentElement
   root.dataset.colorTheme = theme
-  if (theme === 'zen') {
+  if (isLightColorTheme(theme)) {
     root.classList.remove('dark')
   } else {
     root.classList.add('dark')

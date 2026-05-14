@@ -59,7 +59,7 @@ export default function RootLayout({
     <html
       lang="en"
       className={`dark ${inter.variable} ${jetbrainsMono.variable}`}
-      data-color-theme="stoic"
+      data-color-theme="noir"
       suppressHydrationWarning
     >
       <body className="font-sans antialiased min-h-screen bg-background text-foreground text-[15px] leading-normal">

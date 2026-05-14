@@ -9,6 +9,7 @@ import { MonkCubedLogo } from '@/components/brand/MonkCubedLogo'
 import { PwaInstallButton } from '@/components/marketing/PwaInstallButton'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useColorTheme } from '@/context/ColorThemeContext'
+import { isLightColorTheme } from '@/lib/colorThemes'
 import { useSidebarNavCollapse } from '@/hooks/useSidebarNavCollapse'
 import { SidebarLogoutButton } from '@/components/SidebarLogoutButton'
 import { sidebarNavSections, type NavItem } from '@/lib/nav-config'
@@ -90,7 +91,7 @@ export function DesktopSidebar({ showProGate, onProLocked, programButtonText }: 
       <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border px-4">
         <Link href="/" className="flex min-w-0 items-center gap-2" aria-label="monk cubed — home">
           <MonkCubedLogo
-            variant={themeId === 'zen' ? 'onLight' : 'onDark'}
+            variant={isLightColorTheme(themeId) ? 'onLight' : 'onDark'}
             className="text-lg"
           />
         </Link>

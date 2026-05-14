@@ -89,10 +89,7 @@ export function ColorThemeProvider({ children }: { children: ReactNode }) {
       }
 
       // If the DB has no preference yet, prefer the local value (and try to persist it).
-      const next =
-        !pref || dbNext === DEFAULT_COLOR_THEME
-          ? localNext
-          : dbNext
+      const next = !pref?.trim() ? localNext : dbNext
 
       setThemeIdState(next)
       applyColorThemeToDocument(next)
@@ -102,7 +99,7 @@ export function ColorThemeProvider({ children }: { children: ReactNode }) {
         /* ignore */
       }
       // If DB preference is missing, best-effort persist from local choice.
-      if (!pref && next && next !== dbNext) {
+      if (!pref?.trim() && next && next !== dbNext) {
         try {
           await supabase.from('users').update({ theme_preference: next }).eq('id', user.id)
         } catch {

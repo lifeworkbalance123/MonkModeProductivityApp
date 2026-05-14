@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/context/ToastContext'
 import { useThemePersonas, type ThemePersonaRow } from '@/hooks/useThemePersonas'
 import { THEME_ACCENT_SWATCH, THEME_IDS, type ColorThemeId } from '@/lib/colorThemes'
+
+function accentSwatchStyle(id: ColorThemeId): CSSProperties {
+  if (id === 'vapor') {
+    return { background: 'linear-gradient(135deg, #FF007F, #00F0FF)' }
+  }
+  return { backgroundColor: THEME_ACCENT_SWATCH[id] }
+}
 
 type Draft = Record<ColorThemeId, { display_name: string; description: string }>
 
@@ -33,7 +40,7 @@ export default function AdminThemesPage() {
   const [saving, setSaving] = useState<ColorThemeId | null>(null)
 
   useEffect(() => {
-    if (!loading && personas.length) setDraft(toDraft(personas))
+    if (!loading) setDraft(toDraft(personas))
   }, [loading, personas])
 
   async function save(id: ColorThemeId) {
@@ -101,7 +108,7 @@ export default function AdminThemesPage() {
               <div className="mb-4 flex items-center gap-3">
                 <div
                   className="h-10 w-10 shrink-0 rounded-full border border-border"
-                  style={{ backgroundColor: THEME_ACCENT_SWATCH[id] }}
+                  style={accentSwatchStyle(id)}
                   aria-hidden
                 />
                 <div>

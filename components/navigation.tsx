@@ -20,6 +20,7 @@ import { MainShell } from "@/components/MainShell"
 import { MonkCubedLogo } from "@/components/brand/MonkCubedLogo"
 import { PwaInstallButton } from "@/components/marketing/PwaInstallButton"
 import { useColorTheme } from "@/context/ColorThemeContext"
+import { isLightColorTheme } from "@/lib/colorThemes"
 import { Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -64,7 +65,7 @@ function MarketingNavigation({
               aria-label="monk cubed — home"
             >
               <MonkCubedLogo
-                variant={themeId === "zen" ? "onLight" : "onDark"}
+                variant={isLightColorTheme(themeId) ? "onLight" : "onDark"}
                 className="text-lg sm:text-xl"
               />
             </Link>
@@ -333,7 +334,7 @@ export function Navigation({ forceMarketing = false }: { forceMarketing?: boolea
               aria-label="monk cubed — home"
             >
               <MonkCubedLogo
-                variant={themeId === "zen" ? "onLight" : "onDark"}
+                variant={isLightColorTheme(themeId) ? "onLight" : "onDark"}
                 className="text-lg"
               />
             </Link>

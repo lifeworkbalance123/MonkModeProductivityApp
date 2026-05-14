@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { Loader2, Palette } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import {
@@ -15,93 +14,100 @@ import {
 import { useColorTheme } from '@/context/ColorThemeContext'
 import { useThemePersonas } from '@/hooks/useThemePersonas'
 import {
-  THEME_ACCENT_SWATCH,
   THEME_IDS,
   type ColorThemeId,
 } from '@/lib/colorThemes'
 import { cn } from '@/lib/utils'
 
 const FALLBACK: Record<ColorThemeId, { display_name: string; description: string }> = {
-  stoic: {
-    display_name: 'The Stoic',
-    description: 'Dark canvas and amber gold — the default disciplined look.',
+  noir: {
+    display_name: 'Noir',
+    description: 'Deep black canvas with electric cyan accents — high contrast and minimal.',
   },
-  zen: {
-    display_name: 'Zen Monochrome',
-    description: 'Warm off-white and soft grey — a calm light workspace.',
+  slate: {
+    display_name: 'Slate',
+    description: 'Cool navy panels with antique gold highlights — refined and steady.',
   },
-  nomad: {
-    display_name: 'Digital Nomad',
-    description: 'Deep navy with sand accents — travel-ready focus.',
+  terrain: {
+    display_name: 'Terrain',
+    description: 'Warm earth browns and terracotta — grounded, organic focus.',
   },
-  forge: {
-    display_name: 'The Forge',
-    description: 'Charcoal steel and ember orange — high intensity.',
+  bloom: {
+    display_name: 'Bloom',
+    description: 'Soft cream surfaces with coral accents — bright and approachable.',
   },
-  silent: {
-    display_name: 'Silent Monk',
-    description: 'Greyscale interface; gold reserved for key actions only.',
+  vapor: {
+    display_name: 'Vapor',
+    description: 'Near-black shell with neon magenta and cyan energy — synth-night clarity.',
   },
-  rose: {
-    display_name: 'Rose Garden',
-    description: 'Soft rose background with vivid pink accents — warm and upbeat.',
+  harvest: {
+    display_name: 'Harvest',
+    description: 'Solar paper tones with golden wheat accents — warm daylight reading.',
   },
-  lavender: {
-    display_name: 'Lavender Mist',
-    description: 'Cool lavender canvas with violet accents — gentle focus.',
-  },
-  peach: {
-    display_name: 'Peach Blossom',
-    description: 'Warm peach tones with orange accents — energetic clarity.',
-  },
-  sage: {
-    display_name: 'Sage & Cream',
-    description: 'Earthy greens with light cream surfaces — grounded and calm.',
+  midnight: {
+    display_name: 'Midnight',
+    description: 'Indigo depths with amethyst accents — calm late-night work.',
   },
 }
 
-const PREVIEW: Partial<
-  Record<
-    ColorThemeId,
-    {
-      bg: string
-      surface: string
-      accent: string
-      text: string
-      emoji: string
-      descriptionOverride?: string
-    }
-  >
+const PREVIEW: Record<
+  ColorThemeId,
+  {
+    bg: string
+    surface: string
+    accent: string
+    text: string
+    emoji: string
+  }
 > = {
-  rose: {
-    bg: '#fef2f2',
-    surface: '#fff5f5',
-    accent: '#db2777',
-    text: '#4a1d3a',
+  noir: {
+    bg: '#0a0a0a',
+    surface: '#141414',
+    accent: '#00d4ff',
+    text: '#f5f5f5',
+    emoji: '🌑',
+  },
+  slate: {
+    bg: '#1e2a3a',
+    surface: '#2a3a4a',
+    accent: '#d4af37',
+    text: '#e0e4e8',
+    emoji: '🪨',
+  },
+  terrain: {
+    bg: '#2e241f',
+    surface: '#3c2f2b',
+    accent: '#e07a5f',
+    text: '#e6d5c3',
+    emoji: '🌋',
+  },
+  bloom: {
+    bg: '#f9f6f0',
+    surface: '#ffffff',
+    accent: '#ff8a7a',
+    text: '#3d2b1f',
     emoji: '🌸',
-    descriptionOverride:
-      'Soft blush and dusty rose — calm, nurturing, and beautifully understated.',
   },
-  lavender: {
-    bg: '#f5f3ff',
-    surface: '#faf5ff',
-    accent: '#7c3aed',
-    text: '#2e1065',
-    emoji: '💜',
+  vapor: {
+    bg: '#0b0c10',
+    surface: '#1f2833',
+    accent: '#ff007f',
+    text: '#c5c6c7',
+    emoji: '💿',
   },
-  peach: {
-    bg: '#fff7ed',
-    surface: '#fffaf0',
-    accent: '#ea580c',
-    text: '#431407',
-    emoji: '🍑',
+  harvest: {
+    bg: '#fdf6e3',
+    surface: '#fff8e7',
+    accent: '#f4d03f',
+    text: '#5d4b3a',
+    emoji: '🌾',
   },
-  sage: {
-    bg: '#f7faf5',
-    surface: '#fefce8',
-    accent: '#65a30d',
-    text: '#36454a',
-    emoji: '🌿',
+  midnight: {
+    bg: '#121420',
+    surface: '#1e2235',
+    accent: '#9b59b6',
+    text: '#e2e4f0',
+    emoji: '🌙',
   },
 }
 
@@ -133,7 +139,7 @@ export default function AppearanceSettingsPage() {
             Appearance
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Pick a palette for monkcubed. Labels can be edited in the admin Themes screen.
+            Choose one of seven curated palettes. Labels can be edited in the admin Themes screen.
           </p>
         </div>
 
@@ -177,71 +183,6 @@ export default function AppearanceSettingsPage() {
                 const selected = themeId === id
                 const preview = PREVIEW[id]
 
-                if (preview) {
-                  const desc = preview.descriptionOverride ?? description
-                  return (
-                    <Card
-                      key={id}
-                      className={cn(
-                        'cursor-pointer border-2 p-4 transition-colors',
-                        selected ? 'border-accent bg-card' : 'border-transparent hover:border-border',
-                      )}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => void setThemeId(id)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          void setThemeId(id)
-                        }
-                      }}
-                    >
-                      <div
-                        className="rounded-2xl p-3"
-                        style={{ background: preview.bg, border: `2px solid ${preview.accent}` }}
-                      >
-                        <div
-                          className="flex items-center gap-2 rounded-xl px-3 py-2"
-                          style={{ background: preview.surface }}
-                        >
-                          <span style={{ color: preview.accent }}>{preview.emoji}</span>
-                          <span className="font-semibold" style={{ color: preview.text }}>
-                            {name}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="mt-4">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="theme-name font-semibold text-foreground">{name}</div>
-                          <span className="rounded bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
-                            {id}
-                          </span>
-                          {selected ? (
-                            <span className="ml-auto inline-flex items-center rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
-                              ✓ Selected
-                            </span>
-                          ) : null}
-                        </div>
-                        <p className="mt-1 text-sm text-muted-foreground">{desc}</p>
-
-                        {!selected ? (
-                          <button
-                            type="button"
-                            className="mt-3 inline-flex h-9 items-center justify-center rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground hover:bg-secondary"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              void setThemeId(id)
-                            }}
-                          >
-                            Use this theme
-                          </button>
-                        ) : null}
-                      </div>
-                    </Card>
-                  )
-                }
-
                 return (
                   <Card
                     key={id}
@@ -259,33 +200,60 @@ export default function AppearanceSettingsPage() {
                       }
                     }}
                   >
-                    <div className="flex gap-4">
+                    <div
+                      className="rounded-2xl p-3"
+                      style={{
+                        background: preview.bg,
+                        border: `2px solid ${preview.accent}`,
+                      }}
+                    >
                       <div
-                        className="mt-0.5 h-12 w-12 shrink-0 rounded-full border border-border shadow-inner"
-                        style={{ backgroundColor: THEME_ACCENT_SWATCH[id] }}
-                        aria-hidden
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h2 className="font-semibold text-foreground">{name}</h2>
-                          <span className="rounded bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
-                            {id}
+                        className="flex items-center gap-2 rounded-xl px-3 py-2"
+                        style={{ background: preview.surface }}
+                      >
+                        <span style={{ color: preview.accent }}>{preview.emoji}</span>
+                        <span className="font-semibold" style={{ color: preview.text }}>
+                          {name}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="theme-name font-semibold text-foreground">{name}</div>
+                        <span className="rounded bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+                          {id}
+                        </span>
+                        {selected ? (
+                          <span className="ml-auto inline-flex items-center rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                            ✓ Selected
                           </span>
-                        </div>
-                        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-                        <Button
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+
+                      {id === 'vapor' ? (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Accent gradient (magenta → cyan) is available as{' '}
+                          <code className="rounded bg-muted px-1 font-mono text-[10px]">
+                            --theme-accent-gradient
+                          </code>{' '}
+                          for custom components; primary controls use a solid magenta for compatibility.
+                        </p>
+                      ) : null}
+
+                      {!selected ? (
+                        <button
                           type="button"
-                          size="sm"
-                          className="mt-3"
-                          variant={selected ? 'default' : 'outline'}
+                          className="mt-3 inline-flex h-9 items-center justify-center rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground hover:bg-secondary"
                           onClick={(e) => {
                             e.stopPropagation()
                             void setThemeId(id)
                           }}
                         >
-                          {selected ? 'Selected' : 'Use this theme'}
-                        </Button>
-                      </div>
+                          Use this theme
+                        </button>
+                      ) : null}
                     </div>
                   </Card>
                 )
