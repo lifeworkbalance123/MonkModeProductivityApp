@@ -146,6 +146,14 @@ function friendlyAuthNetworkError(): string {
   )
 }
 
+/** Optional: `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED` = `true` | `false` to skip server probe. */
+function readGoogleAuthEnvOverride(): boolean | null {
+  const f = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED?.trim().toLowerCase()
+  if (f === 'false') return false
+  if (f === 'true') return true
+  return null
+}
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function passwordFlowFromSubmit(
@@ -189,6 +197,9 @@ export default function AuthPage() {
   const [busy, setBusy] = useState(false)
   const [magicBusy, setMagicBusy] = useState(false)
   const [googleBusy, setGoogleBusy] = useState(false)
+  const [googleOAuthAvailable, setGoogleOAuthAvailable] = useState<boolean | null>(() =>
+    readGoogleAuthEnvOverride(),
+  )
   const [signupMessage, setSignupMessage] = useState<string | null>(null)
   const [magicMessage, setMagicMessage] = useState<string | null>(null)
   const [showReferralBanner, setShowReferralBanner] = useState(false)
@@ -196,6 +207,24 @@ export default function AuthPage() {
   const [forgotBusy, setForgotBusy] = useState(false)
   const [forgotMessage, setForgotMessage] = useState<string | null>(null)
   const [passwordUpdatedBanner, setPasswordUpdatedBanner] = useState(false)
+
+  useEffect(() => {
+    if (googleOAuthAvailable !== null) return
+    if (!isSupabaseConfigured()) {
+      setGoogleOAuthAvailable(true)
+      return
+    }
+    const ac = new AbortController()
+    void fetch('/api/auth/google-oauth-status', { signal: ac.signal })
+      .then((r) => r.json())
+      .then((d: { googleSignInAvailable?: boolean }) => {
+        setGoogleOAuthAvailable(d.googleSignInAvailable !== false)
+      })
+      .catch(() => {
+        setGoogleOAuthAvailable(true)
+      })
+    return () => ac.abort()
+  }, [googleOAuthAvailable])
 
   useEffect(() => {
     setShowReferralBanner(new URL(window.location.href).searchParams.get('ref') === '1')
@@ -524,6 +553,7 @@ export default function AuthPage() {
   }
 
   async function handleGoogle() {
+    if (googleOAuthAvailable === false) return
     setFormError(null)
     setGoogleBusy(true)
     try {
@@ -604,7 +634,14 @@ export default function AuthPage() {
           type="button"
           variant="outline"
           className="w-full inline-flex items-center justify-center gap-2"
-          disabled={googleBusy || busy || magicBusy}
+          disabled={
+            googleOAuthAvailable === false || googleBusy || busy || magicBusy
+          }
+          title={
+            googleOAuthAvailable === false
+              ? 'Google sign-in is not enabled for this app yet'
+              : undefined
+          }
           onClick={handleGoogle}
         >
           {googleBusy ? (
@@ -612,6 +649,15 @@ export default function AuthPage() {
           ) : null}
           Continue with Google
         </Button>
+
+        {googleOAuthAvailable === false ? (
+          <p
+            className="text-center text-xs text-muted-foreground rounded-md border border-border bg-muted/30 px-3 py-2"
+            role="status"
+          >
+            Google sign-in isn&apos;t set up yet. Use email or a magic link below.
+          </p>
+        ) : null}
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
