@@ -8,6 +8,7 @@ import { useUpgradeOffer } from '@/context/UpgradeOfferContext'
 import { usePlan } from '@/hooks/usePlan'
 import { Cloud } from 'lucide-react'
 import { Tooltip } from '@/components/ui/first-visit-tooltip'
+import { TOOLTIP_CLOUD_SYNC } from '@/lib/tool-library-tooltips'
 
 export default function CloudSyncPage() {
   const { openUpgrade } = useUpgradeOffer()
@@ -18,7 +19,7 @@ export default function CloudSyncPage() {
       <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
         <Tooltip
           id="tooltip_sync"
-          text="Your progress saves automatically. Connect Google Calendar to block focus time without conflicts."
+          text={TOOLTIP_CLOUD_SYNC}
         >
           <div>
             <h1 className="text-2xl font-semibold">Cloud sync</h1>

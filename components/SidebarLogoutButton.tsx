@@ -4,6 +4,8 @@ import { useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { LogOut } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import { HoverTooltip } from '@/components/ui/HoverTooltip'
+import { TOOLTIP_LOG_OUT } from '@/lib/tool-library-tooltips'
 import { cn } from '@/lib/utils'
 
 export function SidebarLogoutButton({
@@ -24,17 +26,19 @@ export function SidebarLogoutButton({
   }, [onAfterClick, router, signOut])
 
   return (
-    <button
-      type="button"
-      onClick={() => void handleClick()}
-      className={cn(
-        'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors',
-        'text-muted-foreground hover:bg-secondary hover:text-foreground',
-        className,
-      )}
-    >
-      <LogOut className="h-4 w-4 shrink-0" aria-hidden />
-      <span className="truncate">Log out</span>
-    </button>
+    <HoverTooltip text={TOOLTIP_LOG_OUT} className="block w-full">
+      <button
+        type="button"
+        onClick={() => void handleClick()}
+        className={cn(
+          'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors',
+          'text-muted-foreground hover:bg-secondary hover:text-foreground',
+          className,
+        )}
+      >
+        <LogOut className="h-4 w-4 shrink-0" aria-hidden />
+        <span className="truncate">Log out</span>
+      </button>
+    </HoverTooltip>
   )
 }

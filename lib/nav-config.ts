@@ -13,7 +13,7 @@ import {
   Sunrise,
   Clapperboard,
   LayoutGrid,
-  Wrench,
+  BookOpen,
 } from 'lucide-react'
 
 export type NavItem = {
@@ -52,7 +52,7 @@ export const allNavItems: NavItem[] = [
   },
   { href: '/training', label: 'Training', icon: PlayCircle },
   { href: '/videos', label: 'Video library', icon: Clapperboard },
-  { href: '/tools', label: 'Tools', icon: Wrench },
+  { href: '/tools', label: 'Tool Library', icon: BookOpen },
   { href: '/focus', label: 'Focus & Deep Work', icon: Timer },
   {
     href: '/sync',

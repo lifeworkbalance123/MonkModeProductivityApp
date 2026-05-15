@@ -27,6 +27,7 @@ import {
 import { recordTodayGoalSnapshot } from '@/lib/goal-daily-snapshots'
 import OneBigTask from '@/components/program/OneBigTask'
 import { Tooltip } from '@/components/ui/first-visit-tooltip'
+import { TOOLTIP_GOALS } from '@/lib/tool-library-tooltips'
 
 const checkClass =
   'border-border data-[state=checked]:bg-accent data-[state=checked]:border-accent data-[state=checked]:text-accent-foreground'
@@ -144,7 +145,7 @@ export default function GoalsPage() {
         <OneBigTask />
         <Tooltip
           id="tooltip_goals"
-          text="Set a 30, 60, or 90 day goal. Break it into weekly steps. Your program will remind you to review progress."
+          text={TOOLTIP_GOALS}
         >
           <div>
             <div className="label-machine">System</div>

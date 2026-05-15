@@ -21,6 +21,7 @@ import {
 import { morningRoutineTemplateSlots } from '@/lib/planner-templates'
 import { TIME_SLOT_CATEGORY_OPTIONS } from '@/components/time-schedule-card'
 import { Tooltip } from '@/components/ui/first-visit-tooltip'
+import { TOOLTIP_TIME_SCHEDULE } from '@/lib/tool-library-tooltips'
 import { captureEvent } from '@/lib/analytics'
 import type { TimeSlot } from '@/lib/monk-types'
 import ClearAllDataButton from '@/components/schedule/ClearAllDataButton'
@@ -161,7 +162,7 @@ export default function SchedulePage() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
         <Tooltip
           id="tooltip_schedule"
-          text="Block time for deep work, meetings, and breaks. Protect your morning focus block – it's your most valuable hour."
+          text={TOOLTIP_TIME_SCHEDULE}
         >
           <div className="mb-6">
             <div className="flex flex-wrap items-start justify-between gap-3">

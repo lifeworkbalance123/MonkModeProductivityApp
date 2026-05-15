@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Tooltip } from '@/components/ui/first-visit-tooltip'
+import { TOOLTIP_TRAINING } from '@/lib/tool-library-tooltips'
 import {
   Dialog,
   DialogContent,
@@ -526,7 +527,7 @@ export default function TrainingPage() {
         <section className="space-y-8">
           <Tooltip
             id="tooltip_training"
-            text="Your daily lesson. Read or listen. Each day builds a new discipline skill."
+            text={TOOLTIP_TRAINING}
             className="mx-auto w-full max-w-2xl"
           >
             <div className="text-center space-y-1 max-w-2xl mx-auto">

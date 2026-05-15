@@ -45,6 +45,7 @@ import { GettingStartedChecklist } from '@/components/GettingStartedChecklist'
 import ProgramHeader from '@/components/program/ProgramHeader'
 import { CollapsibleSection } from '@/components/ui/CollapsibleSection'
 import { HoverTooltip } from '@/components/ui/HoverTooltip'
+import { TOOLTIP_DASHBOARD_HOVER } from '@/lib/tool-library-tooltips'
 import type { DataServiceContext } from '@/lib/dataService'
 import {
   applyTimeBlockToPlannerWeek,
@@ -417,9 +418,7 @@ export function DashboardApp({
         morningGratitudeFields={todayGratitudeSnapshot}
       />
       <div className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-none sm:p-6">
-        <HoverTooltip
-          text="See your streak, badges, and weekly progress at a glance. Your transformation starts here."
-        >
+        <HoverTooltip text={TOOLTIP_DASHBOARD_HOVER}>
           <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
             <div>
               <div className="label-machine">Dashboard</div>

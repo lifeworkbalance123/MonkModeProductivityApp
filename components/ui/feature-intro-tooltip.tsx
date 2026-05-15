@@ -20,10 +20,11 @@ const bubblePosition: Record<
   FeatureIntroTooltipPosition,
   string
 > = {
-  bottom: 'left-1/2 top-full z-[100] mt-2 w-64 max-w-[min(100vw-2rem,16rem)] -translate-x-1/2',
-  top: 'bottom-full left-1/2 z-[100] mb-2 w-64 max-w-[min(100vw-2rem,16rem)] -translate-x-1/2',
-  left: 'right-full top-1/2 z-[100] mr-2 w-64 max-w-[min(100vw-2rem,16rem)] -translate-y-1/2',
-  right: 'left-full top-1/2 z-[100] ml-2 w-64 max-w-[min(100vw-2rem,16rem)] -translate-y-1/2',
+  bottom:
+    'left-1/2 top-full z-[100] mt-2 max-w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2',
+  top: 'bottom-full left-1/2 z-[100] mb-2 max-w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2',
+  left: 'right-full top-1/2 z-[100] mr-2 max-w-[min(22rem,calc(100vw-2rem))] -translate-y-1/2',
+  right: 'left-full top-1/2 z-[100] ml-2 max-w-[min(22rem,calc(100vw-2rem))] -translate-y-1/2',
 }
 
 const chipPosition: Record<FeatureIntroTooltipPosition, string> = {

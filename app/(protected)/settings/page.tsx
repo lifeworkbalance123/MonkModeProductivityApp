@@ -31,6 +31,7 @@ import { copyTextToClipboard } from '@/lib/copy-to-clipboard'
 import { mailtoSupport, publicSiteOrigin, SUPPORT_EMAIL } from '@/lib/site-contact'
 import ProgramControls from '@/components/settings/ProgramControls'
 import { Tooltip } from '@/components/ui/first-visit-tooltip'
+import { TOOLTIP_SETTINGS } from '@/lib/tool-library-tooltips'
 
 function formatBillingDate(iso: string | null): string | null {
   if (!iso) return null
@@ -364,7 +365,7 @@ export default function SettingsPage() {
       <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
         <Tooltip
           id="tooltip_settings"
-          text="Adjust notifications, pause your program, or invite a buddy. Your discipline, your rules."
+          text={TOOLTIP_SETTINGS}
         >
           <div>
             <h1 className="text-2xl font-semibold">Settings</h1>

@@ -30,7 +30,7 @@ export function ToolCard({ tool }: Props) {
             <h3 className="text-base font-semibold leading-snug text-foreground">
               {tool.name}
             </h3>
-            <p className="mt-1 text-sm text-muted-foreground">{tool.purpose}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{tool.content}</p>
           </div>
           <span className="shrink-0 text-muted-foreground" aria-hidden>
             {open ? (

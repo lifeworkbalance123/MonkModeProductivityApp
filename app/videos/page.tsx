@@ -12,6 +12,7 @@ import { getYouTubeThumbnail } from '@/lib/trainingContent'
 import type { TrainingVideo } from '@/lib/trainingVideos'
 import { cn } from '@/lib/utils'
 import { Tooltip } from '@/components/ui/first-visit-tooltip'
+import { TOOLTIP_VIDEO_LIBRARY } from '@/lib/tool-library-tooltips'
 
 export default function VideosPage() {
   const [videos, setVideos] = useState<TrainingVideo[]>([])
@@ -49,7 +50,7 @@ export default function VideosPage() {
         <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
         <Tooltip
           id="tooltip_videos"
-          text="Short videos on deep work, Stoicism, cold exposure, and more. Watch when you need a boost."
+          text={TOOLTIP_VIDEO_LIBRARY}
           className="mx-auto w-full max-w-2xl"
         >
           <div className="space-y-2 text-center">

@@ -51,6 +51,7 @@ import {
 } from '@/lib/habit-icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip } from '@/components/ui/first-visit-tooltip'
+import { TOOLTIP_HABITS } from '@/lib/tool-library-tooltips'
 import { cn } from '@/lib/utils'
 import { habitWeekDayCompletion } from '@/lib/monk-streak'
 
@@ -248,7 +249,7 @@ export default function HabitsPage() {
       <div className="max-w-xl mx-auto px-4 py-8 pt-24 space-y-6">
         <Tooltip
           id="tooltip_habits"
-          text="Track your daily anchors – lemon water, phone away, cold exposure. Consistency > intensity."
+          text={TOOLTIP_HABITS}
         >
           <div>
             <div className="label-machine">System</div>

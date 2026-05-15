@@ -10,6 +10,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { HoverTooltip } from '@/components/ui/HoverTooltip'
+import { TOOLTIP_WEEKLY_PLANNER } from '@/lib/tool-library-tooltips'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   addDays,
@@ -84,7 +85,7 @@ export function WeeklyPlannerApp({
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
-      <HoverTooltip text="Plan your week ahead. Set recurring habits, schedule deep work, and prep for your weekly review.">
+      <HoverTooltip text={TOOLTIP_WEEKLY_PLANNER}>
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-semibold">Weekly habit planner</h1>

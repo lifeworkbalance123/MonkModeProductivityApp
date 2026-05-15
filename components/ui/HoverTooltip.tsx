@@ -69,7 +69,7 @@ export function HoverTooltip({
 
       {visible ? (
         <div
-          className={`absolute z-50 max-w-xs break-words rounded-lg border border-border/80 bg-popover px-3 py-2 text-xs text-popover-foreground shadow-lg animate-in fade-in zoom-in duration-150 ${
+          className={`absolute z-50 max-w-[min(22rem,calc(100vw-2rem))] break-words rounded-lg border border-border/80 bg-popover px-3 py-2 text-xs text-popover-foreground shadow-lg animate-in fade-in zoom-in duration-150 ${
             tooltipPosition === 'bottom'
               ? 'left-1/2 top-full mt-1 -translate-x-1/2'
               : 'bottom-full left-1/2 mb-1 -translate-x-1/2'

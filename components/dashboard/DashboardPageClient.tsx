@@ -19,6 +19,8 @@ import type { ProgramType } from '@/lib/programStatus'
 import { supabase } from '@/lib/supabase'
 import { withAuthStorageLockRetry } from '@/lib/authStorageLock'
 import { ClearAllDataButton } from '@/components/schedule/ClearAllDataButton'
+import { Tooltip } from '@/components/ui/first-visit-tooltip'
+import { TOOLTIP_DASHBOARD_FIRST_VISIT } from '@/lib/tool-library-tooltips'
 
 export interface DashboardPageClientProps {
   welcomeName?: string
@@ -30,27 +32,39 @@ type DashboardContentProps = {
   welcomeName: string
   serverActiveProgramType: ProgramType | null
   headerActions?: React.ReactNode
+  showOnboardingTip?: boolean
 }
 
 const DashboardContent = memo(function DashboardContent({
   welcomeName,
   serverActiveProgramType,
   headerActions,
+  showOnboardingTip,
 }: DashboardContentProps) {
+  const greeting = (
+    <div className="greeting-section mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Welcome back, {welcomeName}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {headerActions}
+        <ExpandAllButton className="shrink-0" />
+      </div>
+    </div>
+  )
+
   return (
     <div className="container mx-auto p-6">
-      <div className="greeting-section mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Welcome back, {welcomeName}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {headerActions}
-          <ExpandAllButton className="shrink-0" />
-        </div>
-      </div>
+      {showOnboardingTip ? (
+        <Tooltip id="tooltip_dashboard_no_program" text={TOOLTIP_DASHBOARD_FIRST_VISIT}>
+          {greeting}
+        </Tooltip>
+      ) : (
+        greeting
+      )}
 
       <CollapsibleSection title="Today & programs">
         {serverActiveProgramType ? (
@@ -81,7 +95,7 @@ export function DashboardPageClient({
 }: DashboardPageClientProps) {
   const { data, setData, ready, dataContext, loadError, reload, flush } = useMonkData()
   const [scheduleReloadTick, setScheduleReloadTick] = useState(0)
-  const { activeProgram } = useProgramStatus()
+  const { activeProgram, loading: programStatusLoading } = useProgramStatus()
   const trial = useTrialBanner()
   const { user } = useAuth()
   const { showToast } = useToast()
@@ -107,6 +121,9 @@ export function DashboardPageClient({
     () => serverActiveProgramType ?? activeProgram?.program_type ?? null,
     [serverActiveProgramType, activeProgram?.program_type],
   )
+
+  const showDashboardOnboarding =
+    !programStatusLoading && effectiveProgramType == null
 
   const clearScheduleData = useCallback(async () => {
     const {
@@ -140,6 +157,7 @@ export function DashboardPageClient({
           <DashboardContent
             welcomeName={effectiveWelcomeName}
             serverActiveProgramType={effectiveProgramType}
+            showOnboardingTip={showDashboardOnboarding}
             headerActions={
               <ClearAllDataButton
                 hasData={data.timeSlots.length > 0}
