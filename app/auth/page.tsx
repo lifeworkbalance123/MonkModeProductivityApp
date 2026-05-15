@@ -553,14 +553,14 @@ export default function AuthPage() {
   }
 
   async function handleGoogle() {
-    if (googleOAuthAvailable === false) return
+    if (!isSupabaseConfigured()) {
+      setFormError(friendlySupabaseSetupError())
+      return
+    }
+    if (googleOAuthAvailable !== true) return
     setFormError(null)
     setGoogleBusy(true)
     try {
-      if (!isSupabaseConfigured()) {
-        setFormError(friendlySupabaseSetupError())
-        return
-      }
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -579,6 +579,9 @@ export default function AuthPage() {
       setGoogleBusy(false)
     }
   }
+
+  const googleButtonEnabled =
+    !isSupabaseConfigured() || googleOAuthAvailable === true
 
   if (authBootstrapping) {
     return (
@@ -634,13 +637,13 @@ export default function AuthPage() {
           type="button"
           variant="outline"
           className="w-full inline-flex items-center justify-center gap-2"
-          disabled={
-            googleOAuthAvailable === false || googleBusy || busy || magicBusy
-          }
+          disabled={!googleButtonEnabled || googleBusy || busy || magicBusy}
           title={
             googleOAuthAvailable === false
               ? 'Google sign-in is not enabled for this app yet'
-              : undefined
+              : !googleButtonEnabled
+                ? 'Checking whether Google sign-in is available…'
+                : undefined
           }
           onClick={handleGoogle}
         >
@@ -649,6 +652,12 @@ export default function AuthPage() {
           ) : null}
           Continue with Google
         </Button>
+
+        {isSupabaseConfigured() && googleOAuthAvailable === null ? (
+          <p className="text-center text-xs text-muted-foreground" aria-live="polite">
+            Checking sign-in options…
+          </p>
+        ) : null}
 
         {googleOAuthAvailable === false ? (
           <p
