@@ -40,14 +40,16 @@ export function MainShell({
     >
       {/* md+: main must not capture clicks over the fixed sidebar. Margin alone is not enough in some browsers — pass events through the main scroll layer and only re-enable hits on the content column. */}
       <main
-        className={cn(
-          'flex min-h-0 flex-1 flex-col overflow-auto',
-          user && 'md:pointer-events-none',
-        )}
-      >
-        {user ? (
-          <div
             className={cn(
+              'flex min-h-0 flex-1 flex-col overflow-auto',
+              user && 'md:pointer-events-none',
+            )}
+            id="app-main-scroll"
+          >
+            {user ? (
+              <div
+                id="app-main-tour-anchor"
+                className={cn(
               'flex min-h-0 flex-1 flex-col md:min-h-screen md:border-l md:border-border',
               'pointer-events-auto md:ml-64',
             )}

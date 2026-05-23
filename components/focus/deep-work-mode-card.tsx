@@ -74,12 +74,24 @@ import { Expand, Minimize2, Brain } from 'lucide-react'
 import { CircularProgressRing } from '@/components/ui/circular-progress-ring'
 
 type BuiltinAmbient = 'silence' | 'rain' | 'ocean' | 'white'
-type AmbientId = BuiltinAmbient | DeepWorkMp3Slot
+export type DeepWorkAmbientId = BuiltinAmbient | DeepWorkMp3Slot
 
 type Props = {
   setSessions: Dispatch<SetStateAction<DeepWorkSession[]>>
   alarmSoundRef: RefObject<boolean>
   alarmNotifyRef: RefObject<boolean>
+  /** Controlled ambient when embedded in unified focus (sidebar panel drives selection). */
+  ambientControl?: { value: DeepWorkAmbientId; onChange: (id: DeepWorkAmbientId) => void }
+  /** Hide the inline ambient selector in the card (panel or fullscreen may still show one). */
+  hideCardAmbientSelector?: boolean
+  /** Parent-fetched CMS; when set, skip duplicate fetch. */
+  deepWorkCmsFromParent?: DeepWorkCmsState | null
+  /** Hide the card's `id="deep-work"` anchor (parent supplies scroll target). */
+  omitSectionAnchor?: boolean
+  /** When false, global keyboard shortcuts for this card are not registered. */
+  keyboardShortcutsEnabled?: boolean
+  /** When false, do not drive the tab title countdown when this surface is hidden. */
+  tabTitleActive?: boolean
 }
 
 function formatMmSs(sec: number) {
@@ -88,14 +100,34 @@ function formatMmSs(sec: number) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }: Props) {
+export function DeepWorkModeCard({
+  setSessions,
+  alarmSoundRef,
+  alarmNotifyRef,
+  ambientControl,
+  hideCardAmbientSelector = false,
+  deepWorkCmsFromParent,
+  keyboardShortcutsEnabled = true,
+  omitSectionAnchor = false,
+  tabTitleActive = true,
+}: Props) {
   const ctx = useDataServiceContext()
   const { isPro, isLoading: planLoading } = usePlan()
   const chimePlayed = useRef(false)
   const ambientRef = useRef<AmbientNoiseHandle | null>(null)
   const mp3AudioRef = useRef<HTMLAudioElement | null>(null)
-  const [ambient, setAmbient] = useState<AmbientId>('silence')
-  const [deepWorkCms, setDeepWorkCms] = useState<DeepWorkCmsState | null>(null)
+  const [localAmbient, setLocalAmbient] = useState<DeepWorkAmbientId>('silence')
+  const ambient = ambientControl?.value ?? localAmbient
+  const setAmbient = useCallback(
+    (id: DeepWorkAmbientId) => {
+      if (ambientControl) ambientControl.onChange(id)
+      else setLocalAmbient(id)
+    },
+    [ambientControl],
+  )
+  const [deepWorkCmsLocal, setDeepWorkCmsLocal] = useState<DeepWorkCmsState | null>(null)
+  const deepWorkCms =
+    deepWorkCmsFromParent !== undefined ? deepWorkCmsFromParent : deepWorkCmsLocal
   const [immersive, setImmersive] = useState(false)
   const [task, setTask] = useState('')
   const [sprintNumber, setSprintNumber] = useState(1)
@@ -126,8 +158,9 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
   }, [])
 
   useEffect(() => {
-    void fetchDeepWorkCmsPublic(supabase).then(setDeepWorkCms)
-  }, [])
+    if (deepWorkCmsFromParent !== undefined) return
+    void fetchDeepWorkCmsPublic(supabase).then(setDeepWorkCmsLocal)
+  }, [deepWorkCmsFromParent])
 
   const loadedMp3Tracks = useMemo(
     () => (deepWorkCms ? filterLoadedActiveTracks(deepWorkCms) : []),
@@ -138,7 +171,7 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
     if (!deepWorkCms) return
     const builtins: BuiltinAmbient[] = ['silence', 'rain', 'ocean', 'white']
     if (builtins.includes(ambient as BuiltinAmbient)) return
-    const t = deepWorkCms.tracks.find((tr) => tr.key === ambient)
+    const t = deepWorkCms.tracks.find((tr) => tr.key === ambient as string)
     if (!t?.url?.trim() || !t.isActive) setAmbient('silence')
   }, [deepWorkCms, ambient])
 
@@ -177,7 +210,8 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
 
   useFaviconTimer(
     secondsRemaining,
-    status === 'running' || status === 'break' || status === 'paused',
+    tabTitleActive &&
+      (status === 'running' || status === 'break' || status === 'paused'),
   )
 
   const totalForRing = phase === 'break' ? breakTotalSeconds : sprintTotalSeconds
@@ -378,6 +412,7 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
   stopAllAudioRef.current = stopAllAudio
 
   useEffect(() => {
+    if (!keyboardShortcutsEnabled) return
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return
       if (isEditableOrTypingTarget(e)) return
@@ -424,7 +459,7 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [locked])
+  }, [locked, keyboardShortcutsEnabled])
 
   const centerLabel =
     phase === 'break' || breakModalOpen
@@ -435,7 +470,7 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
     <>
       <Confetti trigger={celebrateTick} />
       <Card
-        id="deep-work"
+        id={omitSectionAnchor ? undefined : 'deep-work'}
         className="relative scroll-mt-24 overflow-hidden rounded-2xl border-2 border-border bg-card p-6 shadow-none md:scroll-mt-28"
       >
         <div className="mb-4 flex items-start justify-between gap-3">
@@ -565,11 +600,11 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
               End Session
             </Button>
           </div>
-          {!locked ? (
+          {!locked && !hideCardAmbientSelector ? (
             <div className="mt-8 border-t border-border pt-6">
               <AudioTrackSelector
                 ambient={ambient}
-                onAmbientChange={(id) => setAmbient(id as AmbientId)}
+                onAmbientChange={(id) => setAmbient(id as DeepWorkAmbientId)}
                 mp3Tracks={loadedMp3Tracks}
                 disabled={false}
                 compact
@@ -747,7 +782,7 @@ export function DeepWorkModeCard({ setSessions, alarmSoundRef, alarmNotifyRef }:
           <div className="border-t border-border px-6 py-4">
             <AudioTrackSelector
               ambient={ambient}
-              onAmbientChange={(id) => setAmbient(id as AmbientId)}
+              onAmbientChange={(id) => setAmbient(id as DeepWorkAmbientId)}
               mp3Tracks={loadedMp3Tracks}
               disabled={false}
             />

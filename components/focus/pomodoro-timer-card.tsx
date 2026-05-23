@@ -49,12 +49,46 @@ import {
 const DEFAULT_WORK = 25 * 60
 const DEFAULT_BREAK = 5 * 60
 
+export type PomodoroIntentControl = {
+  intent: string
+  intentLocked: boolean
+  onIntentUnlock: () => void
+  /** Persisted Pomodoro state implies intent was locked (paused / running). */
+  onHydrateIntentLocked?: () => void
+}
+
+export type PomodoroAmbientControl = {
+  track: LoopingFocusTrack
+  setTrack: (t: LoopingFocusTrack) => void
+}
+
 type Props = {
   alarmSoundRef: RefObject<boolean>
   alarmNotifyRef: RefObject<boolean>
+  /** Unified focus: parent owns intent + lock-before-start. */
+  intentControl?: PomodoroIntentControl | null
+  /** Unified focus: parent owns MP3 chip row in settings panel. */
+  ambientControl?: PomodoroAmbientControl | null
+  /** When provided (including `null` while loading), skip duplicate CMS fetch. */
+  deepWorkCmsFromParent?: DeepWorkCmsState | null
+  /** Embed inside unified shell: tighter copy and no duplicate section anchor. */
+  embedded?: boolean
+  /** When false, do not register global Pomodoro keyboard shortcuts. */
+  keyboardShortcutsEnabled?: boolean
+  /** When false, do not drive the tab title countdown (e.g. surface hidden in unified layout). */
+  tabTitleActive?: boolean
 }
 
-export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
+export function PomodoroTimerCard({
+  alarmSoundRef,
+  alarmNotifyRef,
+  intentControl,
+  ambientControl,
+  deepWorkCmsFromParent,
+  embedded = false,
+  keyboardShortcutsEnabled = true,
+  tabTitleActive = true,
+}: Props) {
   const [mode, setMode] = useState<'work' | 'break'>('work')
   const modeRef = useRef(mode)
   useEffect(() => {
@@ -79,13 +113,31 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
   }, [breakTotalSec])
 
   const [presetId, setPresetId] = useState<PomodoroPresetId | null>('p25')
-  const [intent, setIntent] = useState('')
-  const [intentLocked, setIntentLocked] = useState(false)
+  const [internalIntent, setInternalIntent] = useState('')
+  const [internalIntentLocked, setInternalIntentLocked] = useState(false)
+  const intent = intentControl?.intent ?? internalIntent
+  const intentLocked = intentControl?.intentLocked ?? internalIntentLocked
+
   const [showSummary, setShowSummary] = useState(false)
   const [sessionsToday, setSessionsToday] = useState(0)
   const [confettiTick, setConfettiTick] = useState(0)
-  const [selectedTrack, setSelectedTrack] = useState<LoopingFocusTrack>(null)
-  const [deepWorkCms, setDeepWorkCms] = useState<DeepWorkCmsState | null>(null)
+  const [internalTrack, setInternalTrack] = useState<LoopingFocusTrack>(null)
+  const selectedTrack = ambientControl?.track ?? internalTrack
+  const setSelectedTrack = useCallback(
+    (t: LoopingFocusTrack) => {
+      if (ambientControl) ambientControl.setTrack(t)
+      else setInternalTrack(t)
+    },
+    [ambientControl],
+  )
+  const [localDeepWorkCms, setLocalDeepWorkCms] = useState<DeepWorkCmsState | null>(null)
+  const deepWorkCms =
+    deepWorkCmsFromParent !== undefined ? deepWorkCmsFromParent : localDeepWorkCms
+
+  const intentControlRef = useRef(intentControl)
+  intentControlRef.current = intentControl
+  const intentLockedRef = useRef(intentLocked)
+  intentLockedRef.current = intentLocked
 
   const lastTickSec = useRef<number | null>(null)
 
@@ -96,17 +148,22 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
 
   useLoopingFocusTrack(selectedTrack, status === 'running' && mode === 'work')
 
-  useFaviconTimer(secLeft, status === 'running' || status === 'paused')
+  useFaviconTimer(
+    secLeft,
+    tabTitleActive && (status === 'running' || status === 'paused'),
+  )
 
   useEffect(() => {
     setSessionsToday(loadFocusLocalStats().pomodoroWorkCompletions)
   }, [])
 
   useEffect(() => {
-    void fetchDeepWorkCmsPublic(supabase).then(setDeepWorkCms)
-  }, [])
+    if (deepWorkCmsFromParent !== undefined) return
+    void fetchDeepWorkCmsPublic(supabase).then(setLocalDeepWorkCms)
+  }, [deepWorkCmsFromParent])
 
   useEffect(() => {
+    if (intentControl) return
     let cancelled = false
     void (async () => {
       const userId = await getUserIdSafe()
@@ -121,13 +178,13 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
       if (cancelled || error) return
       const text = data?.micro_journal_text
       if (typeof text === 'string' && text.trim()) {
-        setIntent(text.trim().slice(0, 280))
+        setInternalIntent(text.trim().slice(0, 280))
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [intentControl])
 
   useEffect(() => {
     statusRef.current = status
@@ -172,7 +229,11 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
         })
       }
       if (ended === 'break') {
-        queueMicrotask(() => setIntentLocked(false))
+        queueMicrotask(() => {
+          const ic = intentControlRef.current
+          if (ic) ic.onIntentUnlock()
+          else setInternalIntentLocked(false)
+        })
       }
       setMode(nextMode)
       setStatus('idle')
@@ -247,7 +308,11 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
       pausedRemainder.current = s.pausedSec
       setSecLeft(s.pausedSec)
       setStatus('paused')
-      setIntentLocked(true)
+      if (intentControlRef.current?.onHydrateIntentLocked) {
+        queueMicrotask(() => intentControlRef.current?.onHydrateIntentLocked?.())
+      } else {
+        setInternalIntentLocked(true)
+      }
       return
     }
 
@@ -266,7 +331,11 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
         wallEnd.current = s.wallEndMs
         setSecLeft(Math.ceil((s.wallEndMs - now) / 1000))
         setStatus('running')
-        setIntentLocked(true)
+        if (intentControlRef.current?.onHydrateIntentLocked) {
+          queueMicrotask(() => intentControlRef.current?.onHydrateIntentLocked?.())
+        } else {
+          setInternalIntentLocked(true)
+        }
         return
       }
       wallEnd.current = null
@@ -298,7 +367,9 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
         }
       }
       if (ended === 'break') {
-        setIntentLocked(false)
+        const ic = intentControlRef.current
+        if (ic) ic.onIntentUnlock()
+        else setInternalIntentLocked(false)
       }
       setMode(nextMode)
       setStatus('idle')
@@ -354,7 +425,11 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
   function start() {
     const line = intent.trim()
     if (!line || line.length < 3) return
-    setIntentLocked(true)
+    if (intentControl) {
+      if (!intentControl.intentLocked) return
+    } else {
+      setInternalIntentLocked(true)
+    }
     if (alarmSoundRef.current) {
       playFocusTransitionCue('start')
     }
@@ -392,7 +467,8 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
     wallEnd.current = null
     setStatus('idle')
     setSecLeft(mode === 'work' ? workTotalSec : breakTotalSec)
-    setIntentLocked(false)
+    if (intentControl) intentControl.onIntentUnlock()
+    else setInternalIntentLocked(false)
     clearPomodoro()
   }
 
@@ -409,6 +485,7 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
   showSummaryRef.current = showSummary
 
   useEffect(() => {
+    if (!keyboardShortcutsEnabled) return
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return
       if (isEditableOrTypingTarget(e)) return
@@ -430,6 +507,8 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
           e.preventDefault()
           actionsRef.current.resume()
         } else if (st === 'idle' && intentValidRef.current) {
+          const ic = intentControlRef.current
+          if (ic && !intentLockedRef.current) return
           e.preventDefault()
           actionsRef.current.start()
         }
@@ -443,11 +522,11 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [keyboardShortcutsEnabled])
 
   return (
     <Card
-      id="pomodoro-focus"
+      id={embedded ? undefined : 'pomodoro-focus'}
       className="scroll-mt-24 rounded-2xl border-2 border-border bg-card p-6 shadow-none md:scroll-mt-28"
     >
       <Confetti trigger={confettiTick} />
@@ -466,9 +545,18 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
         </span>
       </div>
       <p className="mb-4 text-sm text-muted-foreground">
-        Pick a session length, set intent (at least 3 characters; prefilled from today&apos;s log
-        when present), then start. It is saved to your daily log and locked for this focus round.
-        Timer alerts are configured above.
+        {embedded ? (
+          <>
+            Pick a session length, lock intent in the panel, then start. Intent is saved to your
+            daily log when the timer begins. Work and break cycles match your preset.
+          </>
+        ) : (
+          <>
+            Pick a session length, set intent (at least 3 characters; prefilled from today&apos;s log
+            when present), then start. It is saved to your daily log and locked for this focus round.
+            Timer alerts are configured above.
+          </>
+        )}
       </p>
 
       <div className="mb-4">
@@ -519,6 +607,7 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
         </div>
       </div>
 
+      {!ambientControl ? (
       <div className="mb-4 space-y-2">
         <p className="label-machine">Background audio (optional)</p>
         <div className="flex flex-wrap gap-2">
@@ -566,15 +655,17 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
           </p>
         ) : null}
       </div>
+      ) : null}
 
+      {!intentControl ? (
       <div className="mb-4 space-y-2">
         <Label htmlFor="focus-pomodoro-intent" className="text-xs text-muted-foreground">
           Pre-focus intent (required)
         </Label>
         <Textarea
           id="focus-pomodoro-intent"
-          value={intent}
-          onChange={(e) => setIntent(e.target.value)}
+          value={internalIntent}
+          onChange={(e) => setInternalIntent(e.target.value)}
           placeholder="What will you ship in this block?"
           rows={2}
           maxLength={280}
@@ -587,6 +678,7 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
           </p>
         ) : null}
       </div>
+      ) : null}
 
       <div className="flex flex-col items-center text-center">
         <div className="relative flex items-center justify-center">
@@ -613,7 +705,7 @@ export function PomodoroTimerCard({ alarmSoundRef, alarmNotifyRef }: Props) {
             <Button
               type="button"
               className="bg-accent text-accent-foreground hover:bg-accent/90"
-              disabled={!intentValid}
+              disabled={!intentValid || (intentControl != null && !intentLocked)}
               onClick={start}
             >
               Start

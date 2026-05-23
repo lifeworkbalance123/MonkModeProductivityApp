@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Menu } from 'lucide-react'
 import { bottomTabItems } from '@/lib/nav-config'
+import { navTourClass } from '@/lib/nav-tour-classes'
 import { cn } from '@/lib/utils'
 
 const DRAWER_PATH_PREFIXES = [
@@ -75,6 +76,7 @@ export function MobileBottomNav({
                 active
                   ? 'text-primary'
                   : 'text-muted-foreground hover:text-foreground',
+                href === '/today' && navTourClass('/today'),
               )}
             >
               <Icon className={cn('h-5 w-5 shrink-0', active && 'text-primary')} />

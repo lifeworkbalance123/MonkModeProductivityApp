@@ -61,6 +61,7 @@ import {
 import { captureEvent } from '@/lib/analytics'
 import { getWeeklyStreak, getWeekProgressMessage, type StreakData } from '@/lib/streak'
 import { countLocalDashboardDays, hasLocalDashboardDay } from '@/lib/dashboard-day-local'
+import { DailyQuote } from '@/components/dashboard/DailyQuote'
 
 const daysShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -74,6 +75,8 @@ type Props = {
   userId?: string
   /** Increment after global schedule clear so per-day planner UI reloads without full page refresh. */
   scheduleReloadTick?: number
+  /** Active program day for daily quote slot (mod 60). */
+  programDay?: number | null
 }
 
 export function DashboardApp({
@@ -82,6 +85,7 @@ export function DashboardApp({
   dataContext,
   userId,
   scheduleReloadTick = 0,
+  programDay = null,
 }: Props) {
   const { showToast } = useToast()
   const { openUpgrade } = useUpgradeOffer()
@@ -517,6 +521,7 @@ export function DashboardApp({
               className="max-md:order-10"
             >
               <div className="space-y-3">
+                <DailyQuote programDay={programDay} />
                 <p className="text-xs text-muted-foreground">
                   Paste a YouTube link to save your morning motivation video.
                 </p>

@@ -283,9 +283,9 @@ export default function HabitsPage() {
         <Card className="p-4 space-y-3">
           {data.habits.length === 0 ? (
             <EmptyState
-              icon="✅"
+              icon="🌱"
               heading="No habits yet"
-              subtext="Start small. Even one habit done daily builds unstoppable momentum."
+              subtext="Start with lemon water, make bed, or phone away — small anchors you can tick every day."
               ctaLabel="Add your first habit"
               ctaAction={() => inputRef.current?.focus()}
               secondaryLabel="Use default habits"

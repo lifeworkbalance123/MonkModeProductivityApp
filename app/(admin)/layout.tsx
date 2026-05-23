@@ -11,6 +11,7 @@ const navLinks = [
   { label: 'Users', href: '/admin/users' },
   { label: 'Analytics', href: '/admin/analytics' },
   { label: 'Content', href: '/admin/content' },
+  { label: 'Quotes', href: '/admin/content/quotes' },
   { label: 'Hero', href: '/admin/hero' },
   { label: 'Deep Work', href: '/admin/deep-work' },
   { label: 'Blog', href: '/admin/blog' },

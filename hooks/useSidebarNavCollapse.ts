@@ -31,6 +31,16 @@ export function useSidebarNavCollapse(pathname: string | null) {
     setSectionOpen((prev) => ({ ...prev, [groupId]: open }))
   }, [])
 
+  const expandAllGroups = useCallback(() => {
+    setSectionOpen((prev) => {
+      const next = { ...prev }
+      for (const g of sidebarNavSections) {
+        next[g.id] = true
+      }
+      return next
+    })
+  }, [])
+
   useEffect(() => {
     if (!pathname) return
     setSectionOpen((prev) => {
@@ -46,5 +56,5 @@ export function useSidebarNavCollapse(pathname: string | null) {
     })
   }, [pathname])
 
-  return { isActive, isGroupOpen, setGroupOpen }
+  return { isActive, isGroupOpen, setGroupOpen, expandAllGroups }
 }

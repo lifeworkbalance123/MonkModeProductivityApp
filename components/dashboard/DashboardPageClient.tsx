@@ -19,6 +19,7 @@ import type { ProgramType } from '@/lib/programStatus'
 import { supabase } from '@/lib/supabase'
 import { withAuthStorageLockRetry } from '@/lib/authStorageLock'
 import { ClearAllDataButton } from '@/components/schedule/ClearAllDataButton'
+import { QuickStartCard } from '@/components/QuickStartCard'
 import { Tooltip } from '@/components/ui/first-visit-tooltip'
 import { TOOLTIP_DASHBOARD_FIRST_VISIT } from '@/lib/tool-library-tooltips'
 
@@ -154,6 +155,19 @@ export function DashboardPageClient({
         </div>
       ) : (
         <div className="dashboard-container mobile-friendly flex flex-col gap-5">
+          {effectiveUserId ? (
+            <div className="container mx-auto px-6 pt-6">
+              <QuickStartCard
+                userId={effectiveUserId}
+                userCreatedAt={user?.created_at}
+                programType={effectiveProgramType}
+                currentProgramDay={activeProgram?.currentDay ?? null}
+                habitsCount={data.habits.length}
+                goalsCount={data.goals.length}
+                timeSlotsCount={data.timeSlots.length}
+              />
+            </div>
+          ) : null}
           <DashboardContent
             welcomeName={effectiveWelcomeName}
             serverActiveProgramType={effectiveProgramType}
@@ -195,6 +209,7 @@ export function DashboardPageClient({
               dataContext={dataContext}
               userId={effectiveUserId}
               scheduleReloadTick={scheduleReloadTick}
+              programDay={activeProgram?.currentDay ?? null}
             />
           </div>
         </div>

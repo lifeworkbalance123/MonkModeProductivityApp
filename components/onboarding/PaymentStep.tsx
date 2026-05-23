@@ -14,6 +14,7 @@ import {
   SELECTED_PROGRAM_LABEL,
   selectedProgramToCheckoutPlan,
 } from '@/lib/onboardingProgramFlow'
+import { setPendingFirstRunWalkthrough } from '@/lib/onboardingState'
 import { startProgramCheckout } from '@/lib/stripe-checkout'
 
 type Props = {
@@ -85,6 +86,10 @@ export function PaymentStep({ intake, onBack, skipPayment = false }: Props) {
         }
         clearOnboardingSelectionFlags()
         clearAdminTestFlags()
+        const {
+          data: { user: postUser },
+        } = await supabase.auth.getUser()
+        if (postUser?.id) setPendingFirstRunWalkthrough(postUser.id)
         router.push('/dashboard')
         return
       }

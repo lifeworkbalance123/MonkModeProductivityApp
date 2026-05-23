@@ -207,7 +207,7 @@ export default function SchedulePage() {
             <EmptyState
               icon="📅"
               heading="Your day is unscheduled"
-              subtext="Time-boxing your day is the single highest leverage habit you can build."
+              subtext="Block deep work, breaks, and meetings so your day has a plan before it runs you."
               ctaLabel="Add your first time block"
               ctaAction={addFirstSlot}
               secondaryLabel="Apply morning routine template"

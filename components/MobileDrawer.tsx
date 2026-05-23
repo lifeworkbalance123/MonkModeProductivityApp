@@ -16,6 +16,7 @@ import { ProBadge } from '@/components/pro-badge'
 import { useSidebarNavCollapse } from '@/hooks/useSidebarNavCollapse'
 import { SidebarLogoutButton } from '@/components/SidebarLogoutButton'
 import { sidebarNavSections, type NavItem } from '@/lib/nav-config'
+import { navTourClass } from '@/lib/nav-tour-classes'
 import { cn } from '@/lib/utils'
 
 type Props = {
@@ -113,6 +114,7 @@ export function MobileDrawer({
                               isActive(item.href)
                                 ? 'bg-primary text-primary-foreground'
                                 : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+                              navTourClass(item.href),
                             )}
                             onClick={() => onOpenChange(false)}
                           >

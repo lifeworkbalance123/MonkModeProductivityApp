@@ -24,6 +24,7 @@ import {
   PROGRAM_MARKETING_CARDS,
 } from '@/lib/programCatalog'
 import { startProgramCheckout, type ProgramCheckoutKind } from '@/lib/stripe-checkout'
+import { setPendingFirstRunWalkthrough } from '@/lib/onboardingState'
 
 const BG = '#121212'
 const SURFACE = '#1E1E1E'
@@ -318,6 +319,8 @@ export default function ProgramOnboardingClient({
           showToast('Starter habits could not be added. Add them from Habits.', 'error')
         }
       }
+
+      setPendingFirstRunWalkthrough(user.id)
 
       router.push('/dashboard')
     } finally {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { setPendingFirstRunWalkthrough } from '@/lib/onboardingState'
 import { completeOnboarding } from '@/lib/onboardingCompleteClient'
 import type { ProgramIntakePayload, SelectedProgram } from '@/lib/onboardingProgramFlow'
 import { isSelectedProgram, urlParamToSelectedProgram } from '@/lib/onboardingProgramFlow'
@@ -271,6 +272,13 @@ export default function ProgramOnboardingWizard({
         adminBypassNavigatingRef.current = false
         return
       }
+    }
+
+    const {
+      data: { session: postSession },
+    } = await supabase.auth.getSession()
+    if (postSession?.user?.id) {
+      setPendingFirstRunWalkthrough(postSession.user.id)
     }
 
     router.replace('/dashboard')

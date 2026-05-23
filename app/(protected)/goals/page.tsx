@@ -183,7 +183,7 @@ export default function GoalsPage() {
             <EmptyState
               icon="🎯"
               heading="No goals for today"
-              subtext="What&apos;s the one thing that would make today a win? Start there."
+              subtext="Name one outcome for today — then break bigger 30–60 day goals into steps on this page."
               ctaLabel="Set today&apos;s first goal"
               ctaAction={() => inputRef.current?.focus()}
               className="min-h-[240px]"

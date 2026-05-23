@@ -272,6 +272,16 @@ function DebouncedYoutubeField({
   )
 }
 
+function formatLessonDbError(message: string): string {
+  if (/companion_media/i.test(message) && /schema cache/i.test(message)) {
+    return (
+      'The lessons table is missing companion media columns. In the Supabase dashboard, open SQL Editor and run migration ' +
+      'supabase/migrations/20260521120000_ensure_lessons_companion_media_columns.sql (or push pending migrations), then save again.'
+    )
+  }
+  return message
+}
+
 type LessonRow = {
   id?: string
   day_number: number
@@ -319,7 +329,7 @@ function LessonsEditor() {
       .maybeSingle()
 
     if (error) {
-      showToast(error.message, 'error')
+      showToast(formatLessonDbError(error.message), 'error')
       setLessons([])
     } else {
       const rows = (data as LessonRow[]) || []
@@ -476,11 +486,15 @@ function LessonsEditor() {
         lastSavedRef.current = dataString
         setAutoSaveStatus('saved')
         setTimeout(() => setAutoSaveStatus('idle'), 3000)
-      } catch {
+      } catch (err) {
         setAutoSaveStatus('error')
+        const msg = err instanceof Error ? err.message : String(err)
+        if (/companion_media/i.test(msg)) {
+          showToast(formatLessonDbError(msg), 'error')
+        }
       }
     },
-    [lessonPayload],
+    [lessonPayload, showToast],
   )
 
   useEffect(() => {
@@ -552,7 +566,7 @@ function LessonsEditor() {
       .upsert(lessonPayload(editing), { onConflict: 'day_number,is_bonus' })
     setSaving(false)
     if (error) {
-      showToast(error.message, 'error')
+      showToast(formatLessonDbError(error.message), 'error')
       return
     }
     lastSavedRef.current = JSON.stringify(lessonPayload(editing))

@@ -16,6 +16,7 @@ import { allNavItems, type NavItem } from "@/lib/nav-config"
 import { DesktopSidebar } from "@/components/DesktopSidebar"
 import { MobileBottomNav } from "@/components/MobileBottomNav"
 import { MobileDrawer } from "@/components/MobileDrawer"
+import { FirstRunWalkthrough } from "@/components/FirstRunWalkthrough"
 import { MainShell } from "@/components/MainShell"
 import { MonkCubedLogo } from "@/components/brand/MonkCubedLogo"
 import { PwaInstallButton } from "@/components/marketing/PwaInstallButton"
@@ -391,6 +392,7 @@ export function Navigation({ forceMarketing = false }: { forceMarketing?: boolea
           setDrawerOpen(false)
         }}
       />
+      <FirstRunWalkthrough />
     </>
   )
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ChevronDown } from 'lucide-react'
@@ -13,6 +14,7 @@ import { isLightColorTheme } from '@/lib/colorThemes'
 import { useSidebarNavCollapse } from '@/hooks/useSidebarNavCollapse'
 import { SidebarLogoutButton } from '@/components/SidebarLogoutButton'
 import { sidebarNavSections, type NavItem } from '@/lib/nav-config'
+import { navTourClass } from '@/lib/nav-tour-classes'
 import { cn } from '@/lib/utils'
 
 type Props = {
@@ -53,6 +55,7 @@ function ItemLink({
         className={cn(
           'relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors',
           'text-muted-foreground hover:bg-secondary hover:text-foreground',
+          navTourClass(item.href),
         )}
       >
         <Icon className="h-4 w-4 shrink-0 opacity-80" />
@@ -70,6 +73,7 @@ function ItemLink({
         active
           ? 'bg-primary text-primary-foreground'
           : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+        navTourClass(item.href),
       )}
     >
       <Icon className="h-4 w-4 shrink-0" />
@@ -81,7 +85,14 @@ function ItemLink({
 export function DesktopSidebar({ showProGate, onProLocked, programButtonText }: Props) {
   const pathname = usePathname()
   const { themeId } = useColorTheme()
-  const { isActive, isGroupOpen, setGroupOpen } = useSidebarNavCollapse(pathname)
+  const { isActive, isGroupOpen, setGroupOpen, expandAllGroups } =
+    useSidebarNavCollapse(pathname)
+
+  useEffect(() => {
+    const onExpandAll = () => expandAllGroups()
+    window.addEventListener('monk:expand-all-nav', onExpandAll)
+    return () => window.removeEventListener('monk:expand-all-nav', onExpandAll)
+  }, [expandAllGroups])
 
   return (
     <aside

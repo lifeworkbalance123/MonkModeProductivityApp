@@ -1,14 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { DeepWorkModeCard } from '@/components/focus/deep-work-mode-card'
 import { DeepWorkStatsStrip } from '@/components/focus/deep-work-stats-strip'
-import { PomodoroTimerCard } from '@/components/focus/pomodoro-timer-card'
-import { Card } from '@/components/ui/card'
+import { UnifiedTimer } from '@/components/focus/UnifiedTimer'
 import { HoverTooltip } from '@/components/ui/HoverTooltip'
 import { TOOLTIP_FOCUS_DEEP_WORK } from '@/lib/tool-library-tooltips'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import { useDataServiceContext } from '@/hooks/use-data-service-context'
 import { usePlan } from '@/hooks/usePlan'
 import { useTimerAlarmSettings } from '@/hooks/useTimerAlarmSettings'
@@ -65,8 +61,8 @@ export function FocusPageClient() {
                   Focus Machine
                 </h1>
                 <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base">
-                  High-contrast timers, deep-work sprints, and strip stats—built like a control panel,
-                  not a wellness app.
+                  One control surface for Pomodoro rounds and Pro deep-work sprints, with intent lock,
+                  audio, and alerts grouped in the panel.
                 </p>
                 <nav
                   className="mt-5 flex flex-wrap gap-2"
@@ -76,7 +72,7 @@ export function FocusPageClient() {
                     href="#pomodoro-focus"
                     className="inline-flex items-center rounded-full border border-primary bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:brightness-110"
                   >
-                    Pomodoro
+                    Timer
                   </a>
                   <a
                     href="#deep-work"
@@ -110,46 +106,7 @@ export function FocusPageClient() {
           </section>
         </HoverTooltip>
 
-        <Card className="rounded-2xl border border-border p-4 shadow-none md:p-5">
-          <div className="label-machine mb-3">Timer alerts</div>
-          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-8">
-            <div className="flex items-center gap-2">
-              <Switch
-                id="timer-alarm-sound"
-                checked={alarm.soundOn}
-                onCheckedChange={alarm.setSoundOn}
-              />
-              <Label htmlFor="timer-alarm-sound" className="cursor-pointer font-normal">
-                Sound when a phase ends
-              </Label>
-            </div>
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="timer-alarm-notify"
-                  checked={alarm.notifyOn}
-                  onCheckedChange={alarm.setNotifyOn}
-                  disabled={alarm.notifyPermission === 'unsupported'}
-                />
-                <Label htmlFor="timer-alarm-notify" className="cursor-pointer font-normal">
-                  Desktop notification
-                </Label>
-              </div>
-              {alarm.notifyPermission === 'denied' ? (
-                <p className="text-xs text-muted-foreground sm:ml-0">
-                  Unblock notifications for this site in your browser settings to use alerts in the background.
-                </p>
-              ) : null}
-            </div>
-          </div>
-        </Card>
-
-        <PomodoroTimerCard alarmSoundRef={alarm.soundRef} alarmNotifyRef={alarm.notifyRef} />
-        <DeepWorkModeCard
-          setSessions={setSessions}
-          alarmSoundRef={alarm.soundRef}
-          alarmNotifyRef={alarm.notifyRef}
-        />
+        <UnifiedTimer setSessions={setSessions} alarm={alarm} />
         <DeepWorkStatsStrip sessions={sessions} serverTodayMinutes={serverTodayMinutes} />
       </div>
     </div>
