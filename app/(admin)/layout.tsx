@@ -290,7 +290,10 @@ export default function AdminShellLayout({
               const active =
                 link.href === '/admin'
                   ? pathname === '/admin'
-                  : pathname === link.href || pathname?.startsWith(link.href + '/')
+                  : link.href === '/admin/content'
+                    ? pathname === '/admin/content' ||
+                      (pathname?.startsWith('/admin/content?') ?? false)
+                    : pathname === link.href || (pathname?.startsWith(link.href + '/') ?? false)
               return (
                 <Link
                   key={link.href}

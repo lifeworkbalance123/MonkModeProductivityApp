@@ -1,8 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { ContentManagerHeader, ContentManagerTabs } from '@/components/admin/ContentManagerTabs'
 import type { DailyQuoteRow } from '@/lib/dailyQuotes'
 
 type QuoteForm = {
@@ -145,21 +145,13 @@ export default function AdminQuotesPage() {
 
   return (
     <div className="p-6">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Daily Quotes</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            60 slots (days 1–60). Program day 61+ cycles back to slot 1. Shown on the dashboard
-            morning motivation section.
-          </p>
-        </div>
-        <Link
-          href="/admin/content"
-          className="text-sm text-accent hover:underline"
-        >
-          ← Content manager
-        </Link>
-      </div>
+      <ContentManagerHeader />
+      <ContentManagerTabs activeSection="quotes" />
+
+      <p className="mb-6 text-sm text-muted-foreground">
+        60 slots (days 1–60). Program day 61+ cycles back to slot 1. Shown on the dashboard morning
+        motivation section.
+      </p>
 
       {error ? (
         <p className="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-400">

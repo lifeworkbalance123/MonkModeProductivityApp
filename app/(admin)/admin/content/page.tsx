@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/context/ToastContext'
@@ -8,6 +9,7 @@ import MediaUploader, { type MediaType } from '@/components/admin/MediaUploader'
 import DailyProgramLessonsEditor from '@/components/admin/DailyProgramLessonsEditor'
 import LessonList from '@/components/admin/LessonList'
 import { LessonForm } from '@/components/admin/LessonForm'
+import { ContentManagerHeader } from '@/components/admin/ContentManagerTabs'
 
 type Tab = 'lessons' | 'programLessons' | 'programLessonsApi' | 'habits' | 'training'
 
@@ -118,21 +120,9 @@ export default function AdminContentPage() {
 
   return (
     <div>
-      <div style={{ marginBottom: '28px' }}>
-        <h1 style={{ color: 'var(--foreground)', fontSize: '24px', fontWeight: '600', margin: '0 0 4px' }}>Content Manager</h1>
-        <p style={{ color: 'var(--muted-foreground)', fontSize: '14px', margin: 0 }}>
-          Edit lessons, program tracks, habits, and training content without touching code.
-        </p>
-        <p style={{ color: 'var(--muted-foreground)', fontSize: '13px', margin: '6px 0 0' }}>
-          Onboarding steps moved to{' '}
-          <a href="/admin/onboarding" style={{ color: 'var(--accent)' }}>
-            /admin/onboarding
-          </a>
-          .
-        </p>
-      </div>
+      <ContentManagerHeader />
 
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '28px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '28px', flexWrap: 'wrap', alignItems: 'center' }}>
         <button type="button" style={tabStyle('lessons')} onClick={() => selectTab('lessons')}>
           Daily Lessons
         </button>
@@ -152,6 +142,21 @@ export default function AdminContentPage() {
         <button type="button" style={tabStyle('training')} onClick={() => selectTab('training')}>
           🎬 Training Videos (Bonus)
         </button>
+        <Link
+          href="/admin/content/quotes"
+          style={{
+            padding: '8px 20px',
+            borderRadius: '8px',
+            fontSize: '13px',
+            fontWeight: 500,
+            background: 'var(--card)',
+            color: 'var(--muted-foreground)',
+            textDecoration: 'none',
+            display: 'inline-block',
+          }}
+        >
+          Daily Quotes
+        </Link>
       </div>
 
       {mountedTabs.has('lessons') ? (
